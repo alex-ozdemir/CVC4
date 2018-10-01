@@ -203,6 +203,12 @@ enum SatSolverLifespan
   SAT_LIFESPAN_USER_CONTEXT_LENIENT
 };
 
+inline std::ostream& operator<<(std::ostream& out, prop::SatLiteral lit);
+
+inline std::ostream& operator<<(std::ostream& out,
+                                const prop::SatClause& clause);
+
+inline std::ostream& operator<<(std::ostream& out, prop::SatValue val);
 }
 }
 

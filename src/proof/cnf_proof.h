@@ -78,6 +78,11 @@ protected:
 
   ClauseIdSet d_explanations;
 
+  // The clause ID of the unit clause defining the true SAT var.
+  ClauseId d_trueUnitClause;
+  // The clause ID of the unit clause defining the false SAT var.
+  ClauseId d_falseUnitClause;
+
   bool isDefinition(Node node);
 
   Node getDefinitionForClause(ClauseId clause);
@@ -109,6 +114,14 @@ public:
   // if it is an explanation, it does not have a CNF proof since it is
   // already in CNF
   void registerConvertedClause(ClauseId clause, bool explanation=false);
+
+  // The CNF proof has a special relationship to true and false.
+  // In particular, it need to know the identity of clauses defining
+  // canonical true and false variables in the underlying SAT solver.
+  void registerTrueUnitClause(ClauseId clauseId);
+  void registerFalseUnitClause(ClauseId clauseId);
+  inline ClauseId getTrueUnitClause() { return d_trueUnitClause; };
+  inline ClauseId getFalseUnitClause() { return d_falseUnitClause; };
 
   /** Clause is one of the clauses defining the node expression*/
   void setClauseDefinition(ClauseId clause, Node node);
@@ -162,9 +175,20 @@ public:
 };/* class CnfProof */
 
 class LFSCCnfProof : public CnfProof {
+  // For each **variable** in the clause stores
+  //   the index of the variable's last occurence
+  //   the polarity of the variable's last occurence
+  // This behaves poorly if a clause contains a variable and its negation
   Node clauseToNode( const prop::SatClause& clause,
                      std::map<Node, unsigned>& childIndex,
                      std::map<Node, bool>& childPol );
+
+  // Actually returns std::optional<std::pair<unsigned, unsigned>>
+  // First field is true if the option is filled.
+  // Detects whether a clause has x v ~x for some x
+  // If so, returns the positive occurence's idx first, then the negative's
+  std::tuple<bool, unsigned, unsigned> detectTrivialTautology(
+      const prop::SatClause& clause);
   bool printProofTopLevel(Node e, std::ostream& out);
 public:
   LFSCCnfProof(CVC4::prop::CnfStream* cnfStream,

@@ -16,7 +16,9 @@
 
 #include "proof/lfsc_proof_printer.h"
 
+#include <algorithm>
 #include <iostream>
+#include <iterator>
 
 #include "prop/bvminisat/core/Solver.h"
 #include "prop/minisat/core/Solver.h"
@@ -142,6 +144,69 @@ void LFSCProofPrinter::printResolutionEmptyClause(TSatProof<Solver>* satProof,
                                                   std::ostream& paren)
 {
   printResolution(satProof, satProof->getEmptyClauseId(), out, paren);
+}
+
+void LFSCProofPrinter::printSatInputProof(const std::vector<ClauseId>& clauses,
+                                          std::ostream& out,
+                                          const std::string& namingPrefix)
+{
+  for (auto i = clauses.cbegin(); i != clauses.cend(); ++i)
+  {
+    out << "\n    (proof_of_cnfc _ _ "
+        << ProofManager::getInputClauseName(*i, namingPrefix) << " ";
+  }
+  out << "proof_of_cnfn";
+  std::fill_n(std::ostream_iterator<char>(out), clauses.size(), ')');
+}
+
+void LFSCProofPrinter::printDRATProof(const drat::DRATProof& proof,
+                                      std::ostream& out,
+                                      const std::string& namingPrefix)
+{
+  auto instructions = proof.getInstructions();
+  for (auto i = instructions.cbegin(); i != instructions.cend(); ++i)
+  {
+    out << "\n    (dratpc ";
+    printDRATInstruction(*i, out, namingPrefix);
+    out << " ";
+  }
+  out << "dratpn";
+  std::fill_n(std::ostream_iterator<char>(out), instructions.size(), ')');
+}
+
+void LFSCProofPrinter::printDRATInstruction(const drat::DRATInstruction& instr,
+                                            std::ostream& out,
+                                            const std::string& namingPrefix)
+{
+  switch (instr.kind)
+  {
+    case drat::DRATInstructionKind::addition:
+    {
+      out << "(drat_addition ";
+      break;
+    }
+    case drat::DRATInstructionKind::deletion:
+    {
+      out << "(drat_deletion ";
+      break;
+    }
+    default: Unreachable();
+  }
+  printSatClause(instr.clause, out, namingPrefix);
+  out << ")";
+}
+
+void LFSCProofPrinter::printSatClause(const prop::SatClause& clause,
+                                      std::ostream& out,
+                                      const std::string& namingPrefix)
+{
+  for (auto i = clause.cbegin(); i != clause.cend(); ++i)
+  {
+    out << "(clc " << (i->isNegated() ? "(neg " : "(pos ")
+        << ProofManager::getVarName(i->getSatVariable(), namingPrefix) << ") ";
+  }
+  out << "cln";
+  std::fill_n(std::ostream_iterator<char>(out), clause.size(), ')');
 }
 
 // Template specializations

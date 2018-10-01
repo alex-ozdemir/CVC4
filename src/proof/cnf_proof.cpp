@@ -118,6 +118,30 @@ void CnfProof::setClauseAssertion(ClauseId clause, Node expr) {
   d_clauseToAssertion.insert (clause, expr);
 }
 
+void CnfProof::registerTrueUnitClause(ClauseId clauseId)
+{
+  Node true_node = NodeManager::currentNM()->mkConst<bool>(true);
+  pushCurrentAssertion(true_node);
+  pushCurrentDefinition(true_node);
+  registerConvertedClause(clauseId);
+  popCurrentAssertion();
+  popCurrentDefinition();
+  d_cnfStream->ensureLiteral(true_node);
+  d_trueUnitClause = clauseId;
+}
+
+void CnfProof::registerFalseUnitClause(ClauseId clauseId)
+{
+  Node false_node = NodeManager::currentNM()->mkConst<bool>(false).notNode();
+  pushCurrentAssertion(false_node);
+  pushCurrentDefinition(false_node);
+  registerConvertedClause(clauseId);
+  popCurrentAssertion();
+  popCurrentDefinition();
+  d_cnfStream->ensureLiteral(false_node);
+  d_falseUnitClause = clauseId;
+}
+
 void CnfProof::setClauseDefinition(ClauseId clause, Node definition) {
   Debug("proof:cnf") << "CnfProof::setClauseDefinition "
                      << clause << " definition " << definition << std::endl;
@@ -385,12 +409,48 @@ Node LFSCCnfProof::clauseToNode(const prop::SatClause& clause,
          NodeManager::currentNM()->mkNode(kind::OR, children );
 }
 
+// TODO(aozdemir) remove
+// std::tuple<bool, unsigned, unsigned> LFSCCnfProof::detectTrivialTautology(
+//     const prop::SatClause& clause)
+// {
+//   std::map<prop::SatVariable, std::pair<bool, unsigned>>
+//   varsToPolsAndIndices; for (unsigned i = 0; i < clause.size(); ++i)
+//   {
+//     prop::SatLiteral lit = clause[i];
+//     prop::SatVariable var = lit.getSatVariable();
+//     bool polarity = !lit.isNegated();
+//
+//     // Check if this var has already occured w/ opposite polarity
+//     auto iter = varsToPolsAndIndices.find(var);
+//     if (iter != varsToPolsAndIndices.end() && iter->second.first != polarity)
+//     {
+//       if (iter->second.first)
+//       {
+//         return std::make_tuple(true, iter->second.second, i);
+//       }
+//       else
+//       {
+//         return std::make_tuple(true, i, iter->second.second);
+//       }
+//     }
+//     varsToPolsAndIndices[var] = std::make_pair(polarity, i);
+//   }
+//   return std::make_tuple(false, 0, 0);
+// }
+
+/**
+ * Our general approach is determine the base assertion OR? definition which
+ * lead to the creation of this clause, and then prove this clause from that
+ * assertion using natural deduction.
+ */
 void LFSCCnfProof::printCnfProofForClause(ClauseId id,
                                           const prop::SatClause* clause,
                                           std::ostream& os,
                                           std::ostream& paren) {
-  Debug("cnf-pf") << std::endl << std::endl << "LFSCCnfProof::printCnfProofForClause( " << id << " ) starting "
-                  << std::endl;
+  Debug("cnf-pf") << std::endl
+                  << std::endl
+                  << ";LFSCCnfProof::printCnfProofForClause( " << id
+                  << " ) starting " << std::endl;
 
   os << "(satlem _ _ ";
   std::ostringstream clause_paren;
@@ -406,240 +466,352 @@ void LFSCCnfProof::printCnfProofForClause(ClauseId id,
   // return;
 
   Assert( clause->size()>0 );
-
+  // TODO(aozdemir) remove
+  //  // If the clause contains x v ~x, it's easy!
+  //  std::tuple<bool, unsigned, unsigned> isTrivialTaut =
+  //      detectTrivialTautology(*clause);
+  //  if (std::get<0>(isTrivialTaut))
+  //  {
+  //    unsigned posIndexInClause = std::get<1>(isTrivialTaut);
+  //    unsigned negIndexInClause = std::get<2>(isTrivialTaut);
+  //    Trace("cnf-pf") << "; Indices " << posIndexInClause << " (+) and "
+  //                    << negIndexInClause << " (-) make this clause a taut"
+  //                    << std::endl;
+  //
+  //    std::string proofOfPos =
+  //        ProofManager::getLitName((*clause)[negIndexInClause], d_name);
+  //    std::string proofOfNeg =
+  //        ProofManager::getLitName((*clause)[posIndexInClause], d_name);
+  //    os << "(contra _ " << proofOfPos << " " << proofOfNeg << ")";
+  //  }
+  //  else {
   Node base_assertion = getDefinitionForClause(id);
 
-  //get the assertion for the clause id
-  std::map<Node, unsigned > childIndex;
-  std::map<Node, bool > childPol;
-  Node assertion = clauseToNode( *clause, childIndex, childPol );
-  //if there is no reason, construct assertion directly.   This can happen for unit clauses.
-  if( base_assertion.isNull() ){
+  // get the assertion for the clause id
+  std::map<Node, unsigned> childIndex;
+  std::map<Node, bool> childPol;
+  Node assertion = clauseToNode(*clause, childIndex, childPol);
+  // if there is no reason, construct assertion directly. This can happen
+  // for unit clauses.
+  if (base_assertion.isNull())
+  {
     base_assertion = assertion;
   }
-  //os_base is proof of base_assertion
+  // os_base is proof of base_assertion
   std::stringstream os_base;
 
   // checks if tautological definitional clause or top-level clause
   // and prints the proof of the top-level formula
   bool is_input = printProofTopLevel(base_assertion, os_base);
 
-  if (is_input) {
-    Debug("cnf-pf") << std::endl << "; base assertion is input. proof: " << os_base.str() << std::endl;
+  if (is_input)
+  {
+    Debug("cnf-pf") << std::endl
+                    << "; base assertion is input. proof: " << os_base.str()
+                    << std::endl;
   }
 
-  //get base assertion with polarity
-  bool base_pol = base_assertion.getKind()!=kind::NOT;
-  base_assertion = base_assertion.getKind()==kind::NOT ? base_assertion[0] : base_assertion;
+  Trace("cnf-pf") << "; base assertion = " << base_assertion << std::endl;
+  // get base assertion with polarity
+  // polarity is true iff the assertion is positive.
+  bool base_pol = base_assertion.getKind() != kind::NOT;
+  base_assertion = base_assertion.getKind() == kind::NOT ? base_assertion[0]
+                                                         : base_assertion;
+  Trace("cnf-pf") << "; base pol = " << base_pol << std::endl;
+  Trace("cnf-pf") << "; base assertion = " << base_assertion << std::endl;
 
-  std::map< Node, unsigned >::iterator itci = childIndex.find( base_assertion );
-  bool is_in_clause = itci!=childIndex.end();
+  std::map<Node, unsigned>::iterator itci = childIndex.find(base_assertion);
+  bool is_in_clause = itci != childIndex.end();
   unsigned base_index = is_in_clause ? itci->second : 0;
   Trace("cnf-pf") << std::endl;
-  Trace("cnf-pf") << "; input = " << is_input << ", is_in_clause = " << is_in_clause << ", id = " << id << ", assertion = " << assertion << ", base assertion = " << base_assertion << std::endl;
-  if (!is_input){
+  Trace("cnf-pf") << "; input = " << is_input
+                  << "\n  ; is_in_clause = " << is_in_clause
+                  << "\n  ; id = " << id << "\n  ; assertion = " << assertion
+                  << "\n  ; base assertion = " << base_assertion << std::endl;
+  if (!is_input)
+  {
     Assert(is_in_clause);
-    prop::SatLiteral blit = (*clause)[ base_index ];
+    prop::SatLiteral blit = (*clause)[base_index];
     os_base << ProofManager::getLitName(blit, d_name);
-    base_pol = !childPol[base_assertion]; // WHY? if the case is =>
+    base_pol = !childPol[base_assertion];  // WHY? if the case is =>
   }
   Trace("cnf-pf") << "; polarity of base assertion = " << base_pol << std::endl;
   Trace("cnf-pf") << "; proof of base : " << os_base.str() << std::endl;
 
   bool success = false;
-  if( is_input &&
-      is_in_clause &&
-      childPol[base_assertion]==base_pol ){
-    //if both in input and in clause, the proof is trivial.  this is the case for unit clauses.
+  if (is_input && is_in_clause && childPol[base_assertion] == base_pol)
+  {
+    // if both in input and in clause, the proof is trivial.  this is the case
+    // for unit clauses.
     Trace("cnf-pf") << "; trivial" << std::endl;
     os << "(contra _ ";
     success = true;
     prop::SatLiteral lit = (*clause)[itci->second];
-    if( base_pol ){
+    if (base_pol)
+    {
       os << os_base.str() << " " << ProofManager::getLitName(lit, d_name);
-    }else{
+    }
+    else
+    {
       os << ProofManager::getLitName(lit, d_name) << " " << os_base.str();
     }
     os << ")";
-  } else if ((base_assertion.getKind()==kind::AND && !base_pol) ||
-           ((base_assertion.getKind()==kind::OR ||
-             base_assertion.getKind()==kind::IMPLIES) && base_pol)) {
+  }
+  else if ((base_assertion.getKind() == kind::AND && !base_pol)
+           || ((base_assertion.getKind() == kind::OR
+                || base_assertion.getKind() == kind::IMPLIES)
+               && base_pol))
+  {
+    // We're working with a base assetion like ~( A ^ B ), A v B, or A > B
     Trace("cnf-pf") << "; and/or case 1" << std::endl;
     success = true;
     std::stringstream os_main;
     std::stringstream os_paren;
-    //eliminate each one
-    for (int j = base_assertion.getNumChildren()-2; j >= 0; j--) {
-      Trace("cnf-pf-debug") << "; base_assertion[" << j << "] is: " << base_assertion[j]
-                            << ", and its kind is: " << base_assertion[j].getKind() << std::endl ;
+    // eliminate each one
+    for (int j = base_assertion.getNumChildren() - 2; j >= 0; j--)
+    {
+      Trace("cnf-pf-debug")
+          << "; base_assertion[" << j << "] is: " << base_assertion[j]
+          << ", and its kind is: " << base_assertion[j].getKind() << std::endl;
 
-      Node child_base = base_assertion[j].getKind()==kind::NOT ?
-                        base_assertion[j][0] : base_assertion[j];
-      bool child_pol = base_assertion[j].getKind()!=kind::NOT;
+      Node child_base = base_assertion[j].getKind() == kind::NOT
+                            ? base_assertion[j][0]
+                            : base_assertion[j];
+      bool child_pol = base_assertion[j].getKind() != kind::NOT;
 
-      Trace("cnf-pf-debug") << "; child " << j << " "
-                            << ", child base: " << child_base
-                            << ", child pol: " << child_pol
-                            << ", childPol[child_base] "
-                            << childPol[child_base] << ", base pol: " << base_pol << std::endl;
+      Trace("cnf-pf-debug")
+          << "; child " << j << " "
+          << ", child base: " << child_base << ", child pol: " << child_pol
+          << ", childPol[child_base] " << childPol[child_base]
+          << ", base pol: " << base_pol << std::endl;
 
-      std::map< Node, unsigned >::iterator itcic = childIndex.find( child_base );
+      std::map<Node, unsigned>::iterator itcic = childIndex.find(child_base);
 
-      if( itcic!=childIndex.end() ){
-        //Assert( child_pol==childPol[child_base] );
+      if (itcic != childIndex.end())
+      {
+        // Assert( child_pol==childPol[child_base] );
         os_main << "(or_elim_1 _ _ ";
         prop::SatLiteral lit = (*clause)[itcic->second];
         // Should be if in the original formula it was negated
         // if( childPol[child_base] && base_pol ){
 
-        // Adding the below to catch a specific case where the first child of an IMPLIES is negative,
-        // in which case we need not_not introduction.
-        if (base_assertion.getKind() == kind::IMPLIES && !child_pol && base_pol) {
-          os_main << "(not_not_intro _ " << ProofManager::getLitName(lit, d_name) << ") ";
-        } else if (childPol[child_base] && base_pol) {
-          os_main << ProofManager::getLitName(lit, d_name) << " ";
-        }else{
-          os_main << "(not_not_intro _ " << ProofManager::getLitName(lit, d_name) << ") ";
+        // Adding the below to catch a specific case where the first child of
+        // an IMPLIES is negative, in which case we need not_not introduction.
+        if (base_assertion.getKind() == kind::IMPLIES && !child_pol && base_pol)
+        {
+          os_main << "(not_not_intro _ "
+                  << ProofManager::getLitName(lit, d_name) << ") ";
         }
-        if( base_assertion.getKind()==kind::AND ){
+        else if (childPol[child_base] && base_pol)
+        {
+          os_main << ProofManager::getLitName(lit, d_name) << " ";
+        }
+        else
+        {
+          os_main << "(not_not_intro _ "
+                  << ProofManager::getLitName(lit, d_name) << ") ";
+        }
+        if (base_assertion.getKind() == kind::AND)
+        {
           os_main << "(not_and_elim _ _ ";
           os_paren << ")";
         }
         os_paren << ")";
-      }else{
+      }
+      else
+      {
         success = false;
       }
     }
 
-    if( success ){
-      if( base_assertion.getKind()==kind::IMPLIES ){
+    if (success)
+    {
+      if (base_assertion.getKind() == kind::IMPLIES)
+      {
         os_main << "(impl_elim _ _ ";
       }
       os_main << os_base.str();
-      if( base_assertion.getKind()==kind::IMPLIES ){
+      if (base_assertion.getKind() == kind::IMPLIES)
+      {
         os_main << ")";
       }
       os_main << os_paren.str();
-      int last_index = base_assertion.getNumChildren()-1;
-      Node child_base = base_assertion[last_index].getKind()==kind::NOT ? base_assertion[last_index][0] : base_assertion[last_index];
-      //bool child_pol = base_assertion[last_index].getKind()!=kind::NOT;
-      std::map< Node, unsigned >::iterator itcic = childIndex.find( child_base );
-      if( itcic!=childIndex.end() ){
+      int last_index = base_assertion.getNumChildren() - 1;
+      Node child_base = base_assertion[last_index].getKind() == kind::NOT
+                            ? base_assertion[last_index][0]
+                            : base_assertion[last_index];
+      // bool child_pol = base_assertion[last_index].getKind()!=kind::NOT;
+      std::map<Node, unsigned>::iterator itcic = childIndex.find(child_base);
+      if (itcic != childIndex.end())
+      {
         os << "(contra _ ";
         prop::SatLiteral lit = (*clause)[itcic->second];
-        if( childPol[child_base] && base_pol){
+        if (childPol[child_base] && base_pol)
+        {
           os << os_main.str() << " " << ProofManager::getLitName(lit, d_name);
-        }else{
+        }
+        else
+        {
           os << ProofManager::getLitName(lit, d_name) << " " << os_main.str();
         }
         os << ")";
-      }else{
+      }
+      else
+      {
         success = false;
       }
     }
-  }else if ((base_assertion.getKind()==kind::AND && base_pol) ||
-            ((base_assertion.getKind()==kind::OR ||
-              base_assertion.getKind()==kind::IMPLIES) && !base_pol)) {
-
+  }
+  else if ((base_assertion.getKind() == kind::AND && base_pol)
+           || ((base_assertion.getKind() == kind::OR
+                || base_assertion.getKind() == kind::IMPLIES)
+               && !base_pol))
+  {
     std::stringstream os_main;
 
     Node iatom;
-    if (is_in_clause) {
-      Assert( assertion.getNumChildren()==2 );
-      iatom = assertion[ base_index==0 ? 1 : 0];
-    } else {
-      Assert( assertion.getNumChildren()==1 );
+    if (is_in_clause)
+    {
+      Assert(assertion.getNumChildren() == 2);
+      iatom = assertion[base_index == 0 ? 1 : 0];
+    }
+    else
+    {
+      Assert(assertion.getNumChildren() == 1);
       iatom = assertion[0];
     }
 
     Trace("cnf-pf") << "; and/or case 2, iatom = " << iatom << std::endl;
-    Node e_base = iatom.getKind()==kind::NOT ? iatom[0] : iatom;
-    bool e_pol = iatom.getKind()!=kind::NOT;
-    std::map< Node, unsigned >::iterator itcic = childIndex.find( e_base );
-    if( itcic!=childIndex.end() ){
+    Node e_base = iatom.getKind() == kind::NOT ? iatom[0] : iatom;
+    bool e_pol = iatom.getKind() != kind::NOT;
+    std::map<Node, unsigned>::iterator itcic = childIndex.find(e_base);
+    if (itcic != childIndex.end())
+    {
       prop::SatLiteral lit = (*clause)[itcic->second];
-      //eliminate until we find iatom
-      for( unsigned j=0; j<base_assertion.getNumChildren(); j++ ){
-        Node child_base = base_assertion[j].getKind()==kind::NOT ? base_assertion[j][0] : base_assertion[j];
-        bool child_pol = base_assertion[j].getKind()!=kind::NOT;
-        if( j==0 && base_assertion.getKind()==kind::IMPLIES ){
+      // eliminate until we find iatom
+      for (unsigned j = 0; j < base_assertion.getNumChildren(); j++)
+      {
+        Node child_base = base_assertion[j].getKind() == kind::NOT
+                              ? base_assertion[j][0]
+                              : base_assertion[j];
+        bool child_pol = base_assertion[j].getKind() != kind::NOT;
+        if (j == 0 && base_assertion.getKind() == kind::IMPLIES)
+        {
           child_pol = !child_pol;
         }
-        if( e_base==child_base && (e_pol==child_pol)==(base_assertion.getKind()==kind::AND) ){
+        if (e_base == child_base
+            && (e_pol == child_pol) == (base_assertion.getKind() == kind::AND))
+        {
           success = true;
-          bool elimNn =( ( base_assertion.getKind()==kind::OR || ( base_assertion.getKind()==kind::IMPLIES && j==1 ) ) && e_pol );
-          if( elimNn ){
+          bool elimNn =
+              ((base_assertion.getKind() == kind::OR
+                || (base_assertion.getKind() == kind::IMPLIES && j == 1))
+               && e_pol);
+          if (elimNn)
+          {
             os_main << "(not_not_elim _ ";
           }
           std::stringstream os_paren;
-          if( j+1<base_assertion.getNumChildren() ){
+          if (j + 1 < base_assertion.getNumChildren())
+          {
             os_main << "(and_elim_1 _ _ ";
-            if( base_assertion.getKind()==kind::OR || base_assertion.getKind()==kind::IMPLIES ){
-              os_main << "(not_" << ( base_assertion.getKind()==kind::OR ? "or" : "impl" ) << "_elim _ _ ";
+            if (base_assertion.getKind() == kind::OR
+                || base_assertion.getKind() == kind::IMPLIES)
+            {
+              os_main << "(not_"
+                      << (base_assertion.getKind() == kind::OR ? "or" : "impl")
+                      << "_elim _ _ ";
               os_paren << ")";
             }
             os_paren << ")";
           }
-          for( unsigned k=0; k<j; k++ ){
+          for (unsigned k = 0; k < j; k++)
+          {
             os_main << "(and_elim_2 _ _ ";
-            if( base_assertion.getKind()==kind::OR || base_assertion.getKind()==kind::IMPLIES ){
-              os_main << "(not_" << ( base_assertion.getKind()==kind::OR ? "or" : "impl" ) << "_elim _ _ ";
+            if (base_assertion.getKind() == kind::OR
+                || base_assertion.getKind() == kind::IMPLIES)
+            {
+              os_main << "(not_"
+                      << (base_assertion.getKind() == kind::OR ? "or" : "impl")
+                      << "_elim _ _ ";
               os_paren << ")";
             }
             os_paren << ")";
           }
           os_main << os_base.str() << os_paren.str();
-          if( elimNn ){
+          if (elimNn)
+          {
             os_main << ")";
           }
           break;
         }
       }
-      if( success ){
+      if (success)
+      {
         os << "(contra _ ";
-        if( !e_pol ){
+        if (!e_pol)
+        {
           os << ProofManager::getLitName(lit, d_name) << " " << os_main.str();
-        }else{
+        }
+        else
+        {
           os << os_main.str() << " " << ProofManager::getLitName(lit, d_name);
         }
         os << ")";
       }
     }
-  }else if( base_assertion.getKind()==kind::XOR || ( base_assertion.getKind()==kind::EQUAL && base_assertion[0].getType().isBoolean() ) ){
-    //eliminate negation
+  }
+  else if (base_assertion.getKind() == kind::XOR
+           || (base_assertion.getKind() == kind::EQUAL
+               && base_assertion[0].getType().isBoolean()))
+  {
+    // eliminate negation
     int num_nots_2 = 0;
     int num_nots_1 = 0;
     Kind k;
-    if( !base_pol ){
-      if( base_assertion.getKind()==kind::EQUAL ){
+    if (!base_pol)
+    {
+      if (base_assertion.getKind() == kind::EQUAL)
+      {
         num_nots_2 = 1;
       }
       k = kind::EQUAL;
-    }else{
+    }
+    else
+    {
       k = base_assertion.getKind();
     }
-    std::vector< unsigned > indices;
-    std::vector< bool > pols;
+    std::vector<unsigned> indices;
+    std::vector<bool> pols;
     success = true;
     int elimNum = 0;
-    for( unsigned i=0; i<2; i++ ){
-      Node child_base = base_assertion[i].getKind()==kind::NOT ? base_assertion[i][0] : base_assertion[i];
-      bool child_pol = base_assertion[i].getKind()!=kind::NOT;
-      std::map< Node, unsigned >::iterator itcic = childIndex.find( child_base );
-      if( itcic!=childIndex.end() ){
-        indices.push_back( itcic->second );
-        pols.push_back( childPol[child_base] );
-        if( i==0 ){
-          //figure out which way to elim
-          elimNum = child_pol==childPol[child_base] ? 2 : 1;
-          if( (elimNum==2)==(k==kind::EQUAL) ){
+    for (unsigned i = 0; i < 2; i++)
+    {
+      Node child_base = base_assertion[i].getKind() == kind::NOT
+                            ? base_assertion[i][0]
+                            : base_assertion[i];
+      bool child_pol = base_assertion[i].getKind() != kind::NOT;
+      std::map<Node, unsigned>::iterator itcic = childIndex.find(child_base);
+      if (itcic != childIndex.end())
+      {
+        indices.push_back(itcic->second);
+        pols.push_back(childPol[child_base]);
+        if (i == 0)
+        {
+          // figure out which way to elim
+          elimNum = child_pol == childPol[child_base] ? 2 : 1;
+          if ((elimNum == 2) == (k == kind::EQUAL))
+          {
             num_nots_2++;
           }
-          if( elimNum==1 ){
+          if (elimNum == 1)
+          {
             num_nots_1++;
           }
         }
-      }else{
+      }
+      else
+      {
         success = false;
         break;
       }
@@ -648,65 +820,94 @@ void LFSCCnfProof::printCnfProofForClause(ClauseId id,
     if( success ){
       os << "(contra _ ";
       std::stringstream os_base_n;
-      if( num_nots_2==2 ){
+      if (num_nots_2 == 2)
+      {
         os_base_n << "(not_not_elim _ ";
       }
       os_base_n << "(or_elim_1 _ _ ";
       prop::SatLiteral lit1 = (*clause)[indices[0]];
-      if( !pols[0] || num_nots_1==1 ){
-        os_base_n << "(not_not_intro _ " << ProofManager::getLitName(lit1, d_name) << ") ";
-      }else{
-        Trace("cnf-pf-debug") << "CALLING getlitname" << std::endl;
+      if (!pols[0] || num_nots_1 == 1)
+      {
+        os_base_n << "(not_not_intro _ "
+                  << ProofManager::getLitName(lit1, d_name) << ") ";
+      }
+      else
+      {
+        Trace("cnf-pf-debug") << "; CALLING getlitname" << std::endl;
         os_base_n << ProofManager::getLitName(lit1, d_name) << " ";
       }
-      Assert( elimNum!=0 );
-      os_base_n << "(" << ( k==kind::EQUAL ? "iff" : "xor" ) << "_elim_" << elimNum << " _ _ ";
-      if( !base_pol ){
-        os_base_n << "(not_" << ( base_assertion.getKind()==kind::EQUAL ? "iff" : "xor" ) << "_elim _ _ " << os_base.str() << ")";
-      }else{
+      Assert(elimNum != 0);
+      os_base_n << "(" << (k == kind::EQUAL ? "iff" : "xor") << "_elim_"
+                << elimNum << " _ _ ";
+      if (!base_pol)
+      {
+        os_base_n << "(not_"
+                  << (base_assertion.getKind() == kind::EQUAL ? "iff" : "xor")
+                  << "_elim _ _ " << os_base.str() << ")";
+      }
+      else
+      {
         os_base_n << os_base.str();
       }
       os_base_n << "))";
-      if( num_nots_2==2 ){
+      if (num_nots_2 == 2)
+      {
         os_base_n << ")";
         num_nots_2 = 0;
       }
       prop::SatLiteral lit2 = (*clause)[indices[1]];
-      if( pols[1]==(num_nots_2==0) ){
+      if (pols[1] == (num_nots_2 == 0))
+      {
         os << os_base_n.str() << " ";
-        if( num_nots_2==1 ){
-          os << "(not_not_intro _ " << ProofManager::getLitName(lit2, d_name) << ")";
-        }else{
+        if (num_nots_2 == 1)
+        {
+          os << "(not_not_intro _ " << ProofManager::getLitName(lit2, d_name)
+             << ")";
+        }
+        else
+        {
           os << ProofManager::getLitName(lit2, d_name);
         }
-      }else{
+      }
+      else
+      {
         os << ProofManager::getLitName(lit2, d_name) << " " << os_base_n.str();
       }
       os << ")";
     }
-  }else if( base_assertion.getKind()==kind::ITE ){
-    std::map< unsigned, unsigned > appears;
-    std::map< unsigned, Node > appears_expr;
+  }
+  else if (base_assertion.getKind() == kind::ITE)
+  {
+    std::map<unsigned, unsigned> appears;
+    std::map<unsigned, Node> appears_expr;
     unsigned appears_count = 0;
-    for( unsigned r=0; r<3; r++ ){
-      Node child_base = base_assertion[r].getKind()==kind::NOT ? base_assertion[r][0] : base_assertion[r];
-      std::map< Node, unsigned >::iterator itcic = childIndex.find( child_base );
-      if( itcic!=childIndex.end() ){
+    for (unsigned r = 0; r < 3; r++)
+    {
+      Node child_base = base_assertion[r].getKind() == kind::NOT
+                            ? base_assertion[r][0]
+                            : base_assertion[r];
+      std::map<Node, unsigned>::iterator itcic = childIndex.find(child_base);
+      if (itcic != childIndex.end())
+      {
         appears[r] = itcic->second;
         appears_expr[r] = child_base;
         appears_count++;
       }
     }
-    if( appears_count==2 ){
+    if (appears_count == 2)
+    {
       success = true;
       int elimNum = 1;
       unsigned index1 = 0;
       unsigned index2 = 1;
-      if( appears.find( 0 )==appears.end() ){
+      if (appears.find(0) == appears.end())
+      {
         elimNum = 3;
         index1 = 1;
         index2 = 2;
-      }else if( appears.find( 1 )==appears.end() ){
+      }
+      else if (appears.find(1) == appears.end())
+      {
         elimNum = 2;
         index1 = 0;
         index2 = 2;
@@ -714,39 +915,58 @@ void LFSCCnfProof::printCnfProofForClause(ClauseId id,
       std::stringstream os_main;
       os_main << "(or_elim_1 _ _ ";
       prop::SatLiteral lit1 = (*clause)[appears[index1]];
-      if( !childPol[appears_expr[index1]] || elimNum==1 || ( elimNum==3 && !base_pol ) ){
-        os_main << "(not_not_intro _ " << ProofManager::getLitName(lit1, d_name) << ") ";
-      }else{
+      if (!childPol[appears_expr[index1]] || elimNum == 1
+          || (elimNum == 3 && !base_pol))
+      {
+        os_main << "(not_not_intro _ " << ProofManager::getLitName(lit1, d_name)
+                << ") ";
+      }
+      else
+      {
         os_main << ProofManager::getLitName(lit1, d_name) << " ";
       }
-      os_main << "(" << ( base_pol ? "" : "not_" ) << "ite_elim_" << elimNum << " _ _ _ ";
+      os_main << "(" << (base_pol ? "" : "not_") << "ite_elim_" << elimNum
+              << " _ _ _ ";
       os_main << os_base.str() << "))";
       os << "(contra _ ";
       prop::SatLiteral lit2 = (*clause)[appears[index2]];
-      if( !childPol[appears_expr[index2]] || !base_pol ){
+      if (!childPol[appears_expr[index2]] || !base_pol)
+      {
         os << ProofManager::getLitName(lit2, d_name) << " " << os_main.str();
-      }else{
+      }
+      else
+      {
         os << os_main.str() << " " << ProofManager::getLitName(lit2, d_name);
       }
       os << ")";
     }
-  }else if( base_assertion.isConst() ){
-    bool pol = base_assertion==NodeManager::currentNM()->mkConst( true );
-    if( pol!=base_pol ){
+  }
+  else if (base_assertion.isConst())
+  {
+    bool pol = base_assertion == NodeManager::currentNM()->mkConst(true);
+    if (pol != base_pol)
+    {
       success = true;
-      if( pol ){
+      if (pol)
+      {
         os << "(contra _ truth " << os_base.str() << ")";
-      }else{
+      }
+      else
+      {
         os << os_base.str();
       }
     }
   }
 
-  if( !success ){
+  if (!success)
+  {
     Trace("cnf-pf") << std::endl;
-    Trace("cnf-pf") << ";!!!!!!!!! CnfProof : Can't process " << assertion << ", base = " << base_assertion << ", id = " << id << std::endl;
+    Trace("cnf-pf") << ";!!!!!!!!! CnfProof : Can't process " << assertion
+                    << ", base = " << base_assertion << ", id = " << id
+                    << std::endl;
     Trace("cnf-pf") << ";!!!!!!!!! Clause is : ";
-    for (unsigned i = 0; i < clause->size(); ++i) {
+    for (unsigned i = 0; i < clause->size(); ++i)
+    {
       Trace("cnf-pf") << (*clause)[i] << " ";
     }
     Trace("cnf-pf") << std::endl;

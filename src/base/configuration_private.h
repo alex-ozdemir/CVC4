@@ -126,6 +126,12 @@ namespace CVC4 {
 #  define IS_CRYPTOMINISAT_BUILD false
 #endif /* CVC4_USE_CRYPTOMINISAT */
 
+#if CVC4_USE_DRATTRIM
+#  define IS_DRATTRIM_BUILD true
+#else /* CVC4_USE_DRATTRIM */
+#  define IS_DRATTRIM_BUILD false
+#endif /* CVC4_USE_DRATTRIM */
+
 #if CVC4_USE_LFSC
 #define IS_LFSC_BUILD true
 #else /* CVC4_USE_LFSC */

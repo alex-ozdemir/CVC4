@@ -19,8 +19,12 @@
 #include "theory/bv/bitblast/eager_bitblaster.h"
 
 #include "options/bv_options.h"
+#include "proof/drat/drat_proof.h"
+#include "proof/resolution_bitvector_proof.h"
 #include "prop/cnf_stream.h"
+#include "prop/cryptominisat.h"
 #include "prop/sat_solver_factory.h"
+#include "prop/sat_solver_types.h"
 #include "smt/smt_statistics_registry.h"
 #include "theory/bv/theory_bv.h"
 #include "theory/theory_model.h"
@@ -32,11 +36,11 @@ namespace bv {
 EagerBitblaster::EagerBitblaster(TheoryBV* theory_bv, context::Context* c)
     : TBitblaster<Node>(),
       d_context(c),
+      d_bvp(nullptr),
       d_nullContext(new context::Context()),
       d_satSolver(),
       d_bitblastingRegistrar(new BitblastingRegistrar(this)),
       d_cnfStream(),
-      d_bvp(nullptr),
       d_bv(theory_bv),
       d_bbAtoms(),
       d_variables(),
@@ -114,6 +118,8 @@ void EagerBitblaster::bbAtom(TNode node)
       normalized.getKind() != kind::CONST_BOOLEAN
           ? d_atomBBStrategies[normalized.getKind()](normalized, this)
           : normalized;
+
+  Debug("bitvector-bitblast") << "  normalized as: " << atom_bb << std::endl;
 
   if (!options::proof())
   {
@@ -269,11 +275,12 @@ bool EagerBitblaster::collectModelInfo(TheoryModel* m, bool fullModel)
   return true;
 }
 
-void EagerBitblaster::setResolutionProofLog(
-    proof::ResolutionBitVectorProof* bvp)
+void EagerBitblaster::setProofLog(proof::BitVectorProof* bvp)
 {
-  THEORY_PROOF(d_bvp = bvp; d_satSolver->setProofLog(bvp);
-               bvp->initCnfProof(d_cnfStream.get(), d_nullContext.get());)
+  THEORY_PROOF(d_bvp = bvp; bvp->attachToSatSolver(*d_satSolver);
+               prop::SatVariable t = d_satSolver->trueVar();
+               prop::SatVariable f = d_satSolver->falseVar();
+               bvp->initCnfProof(d_cnfStream.get(), d_nullContext.get(), t, f);)
 }
 
 bool EagerBitblaster::isSharedTerm(TNode node) {

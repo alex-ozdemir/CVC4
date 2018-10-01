@@ -33,17 +33,28 @@ namespace CMSat {
 }
 
 namespace CVC4 {
+namespace proof {
+class ResolutionBitVectorProof;
+class DRATBitVectorProof;
+}  // namespace proof
+
 namespace prop {
 
 class CryptoMinisatSolver : public SatSolver {
+  using TCRef = size_t;
 
-private:
+ private:
   std::unique_ptr<CMSat::SATSolver> d_solver;
   unsigned d_numVariables;
   bool d_okay;
   SatVariable d_true;
   SatVariable d_false;
-public:
+  ClauseId d_trueUnitClause;
+  ClauseId d_falseUnitClause;
+
+  proof::ClausalBitVectorProof* d_clausalBitVectorProof;
+
+ public:
   CryptoMinisatSolver(StatisticsRegistry* registry,
                       const std::string& name = "");
   ~CryptoMinisatSolver() override;
@@ -57,11 +68,13 @@ public:
 
   SatVariable trueVar() override;
   SatVariable falseVar() override;
+  ClauseId trueUnitClause();
+  ClauseId falseUnitClause();
 
   void markUnremovable(SatLiteral lit);
 
   void interrupt() override;
-  
+
   SatValue solve() override;
   SatValue solve(long unsigned int&) override;
   SatValue solve(const std::vector<SatLiteral>& assumptions) override;
@@ -71,6 +84,7 @@ public:
   SatValue modelValue(SatLiteral l) override;
 
   unsigned getAssertionLevel() const override;
+  void setClausalProofLog(proof::ClausalBitVectorProof* proof) override;
 
   class Statistics {
   public:

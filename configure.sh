@@ -55,6 +55,7 @@ The following flags enable optional packages (disable with --no-<option name>).
   --abc                    use the ABC AIG library
   --cadical                use the CaDiCaL SAT solver
   --cryptominisat          use the CryptoMiniSat SAT solver
+  --drat-trim              use drat-trim for eager BV proofs
   --lfsc                   use the LFSC proof checker
   --symfpu                 use SymFPU for floating point solver
   --portfolio              build the multithreaded portfolio version of CVC4
@@ -66,6 +67,7 @@ Optional Path to Optional Packages:
   --antlr-dir=PATH         path to ANTLR C headers and libraries
   --cadical-dir=PATH       path to top level of CaDiCaL source tree
   --cryptominisat-dir=PATH path to top level of CryptoMiniSat source tree
+  --drat-trim-dir=PATH     path to the top level of the drat-trim installation
   --cxxtest-dir=PATH       path to CxxTest installation
   --glpk-dir=PATH          path to top level of GLPK installation
   --gmp-dir=PATH           path to top level of GMP installation
@@ -112,6 +114,7 @@ coverage=default
 cryptominisat=default
 debug_symbols=default
 debug_context_mm=default
+drattrim=default
 dumping=default
 gpl=default
 win64=default
@@ -141,6 +144,7 @@ abc_dir=default
 antlr_dir=default
 cadical_dir=default
 cryptominisat_dir=default
+drattrim_dir=default
 cxxtest_dir=default
 glpk_dir=default
 gmp_dir=default
@@ -201,6 +205,9 @@ do
 
     --debug-context-mm) debug_context_mm=ON;;
     --no-debug-context-mm) debug_context_mm=OFF;;
+
+    --drat-trim) drattrim=ON;;
+    --no-drat-trim) drattrim=OFF;;
 
     --dumping) dumping=ON;;
     --no-dumping) dumping=OFF;;
@@ -297,6 +304,9 @@ do
     --cxxtest-dir) die "missing argument to $1 (try -h)" ;;
     --cxxtest-dir=*) cxxtest_dir=${1##*=} ;;
 
+    --drat-trim-dir) die "missing argument to $1 (try -h)" ;;
+    --drat-trim-dir=*) drattrim_dir=${1##*=} ;;
+
     --glpk-dir) die "missing argument to $1 (try -h)" ;;
     --glpk-dir=*) glpk_dir=${1##*=} ;;
 
@@ -386,6 +396,8 @@ cmake_opts=""
   && cmake_opts="$cmake_opts -DUSE_CLN=$cln"
 [ $cryptominisat != default ] \
   && cmake_opts="$cmake_opts -DUSE_CRYPTOMINISAT=$cryptominisat"
+[ $drattrim != default ] \
+  && cmake_opts="$cmake_opts -DUSE_DRATTRIM=$drattrim"
 [ $glpk != default ] \
   && cmake_opts="$cmake_opts -DUSE_GLPK=$glpk"
 [ $lfsc != default ] \
@@ -406,6 +418,8 @@ cmake_opts=""
   && cmake_opts="$cmake_opts -DCADICAL_DIR=$cadical_dir"
 [ "$cryptominisat_dir" != default ] \
   && cmake_opts="$cmake_opts -DCRYPTOMINISAT_DIR=$cryptominisat_dir"
+[ "$drattrim_dir" != default ] \
+  && cmake_opts="$cmake_opts -DDRATTRIM_DIR=$drattrim_dir"
 [ "$cxxtest_dir" != default ] \
   && cmake_opts="$cmake_opts -DCXXTEST_DIR=$cxxtest_dir"
 [ "$glpk_dir" != default ] \

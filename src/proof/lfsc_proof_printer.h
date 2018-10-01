@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "proof/clause_id.h"
+#include "proof/drat/drat_proof.h"
 #include "proof/proof_manager.h"
 #include "proof/sat_proof.h"
 #include "proof/sat_proof_implementation.h"
@@ -74,7 +75,56 @@ class LFSCProofPrinter
                                          std::ostream& out,
                                          std::ostream& paren);
 
+  /**
+   * The SAT solver is given a list of clauses.
+   * Assuming that each clause has alreay been individually proven,
+   * defines a proof of the input to the SAT solver.
+   *
+   * Returns the name of the LFSC value holding the proof, i.e. a value of type
+   * (clauses_hold ...)
+   *
+   * @param clauses The clauses to print a proof of
+   * @param out The stream to print to
+   * @param namingPrefix The prefix for LFSC names
+   */
+  static void printSatInputProof(const std::vector<ClauseId>& clauses,
+                                 std::ostream& out,
+                                 const std::string& namingPrefix);
+
+  /**
+   * Prints a DRAT proof
+   *
+   * @param proof The DRAT proof to print
+   * @param out The stream to print to
+   * @param namingPrefix The prefix for LFSC names
+   */
+  static void printDRATProof(const drat::DRATProof& proof,
+                             std::ostream& out,
+                             const std::string& namingPrefix);
+
+  /**
+   * Prints a clause
+   *
+   * @param clause The clause to print
+   * @param out The stream to print to
+   * @param namingPrefix The prefix for LFSC names
+   */
+  static void printSatClause(const prop::SatClause& clause,
+                             std::ostream& out,
+                             const std::string& namingPrefix);
+
  private:
+  /**
+   * Prints an instruction in a DRAT prood
+   *
+   * @param instr The DRAT instruction to print
+   * @param out The stream to print to
+   * @param namingPrefix The prefix for LFSC names
+   */
+  static void printDRATInstruction(const drat::DRATInstruction& instr,
+                                   std::ostream& out,
+                                   const std::string& namingPrefix);
+
   /**
    * Maps a clause id to a string identifier used in the LFSC proof.
    *

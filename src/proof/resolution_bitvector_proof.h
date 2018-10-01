@@ -24,32 +24,16 @@
 #include "context/context.h"
 #include "expr/expr.h"
 #include "proof/bitvector_proof.h"
+#include "proof/sat_proof.h"
 #include "proof/theory_proof.h"
 #include "prop/bvminisat/core/Solver.h"
+#include "prop/cnf_stream.h"
+#include "prop/sat_solver_types.h"
+#include "theory/bv/bitblast/bitblaster.h"
+#include "theory/bv/theory_bv.h"
 
 namespace CVC4 {
 
-namespace theory {
-namespace bv {
-class TheoryBV;
-template <class T>
-class TBitblaster;
-}  // namespace bv
-}  // namespace theory
-
-// TODO(aozdemir) break the sat_solver - resolution_bitvectorproof - cnf_stream
-// header cycle and remove this.
-namespace prop {
-class CnfStream;
-}
-
-} /* namespace CVC4 */
-
-
-namespace CVC4 {
-
-template <class Solver>
-class TSatProof;
 typedef TSatProof<CVC4::BVMinisat::Solver> BVSatProof;
 
 namespace proof {
@@ -82,7 +66,7 @@ class ResolutionBitVectorProof : public BitVectorProof
    * clause. In lazy mode the behavior is ???
    * TODO(aozdemir) clean this up.
    */
-  void finalizeConflicts(std::vector<Expr>& conflicts);
+  void finalizeConflicts(std::vector<Expr>& conflicts) override;
 
   void startBVConflict(CVC4::BVMinisat::Solver::TCRef cr);
   void startBVConflict(CVC4::BVMinisat::Solver::TLit lit);
@@ -91,27 +75,27 @@ class ResolutionBitVectorProof : public BitVectorProof
   void markAssumptionConflict() { d_isAssumptionConflict = true; }
   bool isAssumptionConflict() const { return d_isAssumptionConflict; }
 
-  virtual void printResolutionProof(std::ostream& os,
-                                    std::ostream& paren,
-                                    ProofLetMap& letMap) = 0;
-
-  void initCnfProof(prop::CnfStream* cnfStream, context::Context* cnf) override;
+  void initCnfProof(prop::CnfStream* cnfStream,
+                    context::Context* cnf,
+                    prop::SatVariable trueVar,
+                    prop::SatVariable falseVar) override;
 
  protected:
   // The CNF formula that results from bit-blasting will need a proof.
   // This is that proof.
   std::unique_ptr<BVSatProof> d_resolutionProof;
 
+  void attachToSatSolver(prop::SatSolver& sat_solver) override;
+
   bool d_isAssumptionConflict;
 
-  theory::TheoryId getTheoryId() override;
   context::Context d_fakeContext;
 };
 
-class LFSCBitVectorProof : public ResolutionBitVectorProof
+class LFSCResolutionBitVectorProof : public ResolutionBitVectorProof
 {
  public:
-  LFSCBitVectorProof(theory::bv::TheoryBV* bv, TheoryProofEngine* proofEngine)
+  LFSCResolutionBitVectorProof(theory::bv::TheoryBV* bv, TheoryProofEngine* proofEngine)
       : ResolutionBitVectorProof(bv, proofEngine)
   {
   }
@@ -119,9 +103,10 @@ class LFSCBitVectorProof : public ResolutionBitVectorProof
                              std::ostream& os,
                              std::ostream& paren,
                              const ProofLetMap& map) override;
-  void printResolutionProof(std::ostream& os,
-                            std::ostream& paren,
-                            ProofLetMap& letMap) override;
+  void printBBHelpers(std::ostream& os,
+                      std::ostream& paren,
+                      ProofLetMap& letMap) override;
+  void printEmptyClauseProof(std::ostream& os, std::ostream& paren) override;
   void calculateAtomsInBitblastingProof() override;
 };
 

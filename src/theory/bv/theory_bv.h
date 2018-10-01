@@ -32,6 +32,11 @@
 #include "util/statistics_registry.h"
 
 namespace CVC4 {
+
+namespace proof {
+class BitVectorProof;
+}
+
 namespace theory {
 namespace bv {
 
@@ -104,7 +109,7 @@ public:
 
   bool applyAbstraction(const std::vector<Node>& assertions, std::vector<Node>& new_assertions);
 
-  void setResolutionProofLog(proof::ResolutionBitVectorProof* bvp);
+  void setProofLog(proof::BitVectorProof* bvp);
 
  private:
 

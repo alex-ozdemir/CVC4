@@ -1318,7 +1318,7 @@ void Solver::explain(Lit p, std::vector<Lit>& explanation) {
   }
 }
 
-void Solver::setProofLog(proof::ResolutionBitVectorProof* bvp)
+void Solver::setResolutionProofLog(CVC4::proof::ResolutionBitVectorProof* bvp)
 {
   d_bvp = bvp;
   d_bvp->initSatProof(this);

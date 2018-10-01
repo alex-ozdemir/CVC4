@@ -35,11 +35,6 @@
 #include "util/proof.h"
 #include "util/statistics_registry.h"
 
-// Forward declarations.
-namespace CVC4 {
-class CnfProof;
-} /* namespace CVC4 */
-
 namespace CVC4 {
 /**
  * Helper debugging functions
@@ -58,7 +53,9 @@ enum ClauseKind {
 
 template <class Solver>
 struct ResStep {
+  // Variable eliminated in resolution
   typename Solver::TLit lit;
+  // Claused produced *by* resolution
   ClauseId id;
   bool sign;
   ResStep(typename Solver::TLit l, ClauseId i, bool s)
@@ -157,7 +154,10 @@ class TSatProof {
 
   ClauseId registerClause(const typename Solver::TCRef clause, ClauseKind kind);
   ClauseId registerUnitClause(const typename Solver::TLit lit, ClauseKind kind);
+
+  /// Record a unit clause with this literal. The literal should be positive
   void registerTrueLit(const typename Solver::TLit lit);
+  /// Record a unit clause with this literal. The literal should be negative
   void registerFalseLit(const typename Solver::TLit lit);
 
   ClauseId getTrueUnit() const;

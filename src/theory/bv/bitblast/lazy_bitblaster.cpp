@@ -566,13 +566,6 @@ bool TLazyBitblaster::collectModelInfo(TheoryModel* m, bool fullModel)
   return true;
 }
 
-void TLazyBitblaster::setProofLog(proof::ResolutionBitVectorProof* bvp)
-{
-  d_bvp = bvp;
-  d_satSolver->setProofLog( bvp );
-  bvp->initCnfProof(d_cnfStream.get(), d_nullContext.get());
-}
-
 void TLazyBitblaster::clearSolver() {
   Assert (d_ctx->getLevel() == 0);
   d_assertedAtoms->deleteSelf();
@@ -595,6 +588,14 @@ void TLazyBitblaster::clearSolver() {
           : (prop::BVSatSolverNotify*)new MinisatNotify(
                 d_cnfStream.get(), d_bv, this));
   d_satSolver->setNotify(d_satSolverNotify.get());
+}
+
+void TLazyBitblaster::setProofLog(proof::BitVectorProof* bvp)
+{
+  THEORY_PROOF(d_bvp = bvp; bvp->attachToSatSolver(*d_satSolver);
+               prop::SatVariable t = d_satSolver->trueVar();
+               prop::SatVariable f = d_satSolver->falseVar();
+               bvp->initCnfProof(d_cnfStream.get(), d_nullContext.get(), t, f);)
 }
 
 }  // namespace bv

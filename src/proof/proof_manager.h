@@ -71,7 +71,7 @@ class ArithProof;
 class ArrayProof;
 
 namespace proof {
-class ResolutionBitVectorProof;
+class BitVectorProof;
 }
 
 template <class Solver> class LFSCSatProof;
@@ -191,7 +191,7 @@ public:
   static TheoryProofEngine* getTheoryProofEngine();
   static TheoryProof* getTheoryProof( theory::TheoryId id );
   static UFProof* getUfProof();
-  static proof::ResolutionBitVectorProof* getBitVectorProof();
+  static proof::BitVectorProof* getBitVectorProof();
   static ArrayProof* getArrayProof();
   static ArithProof* getArithProof();
 

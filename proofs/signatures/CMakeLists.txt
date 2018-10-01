@@ -5,6 +5,7 @@
 
 set(core_signature_files
     sat.plf
+    lrat.plf
     smt.plf
     th_base.plf
     th_arrays.plf

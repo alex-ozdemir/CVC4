@@ -18,6 +18,7 @@
 
 #include "prop/cryptominisat.h"
 
+#include "proof/clausal_bitvector_proof.h"
 #include "proof/clause_id.h"
 #include "proof/sat_proof.h"
 
@@ -73,9 +74,11 @@ CryptoMinisatSolver::CryptoMinisatSolver(StatisticsRegistry* registry,
   std::vector<CMSat::Lit> clause(1);
   clause[0] = CMSat::Lit(d_true, false);
   d_solver->add_clause(clause);
-  
+  d_trueUnitClause = ClauseId(ProofManager::currentPM()->nextId());
+
   clause[0] = CMSat::Lit(d_false, true);
   d_solver->add_clause(clause);
+  d_falseUnitClause = ClauseId(ProofManager::currentPM()->nextId());
 }
 
 
@@ -114,12 +117,24 @@ ClauseId CryptoMinisatSolver::addClause(SatClause& clause, bool removable){
   }
 
   ++(d_statistics.d_clausesAdded);
-  
+
   std::vector<CMSat::Lit> internal_clause;
   toInternalClause(clause, internal_clause);
-  bool res = d_solver->add_clause(internal_clause);
-  d_okay &= res;
-  return ClauseIdError;
+  bool nowOkay = d_solver->add_clause(internal_clause);
+
+  int freshId = ClauseId(ProofManager::currentPM()->nextId());
+  Debug("sat::cryptominisat") << "  => clause id: " << freshId << "\n";
+
+  THEORY_PROOF(
+      // Even if this clause caused \bot to be implied, we still want
+      // to register this clause as used. This is why we condition
+      // used-clause registration on `d_okay`, not `nowOkay`.
+      if (d_clausalBitVectorProof && d_okay) {
+        d_clausalBitVectorProof->registerUsedClause(freshId, clause);
+      })
+
+  d_okay &= nowOkay;
+  return ClauseId(freshId);
 }
 
 bool CryptoMinisatSolver::ok() const {
@@ -142,6 +157,10 @@ SatVariable CryptoMinisatSolver::falseVar() {
   return d_false;
 }
 
+ClauseId CryptoMinisatSolver::trueUnitClause() { return d_trueUnitClause; }
+
+ClauseId CryptoMinisatSolver::falseUnitClause() { return d_falseUnitClause; }
+
 void CryptoMinisatSolver::markUnremovable(SatLiteral lit) {
   // cryptominisat supports dynamically adding back variables (?)
   // so this is a no-op
@@ -156,6 +175,13 @@ SatValue CryptoMinisatSolver::solve(){
   TimerStat::CodeTimer codeTimer(d_statistics.d_solveTime);
   ++d_statistics.d_statCallsToSolve;
   return toSatLiteralValue(d_solver->solve());
+}
+
+void CryptoMinisatSolver::setClausalProofLog(
+    proof::ClausalBitVectorProof* proof)
+{
+  d_clausalBitVectorProof = proof;
+  d_solver->set_drat(&proof->getDRATOstream(), false);
 }
 
 SatValue CryptoMinisatSolver::solve(long unsigned int& resource) {

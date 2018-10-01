@@ -216,6 +216,8 @@ public:
     void setOnlyBCP (bool val) { only_bcp = val;}
     void explain(Lit l, std::vector<Lit>& explanation);
 
+    void setResolutionProofLog(CVC4::proof::ResolutionBitVectorProof* bvp);
+
     void setProofLog(CVC4::proof::ResolutionBitVectorProof* bvp);
 
    protected:

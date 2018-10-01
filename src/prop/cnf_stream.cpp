@@ -17,6 +17,7 @@
  **/
 #include "prop/cnf_stream.h"
 
+#include <algorithm>
 #include <queue>
 
 #include "base/cvc4_assert.h"
@@ -26,10 +27,10 @@
 #include "options/bv_options.h"
 #include "proof/clause_id.h"
 #include "proof/cnf_proof.h"
-#include "proof/proof_manager.h"
 #include "proof/sat_proof.h"
 #include "prop/minisat/minisat.h"
 #include "prop/prop_engine.h"
+#include "prop/sat_solver_types.h"
 #include "prop/theory_proxy.h"
 #include "smt/command.h"
 #include "smt/smt_engine_scope.h"
@@ -80,18 +81,51 @@ void CnfStream::assertClause(TNode node, SatClause& c) {
   }
 
   PROOF(if (d_cnfProof) d_cnfProof->pushCurrentDefinition(node););
+  PROOF(
+      // Since the interger encoding of literals makes the LSB a negation bit,
+      // this orders the literals first by variable #, and then by negatedness,
+      // with unegated first.
+      std::sort(
+          c.begin(),
+          c.end(),
+          [](SatLiteral& a, SatLiteral& b) { return a.toInt() < b.toInt(); });
+      // Now, if we see two adjacent literals with
+      //   * equal variable #
+      //   * the first is positive
+      //   * the second is negative
+      // then this is a tautology
+      SatClause newClause;
+      for (size_t i = 0; i < c.size() - 1; ++i) {
+        Assert(c[i].getSatVariable() != c[i + 1].getSatVariable()
+               || !c[i].isNegated() || c[i + 1].isNegated());
+        if (!c[i].isNegated() && c[i + 1].isNegated()
+            && (c[i].getSatVariable() == c[i + 1].getSatVariable()))
+        {
+          // This is a tautology, exit early w/o feeding it to the SAT solver or
+          // proof machinery
+          d_cnfProof->popCurrentDefinition();
+          return;
+        }
+        // if this literal is distinct from the next, add it.
+        if ((c[i].isNegated() != c[i + 1].isNegated())
+            || (c[i].getSatVariable() != c[i + 1].getSatVariable()))
+        {
+          newClause.push_back(c[i]);
+        }
+      } newClause.push_back(c.back());
+      c = std::move(newClause);)
 
   ClauseId clause_id = d_satSolver->addClause(c, d_removable);
   if (clause_id == ClauseIdUndef) return; // nothing to store (no clause was added)
 
-  PROOF
-    (
-     if (d_cnfProof) {
-       Assert (clause_id != ClauseIdError);
-       d_cnfProof->registerConvertedClause(clause_id);
-       d_cnfProof->popCurrentDefinition();
-     }
-    );
+  PROOF(if (d_cnfProof) {
+    // For an erroneous clause_id, don't register
+    if (clause_id != ClauseIdError)
+    {
+      d_cnfProof->registerConvertedClause(clause_id);
+    }
+    d_cnfProof->popCurrentDefinition();
+  });
 }
 
 void CnfStream::assertClause(TNode node, SatLiteral a) {
@@ -517,8 +551,7 @@ SatLiteral TseitinCnfStream::toCNF(TNode node, bool negated) {
   }
 
   // Return the appropriate (negated) literal
-  if (!negated) return nodeLit;
-  else return ~nodeLit;
+  return negated ? ~nodeLit : nodeLit;
 }
 
 void TseitinCnfStream::convertAndAssertAnd(TNode node, bool negated) {
@@ -598,7 +631,8 @@ void TseitinCnfStream::convertAndAssertXor(TNode node, bool negated) {
 }
 
 void TseitinCnfStream::convertAndAssertIff(TNode node, bool negated) {
-  if (!negated) {
+  if (!negated)
+  {
     // p <=> q
     SatLiteral p = toCNF(node[0], false);
     SatLiteral q = toCNF(node[1], false);
@@ -611,7 +645,9 @@ void TseitinCnfStream::convertAndAssertIff(TNode node, bool negated) {
     clause2[0] = p;
     clause2[1] = ~q;
     assertClause(node, clause2);
-  } else {
+  }
+  else
+  {
     // !(p <=> q) is the same as p XOR q
     SatLiteral p = toCNF(node[0], false);
     SatLiteral q = toCNF(node[1], false);

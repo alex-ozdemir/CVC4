@@ -131,10 +131,18 @@ libcvc4_add_sources(
   proof/clause_id.h
   proof/cnf_proof.cpp
   proof/cnf_proof.h
+  proof/clausal_bitvector_proof.cpp
+  proof/clausal_bitvector_proof.h
+  proof/drat/drat_proof.cpp
+  proof/drat/drat_proof.h
   proof/lemma_proof.cpp
   proof/lemma_proof.h
   proof/lfsc_proof_printer.cpp
   proof/lfsc_proof_printer.h
+  proof/lrat/lrat_proof.cpp
+  proof/lrat/lrat_proof.h
+  proof/lrat/lfsc_lrat_printer.cpp
+  proof/lrat/lfsc_lrat_printer.h
   proof/proof.h
   proof/proof_manager.cpp
   proof/proof_manager.h
@@ -738,6 +746,10 @@ endif()
 if(USE_CRYPTOMINISAT)
   target_link_libraries(cvc4 ${CryptoMiniSat_LIBRARIES})
   target_include_directories(cvc4 PUBLIC ${CryptoMiniSat_INCLUDE_DIR})
+endif()
+if(USE_DRATTRIM)
+  target_link_libraries(cvc4 ${DratTrim_LIBRARIES})
+  target_include_directories(cvc4 PUBLIC ${DratTrim_INCLUDE_DIR})
 endif()
 if(USE_GLPK)
   target_link_libraries(cvc4 ${GLPK_LIBRARIES})

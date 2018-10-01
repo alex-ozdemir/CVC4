@@ -17,6 +17,7 @@
 #include "theory/bv/bv_eager_solver.h"
 
 #include "options/bv_options.h"
+#include "proof/bitvector_proof.h"
 #include "theory/bv/bitblast/aig_bitblaster.h"
 #include "theory/bv/bitblast/eager_bitblaster.h"
 
@@ -56,7 +57,7 @@ void EagerBitblastSolver::initialize() {
   } else {
     d_bitblaster.reset(new EagerBitblaster(d_bv, d_context));
     THEORY_PROOF(if (d_bvp) {
-      d_bitblaster->setResolutionProofLog(d_bvp);
+      d_bitblaster->setProofLog(d_bvp);
       d_bvp->setBitblaster(d_bitblaster.get());
     });
   }
@@ -127,8 +128,7 @@ bool EagerBitblastSolver::collectModelInfo(TheoryModel* m, bool fullModel)
   return d_bitblaster->collectModelInfo(m, fullModel);
 }
 
-void EagerBitblastSolver::setResolutionProofLog(
-    proof::ResolutionBitVectorProof* bvp)
+void EagerBitblastSolver::setProofLog(proof::BitVectorProof* bvp)
 {
   d_bvp = bvp;
 }
