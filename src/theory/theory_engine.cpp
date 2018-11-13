@@ -146,6 +146,19 @@ void TheoryEngine::EngineOutputChannel::registerLemmaRecipe(Node lemma, Node ori
     }
     break;
 
+  case kind::IMPLIES:
+    if (negated) {
+      // ~(A -> B) which reduces to
+      // ~(~A v B) which reduces to
+      // A ^ ~B
+      registerLemmaRecipe(nnLemma[0], originalLemma, false, theoryId);
+      registerLemmaRecipe(nnLemma[1].negate(), originalLemma, false, theoryId);
+    } else {
+      // A -> B which reduces to
+      // ~A v B
+      registerLemmaRecipe(nm->mkNode(kind::OR, nnLemma[0].negate(), nnLemma[1]), originalLemma, false, theoryId);
+    }
+
   default:
     break;
   }

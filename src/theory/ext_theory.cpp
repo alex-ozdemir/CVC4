@@ -246,14 +246,34 @@ bool ExtTheory::doInferencesInternal(int effort,
             processed = true;
             markReduced(terms[i]);
             Node eq = terms[i].eqNode(sr);
-            Node expn =
-                exp[i].size() > 1
-                    ? NodeManager::currentNM()->mkNode(kind::AND, exp[i])
-                    : (exp[i].size() == 1 ? exp[i][0] : d_true);
-            Trace("extt-debug") << "ExtTheory::doInferences : infer : " << eq
-                                << " by " << expn << std::endl;
-            Node lem =
-                NodeManager::currentNM()->mkNode(kind::IMPLIES, expn, eq);
+
+            // Uninitialized because C++ switches are statements, not expressions.
+            Node lem;
+            // lemmas must be direct combinations of theory atoms.
+            // This switch produces a lemma that is such a combination.
+            switch (exp[i].size()) {
+              case 0:
+              {
+                lem = eq;
+                break;
+              }
+              case 1:
+              {
+                lem = NodeManager::currentNM()->mkNode(kind::OR, exp[i][0].negate(), eq);
+                break;
+              }
+              default:
+              {
+                std::vector<Node> clause;
+                for (auto & hypothesis : exp[i]) {
+                  clause.push_back(hypothesis.negate());
+                }
+                clause.push_back(eq);
+                lem = NodeManager::currentNM()->mkNode(kind::OR, clause);
+                break;
+              }
+            }
+
             Trace("extt-debug") << "...send lemma " << lem << std::endl;
             if (sendLemma(lem))
             {
@@ -327,6 +347,7 @@ bool ExtTheory::doInferencesInternal(int effort,
   return false;
 }
 
+// `lem` must be a direct boolean combination of theory atoms.
 bool ExtTheory::sendLemma(Node lem, bool preprocess)
 {
   if (preprocess)

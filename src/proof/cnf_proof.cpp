@@ -190,6 +190,7 @@ Node CnfProof::getCurrentAssertion() {
 }
 
 void CnfProof::setProofRecipe(LemmaProofRecipe* proofRecipe) {
+  Debug("theory::lemma") << "I saved a recipe for lemma: " << proofRecipe->getBaseAssertions() << std::endl;
   Assert(proofRecipe);
   Assert(proofRecipe->getNumSteps() > 0);
   d_lemmaToProofRecipe[proofRecipe->getBaseAssertions()] = *proofRecipe;
@@ -262,9 +263,10 @@ void CnfProof::collectAtomsAndRewritesForLemmas(const IdToSatClause& lemmaClause
   for (; it != lemmaClauses.end(); ++it) {
     const prop::SatClause* clause = it->second;
 
+    // Here we compute the Node set corresponding to `clause`
+    // i.e. the Node set corresponding to the lemma.
     // TODO: just calculate the map from ID to recipe once,
     // instead of redoing this over and over again
-    std::vector<Expr> clause_expr;
     std::set<Node> clause_expr_nodes;
     for(unsigned i = 0; i < clause->size(); ++i) {
       prop::SatLiteral lit = (*clause)[i];
@@ -277,6 +279,7 @@ void CnfProof::collectAtomsAndRewritesForLemmas(const IdToSatClause& lemmaClause
       clause_expr_nodes.insert(lit.isNegated() ? node.notNode() : node);
     }
 
+    // Then we get the recipe for the lemma.
     LemmaProofRecipe recipe = getProofRecipe(clause_expr_nodes);
 
     for (unsigned i = 0; i < recipe.getNumSteps(); ++i) {

@@ -292,6 +292,8 @@ class TheoryEngine {
                   std::unique_ptr<Proof> pf = nullptr) override;
     bool propagate(TNode literal) override;
 
+    // Input `lemma`s should be a direct boolean combination of theory atoms,
+    // where "boolean combination" means OR, AND, ITE, or IMPLIES
     theory::LemmaStatus lemma(TNode lemma, ProofRule rule,
                               bool removable = false, bool preprocess = false,
                               bool sendAtoms = false) override;
