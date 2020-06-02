@@ -1,3 +1,4 @@
+; COMMAND-LINE: --proof-new --no-proof --no-check-unsat-cores --no-check-proofs
 (set-option :incremental false)
 (set-info :source "Clock Synchronization. Bruno Dutertre (bruno@csl.sri.com)")
 (set-info :status unsat)

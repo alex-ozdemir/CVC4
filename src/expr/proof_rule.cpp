@@ -40,7 +40,6 @@ const char* toString(PfRule id)
     //================================================= Boolean rules
     case PfRule::SPLIT: return "SPLIT";
     case PfRule::AND_ELIM: return "AND_ELIM";
-    case PfRule::AND_INTRO: return "AND_INTRO";
     case PfRule::NOT_OR_ELIM: return "NOT_OR_ELIM";
     case PfRule::IMPLIES_ELIM: return "IMPLIES_ELIM";
     case PfRule::NOT_IMPLIES_ELIM1: return "NOT_IMPLIES_ELIM1";

@@ -1,4 +1,4 @@
-; COMMAND-LINE:
+; COMMAND-LINE: --proof-new --no-proof --no-check-unsat-cores --no-check-proofs
 (set-option :incremental false)
 (set-info :source "The Formal Verification of a Reintegration Protocol. Author: Lee Pike. Website: http://www.cs.indiana.edu/~lepike/pub_pages/emsoft.html.
 

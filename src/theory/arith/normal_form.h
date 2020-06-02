@@ -229,6 +229,7 @@ public:
  // TODO: check if it's a theory leaf also
  static bool isMember(Node n)
  {
+   Debug("arith::nf::check") << "Variable::isMember " << n << std::endl;
    Kind k = n.getKind();
    switch (k)
    {
@@ -765,7 +766,7 @@ private:
   bool d_singleton;
 
   Polynomial(TNode n) : NodeWrapper(n), d_singleton(Monomial::isMember(n)) {
-    Assert(isMember(getNode()));
+    Assert(isMember(getNode())) << getNode();
   }
 
   static Node makePlusNode(const std::vector<Monomial>& m) {
@@ -1372,10 +1373,36 @@ public:
 
   SumPair toSumPair() const;
 
+  // Together these functions represent a Comparison as
+  // Polynomial >< delta rational.
+  // The polynomial is turned into an ArithVar, and then this becomes a constraint.
+
+  // Given an comparison, returns a sum of all non-constant monomials after (a)
+  // moving them to the left hand side and (b) possibly negating them to ensure
+  // a positive leading coefficient.
   Polynomial normalizedVariablePart() const;
   DeltaRational normalizedDeltaRational() const;
 
 };/* class Comparison */
+
+/*
+ * affine := qpolynomial | zpolynomial
+ *     where the polynomial is sorted and
+ *     the qpolynomial is monic and has some non-integral monomial
+ *     the zpolynomial has a positive leading coefficient and coefficients have gcd 1.
+ * lin_bound := (|><| affine [implicit 0])
+ *   where
+ *     |><| is in {>,>=,=,!=,<=,<}
+ */
+class LinBound : NodeWrapper {
+public:
+  LinBound(TNode n) : NodeWrapper(n) {};
+  // Parses an arithmetic (Real or Int) node as an affine function
+  static Polynomial parseAffine(TNode n);
+  static Rational parseConst(TNode n);
+  static LinBound parseLinBound(TNode n);
+private:
+};
 
 }/* CVC4::theory::arith namespace */
 }/* CVC4::theory namespace */

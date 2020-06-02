@@ -113,7 +113,8 @@ class ProofNodeManager
   std::shared_ptr<ProofNode> mkScope(std::shared_ptr<ProofNode> pf,
                                      std::vector<Node>& assumps,
                                      bool ensureClosed = true,
-                                     bool doMinimize = false);
+                                     bool doMinimize = false,
+                                     Node expected = Node::null());
 
   /**
    * This method updates pn to be a proof of the form <id>( children, args ),

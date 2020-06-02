@@ -15,6 +15,7 @@
 #include "theory/eager_proof_generator.h"
 
 #include "expr/proof_node_manager.h"
+#include "theory/rewriter.h"
 
 namespace CVC4 {
 namespace theory {
@@ -94,6 +95,18 @@ TrustNode EagerProofGenerator::mkTrustNode(Node n,
   std::vector<std::shared_ptr<ProofNode>> children;
   std::shared_ptr<ProofNode> pf = d_pnm->mkNode(id, children, args, n);
   return mkTrustNode(n, pf, isConflict);
+}
+
+TrustNode EagerProofGenerator::mkTrustedPropagation(Node n,
+                               Node exp,
+                               std::shared_ptr<ProofNode> pf)
+{
+  if (pf == nullptr)
+  {
+    return TrustNode::null();
+  }
+  setProofForPropExp(n, exp, pf);
+  return TrustNode::mkTrustPropExp(n, exp, this);
 }
 
 TrustNode EagerProofGenerator::assertSplit(Node f)

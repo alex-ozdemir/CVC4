@@ -28,6 +28,7 @@
 #include "theory/arith/arithvar.h"
 #include "theory/arith/constraint_forward.h"
 #include "theory/arith/partial_model.h"
+#include "theory/eager_proof_generator.h"
 #include "theory/trust_node.h"
 #include "theory/uf/equality_engine.h"
 #include "theory/uf/proof_equality_engine.h"
@@ -101,6 +102,14 @@ private:
 
   eq::EqualityEngine d_ee;
 
+  /** proof manager */
+  std::unique_ptr<ProofNodeManager> d_pnm;
+  // A proof generator for storing proofs of facts that are asserted to the EQ engine.
+  // Note that these proofs **are not closed**, and assume the explanation of these facts.
+  // This is why this generator is separate from the TheoryArithPrivate
+  // generator, which stores closed proofs.
+  std::unique_ptr<EagerProofGenerator> d_pfGen;
+
   /** Proof equality engine, wrapping the above class */
   std::unique_ptr<theory::eq::ProofEqEngine> d_pfee;
 
@@ -130,7 +139,7 @@ private:
   void explain(TNode literal, std::vector<TNode>& assumptions);
 
   /** This sends a shared term to the uninterpreted equality engine. */
-  void assertionToEqualityEngine(bool eq, ArithVar s, TNode reason);
+  void assertionToEqualityEngine(bool eq, ArithVar s, TNode reason, std::shared_ptr<ProofNode> pf);
 
   /** Dequeues the delay queue and asserts these equalities.*/
   void enableSharedTerms();

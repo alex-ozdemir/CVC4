@@ -18,12 +18,16 @@
 #define CVC4__THEORY__ARITH__ARITH_UTILITIES_H
 
 #include <math.h>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include "context/cdhashset.h"
 #include "expr/node.h"
+#include "expr/proof_node_manager.h"
+#include "expr/proof_rule.h"
+#include "expr/proof_node.h"
 #include "theory/arith/arithvar.h"
 #include "theory/arith/delta_rational.h"
 #include "util/dense_map.h"
@@ -247,6 +251,7 @@ inline Node getIdentity(Kind k){
     return mkRationalNode(1);
   default:
     Unreachable();
+    return Node::null();
   }
 }
 
@@ -337,6 +342,13 @@ Node arithSubstitute(Node n, std::vector<Node>& vars, std::vector<Node>& subs);
 
 /** Make the node u >= a ^ a >= l */
 Node mkBounded(Node l, Node a, Node u);
+
+Rational leastIntGreaterThan(const Rational&);
+
+Rational greatestIntLessThan(const Rational&);
+
+// Negates a node in arithmetic proof normal form.
+Node negateProofLiteral(TNode n);
 
 }/* CVC4::theory::arith namespace */
 }/* CVC4::theory namespace */
