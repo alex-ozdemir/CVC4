@@ -97,9 +97,8 @@ TrustNode EagerProofGenerator::mkTrustNode(Node n,
   return mkTrustNode(n, pf, isConflict);
 }
 
-TrustNode EagerProofGenerator::mkTrustedPropagation(Node n,
-                               Node exp,
-                               std::shared_ptr<ProofNode> pf)
+TrustNode EagerProofGenerator::mkTrustedPropagation(
+    Node n, Node exp, std::shared_ptr<ProofNode> pf)
 {
   if (pf == nullptr)
   {

@@ -264,9 +264,12 @@ Node BoolProofRuleChecker::checkInternal(PfRule id,
   if (id == PfRule::CONTRA)
   {
     Assert(children.size() == 2);
-    if (children[1].getKind() == Kind::NOT && children[0] == children[1][0]) {
+    if (children[1].getKind() == Kind::NOT && children[0] == children[1][0])
+    {
       return NodeManager::currentNM()->mkConst(false);
-    } else {
+    }
+    else
+    {
       return Node::null();
     }
   }

@@ -66,9 +66,10 @@ size_t Constant::getComplexity() const{
 
 bool Variable::isLeafMember(Node n){
   Debug("arith::nf::isMember") << "Variable::isLeafMember " << n << std::endl;
-  bool r = (!isRelationOperator(n.getKind())) &&
-    (Theory::isLeafOf(n, theory::THEORY_ARITH));
-  Debug("arith::nf::isMember") << "  => " << std::boolalpha << r << std::noboolalpha << std::endl;
+  bool r = (!isRelationOperator(n.getKind()))
+           && (Theory::isLeafOf(n, theory::THEORY_ARITH));
+  Debug("arith::nf::isMember")
+      << "  => " << std::boolalpha << r << std::noboolalpha << std::endl;
   return r;
 }
 
@@ -90,7 +91,8 @@ bool Variable::isDivMember(Node n){
 }
 
 bool Variable::isTranscendentalMember(Node n) {
-  Debug("arith::nf::isMember") << "Variable::isTranscendentalMember " << n << std::endl;
+  Debug("arith::nf::isMember")
+      << "Variable::isTranscendentalMember " << n << std::endl;
   switch(n.getKind()){
   case kind::EXPONENTIAL:
   case kind::SINE:

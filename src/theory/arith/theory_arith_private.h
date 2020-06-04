@@ -17,9 +17,10 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #include <map>
 #include <queue>
-#include <stdint.h>
 #include <vector>
 
 #include "context/cdhashset.h"
@@ -682,7 +683,6 @@ private:
   inline Node getSatValue(TNode n) const {
     return (d_containing.d_valuation).getSatValue(n);
   }
-
 
   context::CDQueue<Node> d_approxCuts;
   std::vector<Node> d_acTmp;

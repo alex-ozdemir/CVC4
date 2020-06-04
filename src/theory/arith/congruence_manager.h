@@ -104,10 +104,10 @@ private:
 
   /** proof manager */
   std::unique_ptr<ProofNodeManager> d_pnm;
-  // A proof generator for storing proofs of facts that are asserted to the EQ engine.
-  // Note that these proofs **are not closed**, and assume the explanation of these facts.
-  // This is why this generator is separate from the TheoryArithPrivate
-  // generator, which stores closed proofs.
+  // A proof generator for storing proofs of facts that are asserted to the EQ
+  // engine. Note that these proofs **are not closed**, and assume the
+  // explanation of these facts. This is why this generator is separate from the
+  // TheoryArithPrivate generator, which stores closed proofs.
   std::unique_ptr<EagerProofGenerator> d_pfGen;
 
   /** Proof equality engine, wrapping the above class */
@@ -139,7 +139,10 @@ private:
   void explain(TNode literal, std::vector<TNode>& assumptions);
 
   /** This sends a shared term to the uninterpreted equality engine. */
-  void assertionToEqualityEngine(bool eq, ArithVar s, TNode reason, std::shared_ptr<ProofNode> pf);
+  void assertionToEqualityEngine(bool eq,
+                                 ArithVar s,
+                                 TNode reason,
+                                 std::shared_ptr<ProofNode> pf);
 
   /** Dequeues the delay queue and asserts these equalities.*/
   void enableSharedTerms();

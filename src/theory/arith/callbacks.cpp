@@ -16,8 +16,9 @@
  **/
 
 #include "theory/arith/callbacks.h"
-#include "theory/arith/theory_arith_private.h"
+
 #include "theory/arith/proof_macros.h"
+#include "theory/arith/theory_arith_private.h"
 
 namespace CVC4 {
 namespace theory {
@@ -113,10 +114,13 @@ void FarkasConflictBuilder::addConstraint(ConstraintCP c, const Rational& fc){
 
 void FarkasConflictBuilder::addConstraint(ConstraintCP c, const Rational& fc, const Rational& mult){
   Assert(!mult.isZero());
-  if(ARITH_PROOF_ON() && !mult.isOne()){
+  if (ARITH_PROOF_ON() && !mult.isOne())
+  {
     Rational prod = fc * mult;
     addConstraint(c, prod);
-  }else{
+  }
+  else
+  {
     addConstraint(c, fc);
   }
 }
@@ -133,7 +137,7 @@ void FarkasConflictBuilder::makeLastConsequent(){
     ConstraintCP last = d_constraints.back();
     d_constraints.back() = d_consequent;
     d_consequent = last;
-    ARITH_PROOF( std::swap( d_farkas.front(), d_farkas.back() ) );
+    ARITH_PROOF(std::swap(d_farkas.front(), d_farkas.back()));
     d_consequentSet = true;
   }
 

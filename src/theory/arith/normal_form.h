@@ -1375,7 +1375,8 @@ public:
 
   // Together these functions represent a Comparison as
   // Polynomial >< delta rational.
-  // The polynomial is turned into an ArithVar, and then this becomes a constraint.
+  // The polynomial is turned into an ArithVar, and then this becomes a
+  // constraint.
 
   // Given an comparison, returns a sum of all non-constant monomials after (a)
   // moving them to the left hand side and (b) possibly negating them to ensure
@@ -1388,8 +1389,8 @@ public:
 /*
  * Proof Normal Form:
  *
- * Proof normal form is the polynomial associated with an arith_var >< a constant,
- * where >< is one of not =, =, >=, >, <=, <.
+ * Proof normal form is the polynomial associated with an arith_var >< a
+ * constant, where >< is one of not =, =, >=, >, <=, <.
  */
 
 }/* CVC4::theory::arith namespace */

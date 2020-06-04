@@ -75,9 +75,9 @@
 #ifndef CVC4__THEORY__ARITH__CONSTRAINT_H
 #define CVC4__THEORY__ARITH__CONSTRAINT_H
 
-#include <unordered_map>
 #include <list>
 #include <set>
+#include <unordered_map>
 #include <vector>
 
 #include "base/configuration_private.h"
@@ -571,7 +571,9 @@ class Constraint {
    * This is not appropriate for propagation!
    * Use explainForPropagation() instead.
    */
-  std::shared_ptr<ProofNode> externalExplainByAssertions(NodeBuilder<>& nb) const {
+  std::shared_ptr<ProofNode> externalExplainByAssertions(
+      NodeBuilder<>& nb) const
+  {
     return externalExplain(nb, AssertionOrderSentinel);
   }
 
@@ -599,8 +601,9 @@ class Constraint {
    * The constraint must have a proof.
    * The constraint cannot be an assumption.
    *
-   * This is the minimum fringe of the implication tree (excluding the constraint itself)
-   * s.t. every constraint is assertedToTheTheory() or hasEqualityEngineProof().
+   * This is the minimum fringe of the implication tree (excluding the
+   * constraint itself) s.t. every constraint is assertedToTheTheory() or
+   * hasEqualityEngineProof().
    *
    * All return conjuncts were asserted before this constraint.
    */
@@ -611,7 +614,6 @@ class Constraint {
    * The constraint must be in conflict.
    */
   TrustNode externalExplainConflict() const;
-
 
   /** The constraint is known to be true. */
   inline bool hasProof() const {
@@ -864,7 +866,8 @@ class Constraint {
    * This is the minimum fringe of the implication tree
    * s.t. every constraint is assertedBefore(order) or hasEqualityEngineProof().
    */
-  std::shared_ptr<ProofNode> externalExplain(NodeBuilder<>& nb, AssertionOrder order) const;
+  std::shared_ptr<ProofNode> externalExplain(NodeBuilder<>& nb,
+                                             AssertionOrder order) const;
 
   static Node externalExplain(const ConstraintCPVec& b, AssertionOrder order);
 
@@ -1107,44 +1110,42 @@ private:
   friend class Constraint;
   
 public:
+ ConstraintDatabase(context::Context* satContext,
+                    context::Context* userContext,
+                    const ArithVariables& variables,
+                    ArithCongruenceManager& dm,
+                    RaiseConflict conflictCallBack,
+                    EagerProofGenerator* pfGen,
+                    ProofNodeManager* pnm);
 
-  ConstraintDatabase( context::Context* satContext,
-                      context::Context* userContext,
-                      const ArithVariables& variables,
-                      ArithCongruenceManager& dm,
-                      RaiseConflict conflictCallBack,
-                      EagerProofGenerator* pfGen,
-                      ProofNodeManager* pnm);
+ ~ConstraintDatabase();
 
-  ~ConstraintDatabase();
+ /** Adds a literal to the database. */
+ ConstraintP addLiteral(TNode lit);
 
-  /** Adds a literal to the database. */
-  ConstraintP addLiteral(TNode lit);
+ /**
+  * If hasLiteral() is true, returns the constraint.
+  * Otherwise, returns NullConstraint.
+  */
+ ConstraintP lookup(TNode literal) const;
 
-  /**
-   * If hasLiteral() is true, returns the constraint.
-   * Otherwise, returns NullConstraint.
-   */
-  ConstraintP lookup(TNode literal) const;
+ /**
+  * Returns true if the literal has been added to the database.
+  * This is a hash table lookup.
+  * It does not look in the database for an equivalent corresponding constraint.
+  */
+ bool hasLiteral(TNode literal) const;
 
-  /**
-   * Returns true if the literal has been added to the database.
-   * This is a hash table lookup.
-   * It does not look in the database for an equivalent corresponding constraint.
-   */
-  bool hasLiteral(TNode literal) const;
+ bool hasMorePropagations() const { return !d_toPropagate.empty(); }
 
-  bool hasMorePropagations() const{
-    return !d_toPropagate.empty();
-  }
+ ConstraintCP nextPropagation()
+ {
+   Assert(hasMorePropagations());
 
-  ConstraintCP nextPropagation(){
-    Assert(hasMorePropagations());
+   ConstraintCP p = d_toPropagate.front();
+   d_toPropagate.pop();
 
-    ConstraintCP p = d_toPropagate.front();
-    d_toPropagate.pop();
-
-    return p;
+   return p;
   }
 
   void addVariable(ArithVar v, TNode n);

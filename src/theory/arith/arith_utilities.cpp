@@ -278,16 +278,9 @@ Node mkBounded(Node l, Node a, Node u)
   return nm->mkNode(AND, nm->mkNode(GEQ, a, l), nm->mkNode(LEQ, a, u));
 }
 
-Rational leastIntGreaterThan(const Rational& q)
-{
+Rational leastIntGreaterThan(const Rational& q) { return q.floor() + 1; }
 
-  return q.floor() + 1;
-}
-
-Rational greatestIntLessThan(const Rational& q)
-{
-  return q.ceiling() - 1;
-}
+Rational greatestIntLessThan(const Rational& q) { return q.ceiling() - 1; }
 
 Node negateProofLiteral(TNode n)
 {

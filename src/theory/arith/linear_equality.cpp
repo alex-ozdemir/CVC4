@@ -20,7 +20,6 @@
 #include "theory/arith/constraint.h"
 #include "theory/arith/proof_macros.h"
 
-
 using namespace std;
 
 namespace CVC4 {
