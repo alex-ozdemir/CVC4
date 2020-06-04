@@ -18,16 +18,12 @@
 #define CVC4__THEORY__ARITH__ARITH_UTILITIES_H
 
 #include <math.h>
-#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include "context/cdhashset.h"
 #include "expr/node.h"
-#include "expr/proof_node_manager.h"
-#include "expr/proof_rule.h"
-#include "expr/proof_node.h"
 #include "theory/arith/arithvar.h"
 #include "theory/arith/delta_rational.h"
 #include "util/dense_map.h"
@@ -251,7 +247,6 @@ inline Node getIdentity(Kind k){
     return mkRationalNode(1);
   default:
     Unreachable();
-    return Node::null();
   }
 }
 

@@ -210,7 +210,7 @@ void ArithCongruenceManager::watchedVariableIsZero(ConstraintCP lb, ConstraintCP
 }
 
 void ArithCongruenceManager::watchedVariableIsZero(ConstraintCP eq){
-  Debug("congruence") << "Cong::watchedVariableIsZero: " << *eq << std::endl;
+  Debug("arith::cong") << "Cong::watchedVariableIsZero: " << *eq << std::endl;
 
   Assert(eq->isEquality());
   Assert(eq->getValue().sgn() == 0);
@@ -224,9 +224,9 @@ void ArithCongruenceManager::watchedVariableIsZero(ConstraintCP eq){
   //These will be safe for propagation later as well
   NodeBuilder<> nb(Kind::AND);
   // An open proof of eq from literals now in reason.
-  if (Debug.isOn("congruence"))
+  if (Debug.isOn("arith::cong"))
   {
-    eq->printProofTree(Debug("congruence"));
+    eq->printProofTree(Debug("arith::cong"));
   }
   auto pf = eq->externalExplain(nb, AssertionOrderSentinel);
   if (options::proofNew())
@@ -242,7 +242,7 @@ void ArithCongruenceManager::watchedVariableIsZero(ConstraintCP eq){
 }
 
 void ArithCongruenceManager::watchedVariableCannotBeZero(ConstraintCP c){
-  Debug("congruence") << "Cong::watchedVariableCannotBeZero " << *c << std::endl;
+  Debug("arith::cong") << "Cong::watchedVariableCannotBeZero " << *c << std::endl;
   ++(d_statistics.d_watchedVariableIsNotZero);
 
   ArithVar s = c->getVariable();
@@ -252,11 +252,11 @@ void ArithCongruenceManager::watchedVariableCannotBeZero(ConstraintCP c){
   NodeBuilder<> nb(Kind::AND);
   // An open proof of eq from literals now in reason.
   auto pf = c->externalExplain(nb, AssertionOrderSentinel);
-  if (Debug.isOn("congruence"))
+  if (Debug.isOn("arith::cong"))
   {
-    Debug("congruence") << "  original proof ";
-    pf->printDebug(Debug("congruence"));
-    Debug("congruence") << std::endl;
+    Debug("arith::cong") << "  original proof ";
+    pf->printDebug(Debug("arith::cong"));
+    Debug("arith::cong") << std::endl;
   }
   Node reason = safeConstructNary(nb);
   if (options::proofNew()) {
@@ -269,7 +269,7 @@ void ArithCongruenceManager::watchedVariableCannotBeZero(ConstraintCP c){
     }
     else
     {
-      Debug("congruence") << "  proof modification needed" << std::endl;
+      Debug("arith::cong") << "  proof modification needed" << std::endl;
 
       // Four cases:
       //   c has form x_i = d, d > 0     => multiply c by -1 in Farkas proof
@@ -292,9 +292,9 @@ void ArithCongruenceManager::watchedVariableCannotBeZero(ConstraintCP c){
           PfRule::MACRO_SR_PRED_TRANSFORM, sumPf, {nm->mkConst(false)});
       std::vector<Node> assumption = {isZero};
       pf = d_pnm->mkScope(botPf, assumption, false);
-      Debug("congruence") << "    new proof ";
-      pf->printDebug(Debug("congruence"));
-      Debug("congruence") << std::endl;
+      Debug("arith::cong") << "  new proof ";
+      pf->printDebug(Debug("arith::cong"));
+      Debug("arith::cong") << std::endl;
     }
   }
   d_keepAlive.push_back(reason);

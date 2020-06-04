@@ -1386,23 +1386,11 @@ public:
 };/* class Comparison */
 
 /*
- * affine := qpolynomial | zpolynomial
- *     where the polynomial is sorted and
- *     the qpolynomial is monic and has some non-integral monomial
- *     the zpolynomial has a positive leading coefficient and coefficients have gcd 1.
- * lin_bound := (|><| affine [implicit 0])
- *   where
- *     |><| is in {>,>=,=,!=,<=,<}
+ * Proof Normal Form:
+ *
+ * Proof normal form is the polynomial associated with an arith_var >< a constant,
+ * where >< is one of not =, =, >=, >, <=, <.
  */
-class LinBound : NodeWrapper {
-public:
-  LinBound(TNode n) : NodeWrapper(n) {};
-  // Parses an arithmetic (Real or Int) node as an affine function
-  static Polynomial parseAffine(TNode n);
-  static Rational parseConst(TNode n);
-  static LinBound parseLinBound(TNode n);
-private:
-};
 
 }/* CVC4::theory::arith namespace */
 }/* CVC4::theory namespace */

@@ -31,7 +31,6 @@
 #include "expr/metakind.h"
 #include "expr/node.h"
 #include "expr/node_builder.h"
-#include "expr/lazy_proof.h"
 #include "expr/proof_generator.h"
 #include "options/arith_options.h"
 #include "smt/logic_exception.h"

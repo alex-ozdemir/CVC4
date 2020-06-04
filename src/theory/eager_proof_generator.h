@@ -131,9 +131,6 @@ class EagerProofGenerator : public ProofGenerator
   /** identify */
   std::string identify() const override { return "EagerProofGenerator"; }
 
-  // Prove a rewrite
-  TrustNode proveRewrite(TrustNode p);
-
  protected:
   /** Set that pf is the proof for conflict conf */
   void setProofForConflict(Node conf, std::shared_ptr<ProofNode> pf);

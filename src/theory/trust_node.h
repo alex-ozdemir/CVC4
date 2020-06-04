@@ -103,10 +103,9 @@ class TrustNode
    *
    * This is the corresponding formula that is proven by the proof generator
    * for the above cases:
-   * (1) (not conf), for conflicts, where conf is a conjunction of literals
+   * (1) (not conf), for conflicts,
    * (2) lem, for lemmas,
-   * (3) (=> exp lit), for propagations from explanations, where exp is a
-   *                   conjunction of literals
+   * (3) (=> exp lit), for propagations from explanations.
    *
    * When constructing this trust node, the proof generator should be able to
    * provide a proof for this fact.
