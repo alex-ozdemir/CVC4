@@ -25,38 +25,6 @@ namespace CVC4 {
 namespace theory {
 namespace arith {
 
-// Given a comparison, returns one of the form a {>,<,=} 0, where a has a
-// leading positive term.
-Node trichotomyNormalize(Node n)
-{
-  // Switch to skolem form, which is what the theory uses.
-  // Important b/c nodes in a polynomial must be sorted, and witness-form
-  // sneakily changes the order.
-  n = SkolemManager::getSkolemForm(n);
-  bool neg = n.getKind() == Kind::NOT;
-  Node nn = neg ? n[0] : n;
-  Polynomial l =
-      Polynomial::parsePolynomial(nn[0]) - Polynomial::parsePolynomial(nn[1]);
-  bool flip = !l.leadingCoefficientIsPositive();
-  if (flip)
-  {
-    l = -l;
-  }
-  Kind k = Comparison::comparisonKind(n);
-  if (flip)
-  {
-    switch (k)
-    {
-      case Kind::GT: k = Kind::LT; break;
-      case Kind::LT: k = Kind::GT; break;
-      case Kind::EQUAL: break;
-      default: return Node::null();
-    }
-  }
-  auto nm = NodeManager::currentNM();
-  return nm->mkNode(k, l.getNode(), nm->mkConst<Rational>(Rational(0)));
-}
-
 void ArithProofRuleChecker::registerTo(ProofChecker* pc)
 {
   pc->registerChecker(PfRule::SCALE_SUM_UPPER_BOUNDS, this);
