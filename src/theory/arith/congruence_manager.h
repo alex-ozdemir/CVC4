@@ -103,7 +103,7 @@ private:
   eq::EqualityEngine d_ee;
 
   /** proof manager */
-  std::unique_ptr<ProofNodeManager> d_pnm;
+  ProofNodeManager* d_pnm;
   // A proof generator for storing proofs of facts that are asserted to the EQ
   // engine. Note that these proofs **are not closed**, and assume the
   // explanation of these facts. This is why this generator is separate from the

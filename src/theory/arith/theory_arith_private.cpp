@@ -98,7 +98,7 @@ TheoryArithPrivate::TheoryArithPrivate(TheoryArith& containing,
     : d_containing(containing),
       d_nlIncomplete(false),
       d_rowTracking(),
-      d_pnm(new ProofNodeManager(pc)),
+      d_pnm(pc ? new ProofNodeManager(pc) : nullptr),
       d_checker(),
       d_pfGen(new EagerProofGenerator(u, d_pnm.get())),
       d_constraintDatabase(c,
@@ -179,7 +179,10 @@ TheoryArithPrivate::TheoryArithPrivate(TheoryArith& containing,
     d_nonlinearExtension = new nl::NonlinearExtension(
         containing, d_congruenceManager.getEqualityEngine());
   }
-  d_checker.registerTo(pc);
+  if (pc != nullptr)
+  {
+    d_checker.registerTo(pc);
+  }
 }
 
 TheoryArithPrivate::~TheoryArithPrivate(){

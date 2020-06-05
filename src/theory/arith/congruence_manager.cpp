@@ -47,7 +47,7 @@ ArithCongruenceManager::ArithCongruenceManager(
       d_avariables(avars),
       d_ee(d_notify, c, "theory::arith::ArithCongruenceManager", true),
       d_pnm(pnm),
-      d_pfGen(new EagerProofGenerator(u, d_pnm.get())),
+      d_pfGen(new EagerProofGenerator(u, pnm)),
       d_pfee(new eq::ProofEqEngine(c, u, d_ee, pnm, options::proofNew()))
 {
   d_ee.addFunctionKind(kind::NONLINEAR_MULT);
@@ -196,7 +196,7 @@ void ArithCongruenceManager::watchedVariableIsZero(ConstraintCP lb, ConstraintCP
   auto pfLb = lb->externalExplain(reasonBuilder, AssertionOrderSentinel);
   auto pfUb = ub->externalExplain(reasonBuilder, AssertionOrderSentinel);
   Node reason = safeConstructNary(reasonBuilder);
-  std::shared_ptr<ProofNode> pf{nullptr};
+  std::shared_ptr<ProofNode> pf{};
   if (options::proofNew())
   {
     pf = d_pnm->mkNode(
