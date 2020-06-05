@@ -442,22 +442,23 @@ void ArithCongruenceManager::explain(TNode external, NodeBuilder<>& out){
   std::vector<TNode> assumptions;
   explain(internal, assumptions);
   std::set<TNode> assumptionSet;
-  NodeManager* nm = NodeManager::currentNM();
-  for (TNode a : assumptions)
-  {
-    // The equality engine has swapped these out of normal form!
-    // Reorder them.
-    if (a.getKind() == Kind::EQUAL && a[0].getKind() == Kind::CONST_RATIONAL)
-    {
-      Trace("arith-ee") << "Reordering " << a << std::endl;
-      assumptionSet.insert(nm->mkNode(Kind::EQUAL, a[0][1], a[0][0]));
-    }
-    else
-    {
-      Trace("arith-ee") << "Not reordering " << a << std::endl;
-      assumptionSet.insert(a);
-    }
-  }
+  //NodeManager* nm = NodeManager::currentNM();
+  assumptionSet.insert(assumptions.begin(), assumptions.end());
+  //for (TNode a : assumptions)
+  //{
+  //  // The equality engine has swapped these out of normal form!
+  //  // Reorder them.
+  //  if (a.getKind() == Kind::EQUAL && a[0].getKind() == Kind::CONST_RATIONAL)
+  //  {
+  //    Trace("arith-ee") << "Reordering " << a << std::endl;
+  //    assumptionSet.insert(nm->mkNode(Kind::EQUAL, a[0][1], a[0][0]));
+  //  }
+  //  else
+  //  {
+  //    Trace("arith-ee") << "Not reordering " << a << std::endl;
+  //    assumptionSet.insert(a);
+  //  }
+  //}
 
   enqueueIntoNB(assumptionSet, out);
 }
