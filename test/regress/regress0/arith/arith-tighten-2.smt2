@@ -1,5 +1,4 @@
 ; COMMAND-LINE: --no-check-unsat-cores
-; COMMAND-LINE: --proof-new --no-proof --no-check-unsat-cores --no-check-proofs
 ; EXPECT: unsat
 (set-logic QF_LIA)
 
