@@ -65,18 +65,13 @@ size_t Constant::getComplexity() const{
 }
 
 bool Variable::isLeafMember(Node n){
-  Debug("arith::nf::isMember") << "Variable::isLeafMember " << n << std::endl;
-  bool r = (!isRelationOperator(n.getKind()))
+  return (!isRelationOperator(n.getKind()))
            && (Theory::isLeafOf(n, theory::THEORY_ARITH));
-  Debug("arith::nf::isMember")
-      << "  => " << std::boolalpha << r << std::noboolalpha << std::endl;
-  return r;
 }
 
 VarList::VarList(Node n) : NodeWrapper(n) { Assert(isSorted(begin(), end())); }
 
 bool Variable::isDivMember(Node n){
-  Debug("arith::nf::isMember") << "Variable::isDivMember " << n << std::endl;
   switch(n.getKind()){
   case kind::DIVISION:
   case kind::INTS_DIVISION:
@@ -91,8 +86,6 @@ bool Variable::isDivMember(Node n){
 }
 
 bool Variable::isTranscendentalMember(Node n) {
-  Debug("arith::nf::isMember")
-      << "Variable::isTranscendentalMember " << n << std::endl;
   switch(n.getKind()){
   case kind::EXPONENTIAL:
   case kind::SINE:
@@ -121,7 +114,6 @@ bool VarList::isSorted(iterator start, iterator end) {
 }
 
 bool VarList::isMember(Node n) {
-  Debug("arith::nf::isMember") << "VarList::isMember " << n << std::endl;
   if(Variable::isMember(n)) {
     return true;
   }
@@ -216,7 +208,6 @@ VarList VarList::operator*(const VarList& other) const {
 }
 
 bool Monomial::isMember(TNode n){
-  Debug("arith::nf::isMember") << "Monomial::isMember " << n << std::endl;
   if(n.getKind() == kind::CONST_RATIONAL) {
     return true;
   } else if(multStructured(n)) {
@@ -628,7 +619,6 @@ bool Polynomial::variableMonomialAreStrictlyGreater(const Monomial& m) const{
 }
 
 bool Polynomial::isMember(TNode n) {
-  Debug("arith::nf::isMember") << "Polynomial::isMember " << n << std::endl;
   if(Monomial::isMember(n)){
     return true;
   }else if(n.getKind() == kind::PLUS){
@@ -1355,24 +1345,6 @@ bool Polynomial::isNonlinear() const {
   }
   return false;
 }
-
-// Rational LinBound::parseConst(TNode n)
-// {
-//   Assert(n.isConst());
-//   switch (n.getKind()) {
-//     case Kind::PLUS:
-//     case Kind::MULT:
-//     case Kind::MINUS:
-//     case Kind::DI:
-//   }
-// }
-// Polynomial LinBound::parseAffine(TNode n)
-// {
-//   switch (n.getKind()) {
-//     case Kind::PLUS:
-//     case Kind::MINUS:
-//   }
-// }
 
 } //namespace arith
 } //namespace theory
