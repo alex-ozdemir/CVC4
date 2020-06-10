@@ -1054,10 +1054,6 @@ void ConstraintDatabase::addVariable(ArithVar v, TNode n)
     Assert(v == d_varDatabases.size());
     d_varDatabases.push_back(new PerVariableDatabase(v));
   }
-  if (options::proofNew())
-  {
-    d_varDatabases[v]->d_term = n;
-  }
 }
 
 void ConstraintDatabase::removeVariable(ArithVar v){
@@ -1665,14 +1661,6 @@ std::shared_ptr<ProofNode> Constraint::externalExplain(
     Debug("pf::arith::explain") << "Explaining: " << this << " with rule ";
     getConstraintRule().print(Debug("pf::arith::explain"));
     Debug("pf::arith::explain") << std::endl;
-  }
-  if (options::proofNew())
-  {
-    TNode t = d_database->d_varDatabases[d_variable]->d_term;
-    Debug("pf::arith::explain::terms")
-        << "variable " << d_variable << " to " << t << std::endl;
-    Assert(!t.isNull()) << "Null variable " << d_variable << " " << t;
-    Assert(t == d_database->d_avariables.asNode(d_variable));
   }
   Assert(hasProof());
   Assert(!isAssumption() || assertedToTheTheory());

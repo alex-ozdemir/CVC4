@@ -240,7 +240,6 @@ typedef SortedConstraintMap::const_iterator SortedConstraintMapConstIterator;
 struct PerVariableDatabase{
   ArithVar d_var;
   SortedConstraintMap d_constraints;
-  Node d_term{Node::null()};
 
   // x ? c_1, x ? c_2, x ? c_3, ...
   // where ? is a non-empty subset of {lb, ub, eq}
