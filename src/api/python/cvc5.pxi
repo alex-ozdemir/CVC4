@@ -663,7 +663,7 @@ cdef class Solver:
                 op.cop = self.csolver.mkOp(k.k, <int?> arg0)
             else:
                 raise ValueError("Unsupported signature"
-                                 " mkOp: {}".format(" X ".join([k, arg0])))
+                                 " mkOp: {}".format(" X ".join([str(k), str(arg0)])))
         else:
             if isinstance(arg0, int) and isinstance(arg1, int):
                 op.cop = self.csolver.mkOp(k.k, <int> arg0,
@@ -1489,6 +1489,9 @@ cdef class Term:
 
     def getKind(self):
         return kind(<int> self.cterm.getKind())
+
+    def getId(self):
+        return self.cterm.getId()
 
     def getSort(self):
         cdef Sort sort = Sort(self.solver)
