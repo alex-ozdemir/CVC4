@@ -1204,6 +1204,8 @@ simpleSymbolicExprNoKeyword[std::string& s]
     { s = AntlrInput::tokenText($HEX_LITERAL); }
   | BINARY_LITERAL
     { s = AntlrInput::tokenText($BINARY_LITERAL); }
+  | FIELD_LITERAL
+    { s = AntlrInput::tokenText($FIELD_LITERAL); }
   | SIMPLE_SYMBOL
     { s = AntlrInput::tokenText($SIMPLE_SYMBOL); }
   | QUOTED_SYMBOL
@@ -1746,6 +1748,16 @@ termAtomic[cvc5::Term& atomTerm]
       Assert(AntlrInput::tokenText($BINARY_LITERAL).find("#b") == 0);
       std::string binStr = AntlrInput::tokenTextSubstr($BINARY_LITERAL, 2);
       atomTerm = SOLVER->mkBitVector(binStr.size(), binStr, 2);
+    }
+  | FIELD_LITERAL
+    {
+      Assert(AntlrInput::tokenText($FIELD_LITERAL).find("#f") == 0);
+      size_t mPos = AntlrInput::tokenText($FIELD_LITERAL).find("m");
+      Assert(mPos > 2);
+      std::string ffValStr = AntlrInput::tokenTextSubstr($FIELD_LITERAL, 2, mPos - 2);
+      std::string ffModStr = AntlrInput::tokenTextSubstr($FIELD_LITERAL, mPos + 1);
+      Sort ffSort = SOLVER->mkFiniteFieldSort(ffModStr);
+      atomTerm = SOLVER->mkFiniteFieldElem(ffValStr, ffSort);
     }
 
   // String constant
@@ -2354,6 +2366,13 @@ HEX_LITERAL
  */
 BINARY_LITERAL
   : '#b' ('0' | '1')+
+  ;
+
+/**
+ * Matches a binary constant.
+ */
+FIELD_LITERAL
+  : '#f' INTEGER_LITERAL 'm' INTEGER_LITERAL
   ;
 
 /**
