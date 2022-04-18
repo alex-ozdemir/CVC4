@@ -30,6 +30,7 @@
 #include "expr/metakind.h"
 #include "expr/node_value.h"
 #include "util/cardinality_class.h"
+#include "util/integer.h"
 
 namespace cvc5::internal {
 
@@ -467,6 +468,9 @@ private:
   /** Is this an array type? */
   bool isArray() const;
 
+  /** Is this an array type? */
+  bool isFiniteField() const;
+
   /** Is this a Set type? */
   bool isSet() const;
 
@@ -662,6 +666,9 @@ private:
 
   /** Get the size of this bit-vector type. */
   uint32_t getBitVectorSize() const;
+
+  /** Get the field cardinality (order) of this finite-field type. */
+  Integer getFiniteFieldSize() const;
 
   /** Is this a sort kind? */
   bool isUninterpretedSort() const;
@@ -908,6 +915,11 @@ inline bool TypeNode::isRoundingMode() const {
 
 inline bool TypeNode::isArray() const {
   return getKind() == kind::ARRAY_TYPE;
+}
+
+inline bool TypeNode::isFiniteField() const
+{
+  return getKind() == kind::FINITE_FIELD_TYPE;
 }
 
 inline TypeNode TypeNode::getArrayIndexType() const {

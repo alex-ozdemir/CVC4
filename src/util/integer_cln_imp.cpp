@@ -589,6 +589,8 @@ size_t Integer::length() const
   }
 }
 
+bool Integer::isProbablePrime() const { return cln::isprobprime(d_value); }
+
 void Integer::extendedGcd(
     Integer& g, Integer& s, Integer& t, const Integer& a, const Integer& b)
 {

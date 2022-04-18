@@ -692,6 +692,12 @@ uint32_t TypeNode::getBitVectorSize() const
   return getConst<BitVectorSize>();
 }
 
+Integer TypeNode::getFiniteFieldSize() const
+{
+  Assert(getKind() == kind::FINITE_FIELD_TYPE);
+  return getConst<Integer>();
+}
+
 TypeNode TypeNode::getRangeType() const
 {
   if (isDatatypeTester())

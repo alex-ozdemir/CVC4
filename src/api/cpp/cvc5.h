@@ -130,7 +130,8 @@ class CVC5_EXPORT CVC5ApiRecoverableException : public CVC5ApiException
  * Exception for unsupported command arguments.
  * If thrown, API objects can still be used.
  */
-class CVC5_EXPORT CVC5ApiUnsupportedException : public CVC5ApiRecoverableException
+class CVC5_EXPORT CVC5ApiUnsupportedException
+    : public CVC5ApiRecoverableException
 {
  public:
   /**
@@ -555,6 +556,12 @@ class CVC5_EXPORT Sort
    * @return True if the sort is an array sort.
    */
   bool isArray() const;
+
+  /**
+   * Determine if this is a finite field sort.
+   * @return True if the sort is a finite field sort.
+   */
+  bool isFiniteField() const;
 
   /**
    * Determine if this is a Set sort.
@@ -2927,7 +2934,9 @@ class CVC5_EXPORT DriverOptions
 struct CVC5_EXPORT OptionInfo
 {
   /** Has no value information. */
-  struct VoidInfo {};
+  struct VoidInfo
+  {
+  };
   /** Basic information for option values. ``T`` can be ``bool`` or
    * ``std::string``. */
   template <typename T>
@@ -3314,6 +3323,13 @@ class CVC5_EXPORT Solver
   Sort mkFloatingPointSort(uint32_t exp, uint32_t sig) const;
 
   /**
+   * Create a finite-field sort.
+   * @param modulus the modulus of the field. Must be prime.
+   * @return The finite-field sort.
+   */
+  Sort mkFiniteFieldSort(std::string& modulus) const;
+
+  /**
    * Create a datatype sort.
    * @param dtypedecl The datatype declaration from which the sort is created.
    * @return The datatype sort.
@@ -3688,6 +3704,14 @@ class CVC5_EXPORT Solver
   Term mkBitVector(uint32_t size, const std::string& s, uint32_t base) const;
 
   /**
+   * Create a finite field constant in a given field from a given string
+   *
+   * @param value The string representation of the constant.
+   * @param sort The field sort
+   */
+  Term mkFiniteFieldElem(const std::string& value, const Sort& sort) const;
+
+  /**
    * Create a constant array with the provided constant value stored at every
    * index
    * @param sort The sort of the constant array (must be an array sort).
@@ -3966,8 +3990,8 @@ class CVC5_EXPORT Solver
    * @note This corresponds to
    *       mkUninterpretedSort(const std::optional<std::string>&) const
    *       if arity = 0, and to
-   *       mkUninterpretedSortConstructorSort(size_t arity, const std::optional<std::string>&) const
-   *       if arity > 0.
+   *       mkUninterpretedSortConstructorSort(size_t arity, const
+   * std::optional<std::string>&) const if arity > 0.
    *
    * @param symbol The name of the sort.
    * @param arity The arity of the sort.
@@ -4280,8 +4304,8 @@ class CVC5_EXPORT Solver
    * for showing the satisfiability of the last call to checkSat using the
    * current model. This method will only return false (for any `v`) if
    * option
-   * \verbatim embed:rst:inline :ref:`model-cores <lbl-option-model-cores>`\endverbatim
-   * has been set.
+   * \verbatim embed:rst:inline :ref:`model-cores
+   * <lbl-option-model-cores>`\endverbatim has been set.
    *
    * @warning This method is experimental and may change in future versions.
    *
@@ -5078,7 +5102,7 @@ class CVC5_EXPORT Solver
 
   /**
    * If needed, convert this term to a given sort.
-   * 
+   *
    * The sort of the term must be convertible into the target sort.
    * Currently only Int to Real conversions are supported.
    *

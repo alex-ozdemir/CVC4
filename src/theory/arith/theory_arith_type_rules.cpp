@@ -15,6 +15,8 @@
 
 #include "theory/arith/theory_arith_type_rules.h"
 
+#include "util/cardinality.h"
+#include "util/integer.h"
 #include "util/rational.h"
 
 namespace cvc5::internal {
@@ -207,6 +209,40 @@ TypeNode IndexedRootPredicateTypeRule::computeType(NodeManager* nodeManager,
     }
   }
   return nodeManager->booleanType();
+}
+
+Cardinality FiniteFieldProperties::computeCardinality(TypeNode type)
+{
+  Assert(type.getKind() == kind::FINITE_FIELD_TYPE);
+
+  Integer size = type.getConst<Integer>();
+  Cardinality cardinality = size;
+  return cardinality;
+}
+
+TypeNode FiniteFieldFixedFieldTypeRule::computeType(NodeManager* nodeManager,
+                                                    TNode n,
+                                                    bool check)
+{
+  TNode::iterator it = n.begin();
+  TypeNode t = (*it).getType(check);
+  if (check)
+  {
+    if (t.getKind() != kind::FINITE_FIELD_TYPE)
+    {
+      throw TypeCheckingExceptionPrivate(n, "expecting finite-field terms");
+    }
+    TNode::iterator it_end = n.end();
+    for (++it; it != it_end; ++it)
+    {
+      if ((*it).getType(check) != t)
+      {
+        throw TypeCheckingExceptionPrivate(
+            n, "expecting finite-field terms from the same field");
+      }
+    }
+  }
+  return t;
 }
 
 }  // namespace arith

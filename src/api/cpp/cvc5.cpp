@@ -62,8 +62,8 @@
 #include "options/option_exception.h"
 #include "options/options.h"
 #include "options/options_public.h"
-#include "options/smt_options.h"
 #include "options/quantifiers_options.h"
+#include "options/smt_options.h"
 #include "proof/unsat_core.h"
 #include "smt/env.h"
 #include "smt/model.h"
@@ -74,6 +74,7 @@
 #include "theory/theory_model.h"
 #include "util/bitvector.h"
 #include "util/divisible.h"
+#include "util/finite_field.h"
 #include "util/floatingpoint.h"
 #include "util/iand.h"
 #include "util/random.h"
@@ -1335,6 +1336,15 @@ bool Sort::isArray() const
   CVC5_API_TRY_CATCH_BEGIN;
   //////// all checks before this line
   return d_type->isArray();
+  ////////
+  CVC5_API_TRY_CATCH_END;
+}
+
+bool Sort::isFiniteField() const
+{
+  CVC5_API_TRY_CATCH_BEGIN;
+  //////// all checks before this line
+  return d_type->isFiniteField();
   ////////
   CVC5_API_TRY_CATCH_END;
 }
@@ -5450,6 +5460,16 @@ Sort Solver::mkBitVectorSort(uint32_t size) const
   CVC5_API_TRY_CATCH_END;
 }
 
+Sort Solver::mkFiniteFieldSort(std::string& modulus) const
+{
+  CVC5_API_TRY_CATCH_BEGIN;
+  //////// all checks before this line
+  internal::Integer m(modulus, 10);
+  return Sort(this, getNodeManager()->mkFiniteFieldType(m));
+  ////////
+  CVC5_API_TRY_CATCH_END;
+}
+
 Sort Solver::mkFloatingPointSort(uint32_t exp, uint32_t sig) const
 {
   CVC5_API_TRY_CATCH_BEGIN;
@@ -5875,6 +5895,20 @@ Term Solver::mkBitVector(uint32_t size,
   CVC5_API_TRY_CATCH_BEGIN;
   //////// all checks before this line
   return mkBVFromStrHelper(size, s, base);
+  ////////
+  CVC5_API_TRY_CATCH_END;
+}
+
+Term Solver::mkFiniteFieldElem(const std::string& value, const Sort& sort) const
+{
+  CVC5_API_TRY_CATCH_BEGIN;
+  CVC5_API_ARG_CHECK_EXPECTED(sort.isFiniteField(), sort)
+      << "a finite field sort";
+  //////// all checks before this line
+  internal::Integer v(value, 10);
+  internal::FiniteField f(v, sort.d_type->getFiniteFieldSize());
+
+  return mkValHelper<internal::FiniteField>(f);
   ////////
   CVC5_API_TRY_CATCH_END;
 }

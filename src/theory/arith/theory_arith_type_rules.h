@@ -123,6 +123,17 @@ class IndexedRootPredicateTypeRule
   static TypeNode computeType(NodeManager* nodeManager, TNode n, bool check);
 };
 
+struct FiniteFieldProperties
+{
+  static Cardinality computeCardinality(TypeNode type);
+};
+
+class FiniteFieldFixedFieldTypeRule
+{
+ public:
+  static TypeNode computeType(NodeManager* nodeManager, TNode n, bool check);
+};
+
 }  // namespace arith
 }  // namespace theory
 }  // namespace cvc5::internal
