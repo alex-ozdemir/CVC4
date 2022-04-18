@@ -54,7 +54,7 @@ if(NOT CoCoA_FOUND_SYSTEM)
   ExternalProject_Add(
     CoCoA-EP
     ${COMMON_EP_CONFIG}
-    URL "http://cocoa.dima.unige.it/cocoalib/tgz/CoCoALib-${CoCoA_VERSION}.tgz"
+    URL "http://cocoa.dima.unige.it/cocoa/cocoalib/tgz/CoCoALib-${CoCoA_VERSION}.tgz"
     URL_HASH SHA1=873d0b60800cd3852939816ce0aa2e7f72dac4ce
     # CoCoA requires C++14, but the check does not work with compilers that
     # default to C++17 or newer. The patch fixes the check.
