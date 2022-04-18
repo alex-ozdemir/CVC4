@@ -27,7 +27,7 @@ Integer FiniteField::toInteger() const { return d_value; }
 
 Integer FiniteField::toSignedInteger() const
 {
-  Integer half_modulus = d_modulus.divByPow2(1);
+  Integer half_modulus = d_modulus.divByPow2(1) + 1;
   return (d_value < half_modulus) ? d_value : d_value - d_modulus;
 }
 

@@ -65,7 +65,13 @@ class FiniteField
 
   /* Return value. */
   Integer toInteger() const;
-  /* Return Integer of smallest absolute value that represents this */
+  /* Return Integer of smallest absolute value that represents this.
+   *
+   * For fields of odd size, there is always a unique representative of
+   * smallest absolute value.
+   *
+   * For GF(2), the multiplicative identity is represented as "1", not "-1".
+   * */
   Integer toSignedInteger() const;
   /* Return (binary) string representation. */
   std::string toString(unsigned int base = 2) const;
