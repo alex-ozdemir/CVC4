@@ -21,6 +21,8 @@ namespace cvc5::internal {
 
 const Integer& FiniteField::getValue() const { return d_value; }
 
+const Integer& FiniteField::getFieldSize() const { return d_modulus; }
+
 Integer FiniteField::toInteger() const { return d_value; }
 
 Integer FiniteField::toSignedInteger() const

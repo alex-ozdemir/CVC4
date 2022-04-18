@@ -128,6 +128,16 @@ struct FiniteFieldProperties
   static Cardinality computeCardinality(TypeNode type);
 };
 
+/* -------------------------------------------------------------------------- */
+
+class FiniteFieldConstantTypeRule
+{
+ public:
+  static TypeNode computeType(NodeManager* nodeManager, TNode n, bool check);
+};
+
+/* -------------------------------------------------------------------------- */
+
 class FiniteFieldFixedFieldTypeRule
 {
  public:

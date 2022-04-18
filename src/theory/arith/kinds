@@ -192,7 +192,13 @@ typerule IAND_OP ::cvc5::internal::theory::arith::IAndOpTypeRule
 typerule IAND ::cvc5::internal::theory::arith::IAndTypeRule
 
 # Finite Fields
-operator FINITE_FIELD_TYPE 1 "finite-field type"
+# operator FINITE_FIELD_TYPE 1 "finite-field type"
+constant FINITE_FIELD_TYPE \
+  struct \
+  FiniteFieldSize \
+  "::cvc5::internal::FiniteFieldSizeHashFunction" \
+  "util/finite_field.h" \
+  "finite field type"
 
 cardinality FINITE_FIELD_TYPE \
     "::cvc5::internal::theory::arith::FiniteFieldProperties::computeCardinality(%TYPE%)" \
@@ -219,6 +225,7 @@ operator FINITE_FIELD_MULT 2: "multiplication of two or more field elements"
 operator FINITE_FIELD_NEG 1 "unary negation of a field element"
 operator FINITE_FIELD_ADD 2: "addition of two or more field elements"
 
+typerule CONST_FINITE_FIELD ::cvc5::internal::theory::arith::FiniteFieldConstantTypeRule
 typerule FINITE_FIELD_MULT ::cvc5::internal::theory::arith::FiniteFieldFixedFieldTypeRule
 typerule FINITE_FIELD_NEG ::cvc5::internal::theory::arith::FiniteFieldFixedFieldTypeRule
 typerule FINITE_FIELD_ADD ::cvc5::internal::theory::arith::FiniteFieldFixedFieldTypeRule

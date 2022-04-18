@@ -34,6 +34,7 @@
 #include "theory/sets/singleton_op.h"
 #include "theory/strings/seq_unit_op.h"
 #include "util/bitvector.h"
+#include "util/finite_field.h"
 #include "util/poly_util.h"
 #include "util/rational.h"
 #include "util/resource_manager.h"
@@ -182,6 +183,11 @@ TypeNode NodeManager::builtinOperatorType()
 TypeNode NodeManager::mkBitVectorType(unsigned size)
 {
   return mkTypeConst<BitVectorSize>(BitVectorSize(size));
+}
+
+TypeNode NodeManager::mkFiniteFieldType(const Integer& modulus)
+{
+  return mkTypeConst<FiniteFieldSize>(FiniteFieldSize(modulus));
 }
 
 TypeNode NodeManager::sExprType()

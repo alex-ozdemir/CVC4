@@ -60,6 +60,9 @@ class FiniteField
   /* Get value. */
   const Integer& getValue() const;
 
+  /* Get field size. */
+  const Integer& getFieldSize() const;
+
   /* Return value. */
   Integer toInteger() const;
   /* Return Integer of smallest absolute value that represents this */
@@ -138,12 +141,28 @@ class FiniteField
 
 }; /* class FiniteField */
 
+struct FiniteFieldSize
+{
+  Integer d_size;
+  FiniteFieldSize(Integer size) : d_size(size) {}
+  operator Integer() const { return d_size; }
+  inline bool operator==(const FiniteFieldSize& y) const { return d_size == y.d_size; }
+}; /* struct FiniteFieldSize */
+
 /*
  * Hash function for the FiniteField constants.
  */
 struct FiniteFieldHashFunction
 {
   inline size_t operator()(const FiniteField& ff) const { return ff.hash(); }
+}; /* struct FiniteFieldHashFunction */
+
+/*
+ * Hash function for the FiniteFieldSize constants.
+ */
+struct FiniteFieldSizeHashFunction
+{
+  inline size_t operator()(const FiniteFieldSize& size) const { return size.d_size.hash(); }
 }; /* struct FiniteFieldHashFunction */
 
 /* -----------------------------------------------------------------------

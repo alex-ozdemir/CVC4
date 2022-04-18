@@ -16,6 +16,7 @@
 #include "theory/arith/theory_arith_type_rules.h"
 
 #include "util/cardinality.h"
+#include "util/finite_field.h"
 #include "util/integer.h"
 #include "util/rational.h"
 
@@ -213,11 +214,18 @@ TypeNode IndexedRootPredicateTypeRule::computeType(NodeManager* nodeManager,
 
 Cardinality FiniteFieldProperties::computeCardinality(TypeNode type)
 {
-  Assert(type.getKind() == kind::FINITE_FIELD_TYPE);
+  Assert(type.isFiniteField());
 
-  Integer size = type.getConst<Integer>();
+  Integer size = type.getFiniteFieldSize();
   Cardinality cardinality = size;
   return cardinality;
+}
+
+TypeNode FiniteFieldConstantTypeRule::computeType(NodeManager* nodeManager,
+                                                  TNode n,
+                                                  bool _check)
+{
+  return nodeManager->mkFiniteFieldType(n.getConst<FiniteField>().getFieldSize());
 }
 
 TypeNode FiniteFieldFixedFieldTypeRule::computeType(NodeManager* nodeManager,
