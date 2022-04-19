@@ -728,6 +728,13 @@ class NodeManager
   Node mkConstInt(const Rational& r);
 
   /**
+   * Make a contant finite field element.
+   *
+   * Given the integer value of the element and its type.
+   */
+  Node mkConstFiniteFieldElem(const Integer& v, const TypeNode& type);
+
+  /**
    * Make constant real or int, which calls one of the above methods based
    * on the type tn.
    */

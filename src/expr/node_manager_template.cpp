@@ -1333,6 +1333,12 @@ Node NodeManager::mkConstInt(const Rational& r)
   return mkConst(kind::CONST_RATIONAL, r);
 }
 
+Node NodeManager::mkConstFiniteFieldElem(const Integer& v, const TypeNode& type)
+{
+  Assert(type.isFiniteField());
+  return mkConst(kind::CONST_RATIONAL, FiniteField(v, type.getFiniteFieldSize()));
+}
+
 Node NodeManager::mkConstRealOrInt(const TypeNode& tn, const Rational& r)
 {
   Assert(tn.isRealOrInt()) << "Expected real or int for mkConstRealOrInt, got "
