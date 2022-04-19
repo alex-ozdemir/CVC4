@@ -221,6 +221,10 @@ const static std::unordered_map<Kind, std::pair<internal::Kind, std::string>>
                   internal::Kind::BITVECTOR_ROTATE_RIGHT),
         KIND_ENUM(INT_TO_BITVECTOR, internal::Kind::INT_TO_BITVECTOR),
         KIND_ENUM(BITVECTOR_TO_NAT, internal::Kind::BITVECTOR_TO_NAT),
+        /* Finite Fields --------------------------------------------------- */
+        KIND_ENUM(FINITE_FIELD_MULT, internal::Kind::FINITE_FIELD_MULT),
+        KIND_ENUM(FINITE_FIELD_ADD, internal::Kind::FINITE_FIELD_ADD),
+        KIND_ENUM(FINITE_FIELD_NEG, internal::Kind::FINITE_FIELD_NEG),
         /* FP --------------------------------------------------------------- */
         KIND_ENUM(CONST_FLOATINGPOINT, internal::Kind::CONST_FLOATINGPOINT),
         KIND_ENUM(CONST_ROUNDINGMODE, internal::Kind::CONST_ROUNDINGMODE),
@@ -521,6 +525,10 @@ const static std::unordered_map<internal::Kind,
         {internal::Kind::INT_TO_BITVECTOR_OP, INT_TO_BITVECTOR},
         {internal::Kind::INT_TO_BITVECTOR, INT_TO_BITVECTOR},
         {internal::Kind::BITVECTOR_TO_NAT, BITVECTOR_TO_NAT},
+        /* Finite Fields --------------------------------------------------- */
+        {internal::Kind::FINITE_FIELD_MULT, FINITE_FIELD_MULT},
+        {internal::Kind::FINITE_FIELD_ADD, FINITE_FIELD_ADD},
+        {internal::Kind::FINITE_FIELD_NEG, FINITE_FIELD_NEG},
         /* FP -------------------------------------------------------------- */
         {internal::Kind::CONST_FLOATINGPOINT, CONST_FLOATINGPOINT},
         {internal::Kind::CONST_ROUNDINGMODE, CONST_ROUNDINGMODE},
