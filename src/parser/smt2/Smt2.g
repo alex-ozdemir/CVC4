@@ -1988,6 +1988,13 @@ sortSymbol[cvc5::Sort& t]
             PARSER_STATE->parseError("Illegal bitvector size: 0");
           }
           t = SOLVER->mkBitVectorSort(numerals.front());
+        } else if( name == "FiniteField" ) {
+          if( numerals.size() != 1 ) {
+            PARSER_STATE->parseError("Illegal finite field type.");
+          }
+          // HACK! Won't work for fields of size >32 bits
+          std::string s = std::to_string(numerals.front());
+          t = SOLVER->mkFiniteFieldSort(s);
         } else if ( name == "FloatingPoint" ) {
           if( numerals.size() != 2 ) {
             PARSER_STATE->parseError("Illegal floating-point type.");
