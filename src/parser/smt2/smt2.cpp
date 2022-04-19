@@ -123,6 +123,12 @@ void Smt2::addBitvectorOperators() {
   addIndexedOperator(cvc5::BITVECTOR_ROTATE_RIGHT, "rotate_right");
 }
 
+void Smt2::addFiniteFieldOperators() {
+  addOperator(cvc5::FINITE_FIELD_ADD, "ffadd");
+  addOperator(cvc5::FINITE_FIELD_MULT, "ffmul");
+  addOperator(cvc5::FINITE_FIELD_NEG, "ffneg");
+}
+
 void Smt2::addDatatypesOperators()
 {
   Parser::addOperator(cvc5::APPLY_CONSTRUCTOR);
@@ -528,6 +534,7 @@ Command* Smt2::setLogic(std::string name, bool fromCommand)
     {
       defineType("Real", d_solver->getRealSort(), true);
       addArithmeticOperators();
+      addFiniteFieldOperators();
       addOperator(cvc5::DIVISION, "/");
       if (!strictModeEnabled())
       {
