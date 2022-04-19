@@ -47,7 +47,7 @@ Node preRewriteFfNeg(TNode t)
   Assert(t.getKind() == Kind::FINITE_FIELD_NEG);
   NodeManager* const nm = NodeManager::currentNM();
   const Node negOne = nm->mkConstFiniteFieldElem(Integer(-1), t.getType());
-  return nm->mkNode(kind::FINITE_FIELD_MULT, negOne, t);
+  return nm->mkNode(kind::FINITE_FIELD_MULT, negOne, t[0]);
 }
 
 /** preRewrite addition */
@@ -99,7 +99,8 @@ Node postRewriteFfAdd(TNode t)
   for (const auto& summand : scalarTerms)
   {
     Node c = nm->mkConst(summand.second);
-    summands.push_back(nm->mkNode(Kind::FINITE_FIELD_MULT, c, summand.first));
+    summands.push_back(expr::algorithm::flatten(
+        nm->mkNode(Kind::FINITE_FIELD_MULT, c, summand.first)));
   }
   return mkNary(Kind::FINITE_FIELD_ADD, std::move(summands));
 }
