@@ -28,6 +28,7 @@
 #include "smt/logic_exception.h"
 #include "theory/arith/arith_msum.h"
 #include "theory/arith/arith_utilities.h"
+#include "theory/arith/ff/rewriter.h"
 #include "theory/arith/normal_form.h"
 #include "theory/arith/operator_elim.h"
 #include "theory/arith/rewriter/addition.h"
@@ -247,6 +248,9 @@ RewriteResponse ArithRewriter::preRewriteTerm(TNode t){
       case kind::CAST_TO_REAL: return RewriteResponse(REWRITE_DONE, t[0]);
       case kind::POW: return RewriteResponse(REWRITE_DONE, t);
       case kind::PI: return RewriteResponse(REWRITE_DONE, t);
+      case kind::FINITE_FIELD_NEG: return RewriteResponse(REWRITE_DONE, preRewriteFfNeg(t));
+      case kind::FINITE_FIELD_ADD: return RewriteResponse(REWRITE_DONE, preRewriteFfAdd(t));
+      case kind::FINITE_FIELD_MULT: return RewriteResponse(REWRITE_DONE, preRewriteFfMult(t));
       default: Unhandled() << k;
     }
   }
@@ -342,6 +346,9 @@ RewriteResponse ArithRewriter::postRewriteTerm(TNode t){
       }
     case kind::PI:
       return RewriteResponse(REWRITE_DONE, t);
+    case kind::FINITE_FIELD_NEG: Unreachable() << "finite field negation in post-write";
+    case kind::FINITE_FIELD_ADD: return RewriteResponse(REWRITE_DONE, postRewriteFfAdd(t));
+    case kind::FINITE_FIELD_MULT: return RewriteResponse(REWRITE_DONE, postRewriteFfMult(t));
     default:
       Unreachable();
     }
