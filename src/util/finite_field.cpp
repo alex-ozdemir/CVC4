@@ -82,14 +82,16 @@ bool FiniteField::operator>=(const FiniteField& y) const
 
 FiniteField FiniteField::operator+(const FiniteField& y) const
 {
-  CheckArgument(d_modulus == y.d_modulus, y);
+  Assert(d_modulus == y.d_modulus)
+      << "Size mismatch: " << d_modulus << " != " << y.d_modulus;
   Integer sum = d_value.modAdd(y.d_value, d_modulus);
-  return FiniteField(d_modulus, sum);
+  return {sum, d_modulus};
 }
 
 FiniteField FiniteField::operator-(const FiniteField& y) const
 {
-  CheckArgument(d_modulus == y.d_modulus, y);
+  Assert(d_modulus == y.d_modulus)
+      << "Size mismatch: " << d_modulus << " != " << y.d_modulus;
   return {d_value - y.d_value, d_modulus};
 }
 
@@ -100,9 +102,10 @@ FiniteField FiniteField::operator-() const
 
 FiniteField FiniteField::operator*(const FiniteField& y) const
 {
-  CheckArgument(d_modulus == y.d_modulus, y);
+  Assert(d_modulus == y.d_modulus)
+      << "Size mismatch: " << d_modulus << " != " << y.d_modulus;
   Integer prod = d_value.modMultiply(y.d_value, d_modulus);
-  return FiniteField(d_modulus, prod);
+  return {prod, d_modulus};
 }
 
 FiniteField FiniteField::operator/(const FiniteField& y) const
@@ -120,14 +123,8 @@ FiniteField FiniteField::recip() const
  * Static helpers.
  * ----------------------------------------------------------------------- */
 
-FiniteField FiniteField::mkZero(const Integer& modulus)
-{
-  return FiniteField(0, modulus);
-}
+FiniteField FiniteField::mkZero(const Integer& modulus) { return {0, modulus}; }
 
-FiniteField FiniteField::mkOne(const Integer& modulus)
-{
-  return FiniteField(1, modulus);
-}
+FiniteField FiniteField::mkOne(const Integer& modulus) { return {1, modulus}; }
 
 }  // namespace cvc5::internal
