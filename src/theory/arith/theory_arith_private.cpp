@@ -55,6 +55,8 @@
 #include "theory/arith/cut_log.h"
 #include "theory/arith/delta_rational.h"
 #include "theory/arith/dio_solver.h"
+#include "theory/arith/ff/sat_check.h"
+#include "theory/arith/ff/util.h"
 #include "theory/arith/linear_equality.h"
 #include "theory/arith/matrix.h"
 #include "theory/arith/nl/nonlinear_extension.h"
@@ -165,6 +167,7 @@ TheoryArithPrivate::TheoryArithPrivate(TheoryArith& containing,
       d_dioSolveResources(0),
       d_solveIntMaybeHelp(0u),
       d_solveIntAttempts(0u),
+      d_ffFacts(context()),
       d_newFacts(false),
       d_previousStatus(Result::UNKNOWN),
       d_statistics(statisticsRegistry(), "theory::arith::")
@@ -950,6 +953,11 @@ Theory::PPAssertStatus TheoryArithPrivate::ppAssert(
   TNode in = tin.getNode();
   Trace("simplify") << "TheoryArithPrivate::solve(" << in << ")" << endl;
 
+  // For finite-field assertions, do no preprocessing
+  if (isFfAtom(in))
+  {
+    return Theory::PP_ASSERT_STATUS_UNSOLVED;
+  }
 
   // Solve equalities
   Rational minConstant = 0;
@@ -1212,7 +1220,7 @@ void TheoryArithPrivate::preRegisterTerm(TNode n) {
   d_preregisteredNodes.insert(n);
 
   try {
-    if(isRelationOperator(n.getKind())){
+    if(isRelationOperator(n.getKind()) && !isFfAtom(n)){
       if(!isSetup(n)){
         setupAtom(n);
       }
@@ -3070,6 +3078,11 @@ bool TheoryArithPrivate::preCheck(Theory::Effort level)
 
 void TheoryArithPrivate::preNotifyFact(TNode atom, bool pol, TNode fact)
 {
+  if (isFfAtom(atom))
+  {
+    d_ffFacts.push_back(atom);
+    return;
+  }
   ConstraintP curr = constraintFromFactQueue(fact);
   if (curr != NullConstraint)
   {
@@ -3080,6 +3093,16 @@ void TheoryArithPrivate::preNotifyFact(TNode atom, bool pol, TNode fact)
 
 bool TheoryArithPrivate::postCheck(Theory::Effort effortLevel)
 {
+  // Handle ff facts
+  if (!d_ffFacts.empty())
+  {
+    if (!isSat(d_ffFacts))
+    {
+      std::vector<Node> conflict(d_ffFacts.begin(), d_ffFacts.end());
+      outputConflict(NodeManager::currentNM()->mkAnd(conflict), InferenceId::ARITH_FF);
+    }
+  }
+
   if(!anyConflict()){
     while(!d_learnedBounds.empty()){
       // we may attempt some constraints twice.  this is okay!

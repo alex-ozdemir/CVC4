@@ -768,6 +768,9 @@ private:
 
   RationalVector d_farkasBuffer;
 
+  // Finite-field facts
+  context::CDList<Node> d_ffFacts;
+
   //---------------- during check
   /** Whether there were new facts during preCheck */
   bool d_newFacts;

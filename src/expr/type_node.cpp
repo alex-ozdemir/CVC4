@@ -102,7 +102,7 @@ CardinalityClass TypeNode::getCardinalityClass()
     ret = CardinalityClass::INTERPRETED_ONE;
   }
   else if (isBoolean() || isBitVector() || isFloatingPoint()
-           || isRoundingMode())
+           || isRoundingMode() || isFiniteField())
   {
     ret = CardinalityClass::FINITE;
   }

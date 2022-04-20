@@ -23,6 +23,7 @@
 #include "theory/arith/arith_rewriter.h"
 #include "theory/arith/equality_solver.h"
 #include "theory/arith/infer_bounds.h"
+#include "theory/arith/ff/util.h"
 #include "theory/arith/nl/nonlinear_extension.h"
 #include "theory/arith/theory_arith_private.h"
 #include "theory/ext_theory.h"
@@ -129,10 +130,18 @@ TrustNode TheoryArith::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
   CodeTimer timer(d_ppRewriteTimer, /* allow_reentrant = */ true);
   Trace("arith::preprocess") << "arith::preprocess() : " << atom << endl;
 
+  // For finite-field assertions, do no preprocessing
+  if (isFfAtom(atom))
+  {
+    // TODO: refl?
+    return TrustNode::mkTrustRewrite(atom, atom);
+  }
+
   if (atom.getKind() == kind::EQUAL)
   {
     return d_ppre.ppRewriteEq(atom);
   }
+
   Assert(d_env.theoryOf(atom) == THEORY_ARITH);
   // Eliminate operators. Notice we must do this here since other
   // theories may generate lemmas that involve non-standard operators. For
