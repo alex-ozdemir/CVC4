@@ -1,4 +1,5 @@
 ; EXPECT: unsat
+; Tests the ff rewriter
 (set-info :smt-lib-version 2.6)
 (set-info :category "crafted")
 (set-logic QF_LRA)
