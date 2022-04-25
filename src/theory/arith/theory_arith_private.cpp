@@ -3081,7 +3081,14 @@ void TheoryArithPrivate::preNotifyFact(TNode atom, bool pol, TNode fact)
 {
   if (isFfAtom(atom))
   {
-    d_ffFacts.push_back(atom);
+    if (pol)
+    {
+      d_ffFacts.push_back(atom);
+    }
+    else
+    {
+      d_ffFacts.push_back(atom.notNode());
+    }
     return;
   }
   ConstraintP curr = constraintFromFactQueue(fact);

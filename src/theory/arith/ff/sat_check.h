@@ -38,6 +38,8 @@ std::unordered_set<Node> getVars(const context::CDList<Node>& terms);
 
 std::unordered_set<Integer, IntegerHashFunction> getFieldSizes(const context::CDList<Node>& terms);
 
+size_t countDisequalities(const context::CDList<Node>& terms);
+
 }  // namespace arith
 }  // namespace theory
 }  // namespace cvc5::internal

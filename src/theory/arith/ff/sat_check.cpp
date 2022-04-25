@@ -53,20 +53,33 @@ bool isSat(const context::CDList<Node>& assertions)
   CoCoA::QuotientRing ringFp = CoCoA::NewZZmod(size);
   std::vector<Node> nodes;
   std::vector<CoCoA::symbol> symbolVec;
+  std::vector<CoCoA::symbol> invSyms;
   for (const auto& var : vars)
   {
     CoCoA::symbol sym(var.getAttribute(expr::VarNameAttr()));
     symbolVec.push_back(sym);
     nodes.push_back(var);
   }
+  size_t numDisequalities = countDisequalities(assertions);
+  for (size_t i = 0; i < numDisequalities; ++i)
+  {
+    CoCoA::symbol sym("inv_witness", i);
+    symbolVec.push_back(sym);
+    invSyms.push_back(sym);
+  }
   CoCoA::SparsePolyRing ringPoly = CoCoA::NewPolyRing(ringFp, symbolVec);
   std::unordered_map<Node, CoCoA::RingElem> varPolys;
-  for (long i = 0; i < CoCoA::NumIndets(ringPoly); ++i)
+  for (size_t i = 0; i < nodes.size(); ++i)
   {
     CoCoA::RingElem poly = CoCoA::indet(ringPoly, i);
     varPolys.insert(std::make_pair(nodes[i], poly));
   }
   std::unordered_map<Node, CoCoA::RingElem> nodePolys(varPolys);
+  std::vector<CoCoA::RingElem> invPolys;
+  for (size_t i = 0; i < numDisequalities; ++i)
+  {
+    invPolys.push_back(CoCoA::indet(ringPoly, nodePolys.size() + i));
+  }
   for (const auto& term : assertions)
   {
     for (const auto& node :
@@ -116,18 +129,38 @@ bool isSat(const context::CDList<Node>& assertions)
     }
   }
   std::vector<CoCoA::RingElem> generators;
+  size_t disequalityIndex = 0;
   for (const auto& assertion : assertions)
   {
+    Trace("arith::ff") << "Assertion " << assertion << std::endl;
+
+    CoCoA::RingElem p = ringPoly->myZero();
     switch (assertion.getKind())
     {
       case Kind::EQUAL:
-        generators.push_back(nodePolys[assertion[0]] - nodePolys[assertion[1]]);
+      {
+        p = nodePolys[assertion[0]] - nodePolys[assertion[1]];
+        Trace("arith::ff") << "Translated " << assertion << "\t-> " << p
+                           << std::endl;
         break;
-      case Kind::DISTINCT: Unhandled() << "diseq in ff SAT"; break;
+      }
+      case Kind::NOT:
+      {
+        AlwaysAssert(assertion[0].getKind() == Kind::EQUAL);
+        Assert(disequalityIndex < numDisequalities);
+        CoCoA::RingElem diff =
+            nodePolys[assertion[0][0]] - nodePolys[assertion[0][1]];
+        p = diff * invPolys[disequalityIndex] - ringPoly->myOne();
+        ++disequalityIndex;
+        break;
+      }
       default:
         Unhandled() << "Kind " << assertion.getKind()
                     << " in finite field sat check";
     }
+    Trace("arith::ff") << "Translated " << assertion << "\t-> " << p
+                       << std::endl;
+    generators.push_back(p);
   }
   CoCoA::ideal ideal = CoCoA::ideal(generators);
   const auto basis = CoCoA::GBasis(ideal);
@@ -175,6 +208,19 @@ std::unordered_set<Integer, IntegerHashFunction> getFieldSizes(
     }
   }
   return sizes;
+}
+
+size_t countDisequalities(const context::CDList<Node>& terms)
+{
+  size_t ct = 0;
+  for (const auto& term : terms)
+  {
+    if (term.getKind() == Kind::NOT)
+    {
+      ++ct;
+    }
+  }
+  return ct;
 }
 
 }  // namespace arith
