@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <CoCoA/GlobalManager.H>
+
 #include <map>
 #include <vector>
 
@@ -770,6 +772,8 @@ private:
 
   // Finite-field facts
   context::CDList<Node> d_ffFacts;
+  // CoCoA needs this
+  CoCoA::GlobalManager d_cocoaManager;
 
   //---------------- during check
   /** Whether there were new facts during preCheck */

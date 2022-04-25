@@ -158,6 +158,12 @@ RewriteResponse ArithRewriter::postRewriteAtom(TNode atom)
   TNode right = atom[1];
   Assert(isRelationOperator(kind));
 
+  if (left.getType().isFiniteField())
+  {
+    // TODO: normalize DISTINCT to EQUAL with a skolem?
+    return RewriteResponse(REWRITE_DONE, atom);
+  }
+
   if (auto response = rewriter::tryEvaluateRelation(kind, left, right);
       response)
   {

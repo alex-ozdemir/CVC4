@@ -18,9 +18,14 @@
 #ifndef CVC5__THEORY__ARITH__FF__SAT_CHECK_H
 #define CVC5__THEORY__ARITH__FF__SAT_CHECK_H
 
+#include <unordered_set>
+
 #include "context/cdlist_forward.h"
 #include "expr/node.h"
+#include "util/integer.h"
 #include "util/finite_field.h"
+
+#include <CoCoA/library.H>
 
 namespace cvc5::internal {
 namespace theory {
@@ -28,6 +33,10 @@ namespace arith {
 
 /** Is this a finite-field atom? */
 bool isSat(const context::CDList<Node>& assertions);
+
+std::unordered_set<Node> getVars(const context::CDList<Node>& terms);
+
+std::unordered_set<Integer, IntegerHashFunction> getFieldSizes(const context::CDList<Node>& terms);
 
 }  // namespace arith
 }  // namespace theory

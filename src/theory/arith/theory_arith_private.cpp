@@ -168,6 +168,7 @@ TheoryArithPrivate::TheoryArithPrivate(TheoryArith& containing,
       d_solveIntMaybeHelp(0u),
       d_solveIntAttempts(0u),
       d_ffFacts(context()),
+      d_cocoaManager(),
       d_newFacts(false),
       d_previousStatus(Result::UNKNOWN),
       d_statistics(statisticsRegistry(), "theory::arith::")
@@ -3094,7 +3095,7 @@ void TheoryArithPrivate::preNotifyFact(TNode atom, bool pol, TNode fact)
 bool TheoryArithPrivate::postCheck(Theory::Effort effortLevel)
 {
   // Handle ff facts
-  if (!d_ffFacts.empty())
+  if (!d_ffFacts.empty() && Theory::fullEffort(effortLevel))
   {
     if (!isSat(d_ffFacts))
     {
