@@ -16,7 +16,6 @@
 #include "theory/arith/theory_arith_type_rules.h"
 
 #include "util/cardinality.h"
-#include "util/finite_field.h"
 #include "util/integer.h"
 #include "util/rational.h"
 
@@ -210,47 +209,6 @@ TypeNode IndexedRootPredicateTypeRule::computeType(NodeManager* nodeManager,
     }
   }
   return nodeManager->booleanType();
-}
-
-Cardinality FiniteFieldProperties::computeCardinality(TypeNode type)
-{
-  Assert(type.isFiniteField());
-
-  Integer size = type.getFiniteFieldSize();
-  Cardinality cardinality = size;
-  return cardinality;
-}
-
-TypeNode FiniteFieldConstantTypeRule::computeType(NodeManager* nodeManager,
-                                                  TNode n,
-                                                  bool _check)
-{
-  return nodeManager->mkFiniteFieldType(n.getConst<FiniteField>().getFieldSize());
-}
-
-TypeNode FiniteFieldFixedFieldTypeRule::computeType(NodeManager* nodeManager,
-                                                    TNode n,
-                                                    bool check)
-{
-  TNode::iterator it = n.begin();
-  TypeNode t = (*it).getType(check);
-  if (check)
-  {
-    if (t.getKind() != kind::FINITE_FIELD_TYPE)
-    {
-      throw TypeCheckingExceptionPrivate(n, "expecting finite-field terms");
-    }
-    TNode::iterator it_end = n.end();
-    for (++it; it != it_end; ++it)
-    {
-      if ((*it).getType(check) != t)
-      {
-        throw TypeCheckingExceptionPrivate(
-            n, "expecting finite-field terms from the same field");
-      }
-    }
-  }
-  return t;
 }
 
 }  // namespace arith

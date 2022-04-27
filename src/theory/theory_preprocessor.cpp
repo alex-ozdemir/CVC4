@@ -323,7 +323,7 @@ TrustNode TheoryPreprocessor::theoryPreprocess(
       // we preprocessed it to something else, carry that
       std::pair<Node, uint32_t> key(itw->second, nodeVal);
       itc = d_cache.find(key);
-      Assert(itc != d_cache.end());
+      Assert(itc != d_cache.end()) << "Key " << itw->second << ", " << nodeVal << " is not in the cache";
       d_cache.insert(curr, itc->second);
       wasPreprocessed.erase(curr);
       continue;
@@ -381,9 +381,11 @@ TrustNode TheoryPreprocessor::theoryPreprocess(
       ctx.push(pret, nodeVal);
       processedChildren.push_back(false);
       wasPreprocessed[curr] = pret;
+      Trace("tpp-debug") << " preprocssed " << node << ", " << nodeVal << " -> " << pret << std::endl;
       continue;
     }
     // cache
+    Trace("tpp-debug") << " cache " << node << ", " << nodeVal << "\n -> " << ret << std::endl;
     d_cache.insert(curr, ret);
   }
   itc = d_cache.find(initial);

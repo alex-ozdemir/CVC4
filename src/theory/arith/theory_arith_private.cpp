@@ -167,7 +167,6 @@ TheoryArithPrivate::TheoryArithPrivate(TheoryArith& containing,
       d_dioSolveResources(0),
       d_solveIntMaybeHelp(0u),
       d_solveIntAttempts(0u),
-      d_ffFacts(context()),
       d_cocoaManager(),
       d_newFacts(false),
       d_previousStatus(Result::UNKNOWN),
@@ -3079,18 +3078,6 @@ bool TheoryArithPrivate::preCheck(Theory::Effort level)
 
 void TheoryArithPrivate::preNotifyFact(TNode atom, bool pol, TNode fact)
 {
-  if (isFfAtom(atom))
-  {
-    if (pol)
-    {
-      d_ffFacts.push_back(atom);
-    }
-    else
-    {
-      d_ffFacts.push_back(atom.notNode());
-    }
-    return;
-  }
   ConstraintP curr = constraintFromFactQueue(fact);
   if (curr != NullConstraint)
   {
@@ -3101,15 +3088,6 @@ void TheoryArithPrivate::preNotifyFact(TNode atom, bool pol, TNode fact)
 
 bool TheoryArithPrivate::postCheck(Theory::Effort effortLevel)
 {
-  // Handle ff facts
-  if (!d_ffFacts.empty() && Theory::fullEffort(effortLevel))
-  {
-    if (!isSat(d_ffFacts))
-    {
-      std::vector<Node> conflict(d_ffFacts.begin(), d_ffFacts.end());
-      outputConflict(NodeManager::currentNM()->mkAnd(conflict), InferenceId::ARITH_FF);
-    }
-  }
 
   if(!anyConflict()){
     while(!d_learnedBounds.empty()){

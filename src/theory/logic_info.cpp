@@ -311,6 +311,10 @@ std::string LogicInfo::getLogicString() const {
         ss << "BV";
         ++seen;
       }
+      if(d_theories[THEORY_FF]) {
+        ss << "FF";
+        ++seen;
+      }
       if(d_theories[THEORY_FP]) {
         ss << "FP";
         ++seen;
@@ -443,6 +447,10 @@ void LogicInfo::setLogicString(std::string logicString)
       // allow BV or DT in either order
       if(!strncmp(p, "BV", 2)) {
         enableTheory(THEORY_BV);
+        p += 2;
+      }
+      if(!strncmp(p, "FF", 2)) {
+        enableTheory(THEORY_FF);
         p += 2;
       }
       if(!strncmp(p, "FP", 2)) {

@@ -1,6 +1,6 @@
 /******************************************************************************
  * Top contributors (to current version):
- *   Alex Ozdemir
+ *   Aina Niemetz, Andrew Reynolds, Kshitij Bansal
  *
  * This file is part of the cvc5 project.
  *
@@ -10,36 +10,57 @@
  * directory for licensing information.
  * ****************************************************************************
  *
- * Finite field rewriting machinery
- *
- * Summary of rewrites:
- * - negation
- *   - pre: change to scalar multiplication
- *   - post: un-needed because we rewrite away
- * - addition
- *   - pre: flatten
- *   - post: constant-fold
- *     - collect constants and sum
- *     - collect pairs (scalar, non-scalar) and sum scalars
- *     - trim identity
- * - multiplication
- *   - pre: flatten
- *   - post: constant-fold
- *     - collect constants and multiply
- *     - zero -> zero
- *     - trim identity
+ * FiniteFields theory rewriter.
  */
 
-#include "theory/arith/ff/rewriter.h"
+#include "theory/ff/theory_ff_rewriter.h"
 
-#include <map>
-
+#include "expr/attribute.h"
 #include "expr/algorithm/flatten.h"
 #include "expr/node_manager.h"
+#include "util/finite_field.h"
 
 namespace cvc5::internal {
 namespace theory {
-namespace arith {
+namespace ff {
+
+// static
+RewriteResponse TheoryFiniteFieldsRewriter::postRewrite(TNode t) {
+  Trace("ff::rw::post") << "ff::postRewrite: " << t << std::endl;
+  if(t.isConst()){
+    return RewriteResponse(REWRITE_DONE, t);
+  }else if(t.isVar()){
+    return RewriteResponse(REWRITE_DONE, t);
+  }else{
+    switch(Kind k = t.getKind()){
+      case kind::FINITE_FIELD_NEG: return RewriteResponse(REWRITE_DONE, t);
+      case kind::FINITE_FIELD_ADD: return RewriteResponse(REWRITE_DONE, postRewriteFfAdd(t));
+      case kind::FINITE_FIELD_MULT: return RewriteResponse(REWRITE_DONE, postRewriteFfMult(t));
+      case kind::EQUAL: return RewriteResponse(REWRITE_DONE, postRewriteFfEq(t));
+      case kind::NOT: return RewriteResponse(REWRITE_DONE, postRewriteFfNotEq(t));
+      default: Unhandled() << k;
+    }
+  }
+}
+
+// static
+RewriteResponse TheoryFiniteFieldsRewriter::preRewrite(TNode t) {
+  Trace("ff::rw::pre") << "ff::preRewrite: " << t << std::endl;
+  if(t.isConst()){
+    return RewriteResponse(REWRITE_DONE, t);
+  }else if(t.isVar()){
+    return RewriteResponse(REWRITE_DONE, t);
+  }else{
+    switch(Kind k = t.getKind()){
+      case kind::FINITE_FIELD_NEG: return RewriteResponse(REWRITE_DONE, preRewriteFfNeg(t));
+      case kind::FINITE_FIELD_ADD: return RewriteResponse(REWRITE_DONE, preRewriteFfAdd(t));
+      case kind::FINITE_FIELD_MULT: return RewriteResponse(REWRITE_DONE, preRewriteFfMult(t));
+      case kind::EQUAL: return RewriteResponse(REWRITE_DONE, t);
+      case kind::NOT: return RewriteResponse(REWRITE_DONE, t);
+      default: Unhandled() << k;
+    }
+  }
+}
 
 /** preRewrite negation */
 Node preRewriteFfNeg(TNode t)
@@ -146,6 +167,47 @@ Node postRewriteFfMult(TNode t)
   return mkNary(Kind::FINITE_FIELD_MULT, std::move(summands));
 }
 
+/** postRewrite equality */
+Node postRewriteFfEq(TNode t)
+{
+  Assert(t.getKind() == Kind::EQUAL);
+  if (t[0].isConst() && t[1].isConst())
+  {
+    FiniteField l = t[0].getConst<FiniteField>();
+    FiniteField r = t[1].getConst<FiniteField>();
+    return NodeManager::currentNM()->mkConst<bool>(l == r);
+  }
+  else if (t[0] == t[1])
+  {
+    return NodeManager::currentNM()->mkConst<bool>(true);
+  }
+  else
+  {
+    return t;
+  }
+}
+
+/** postRewrite disequality */
+Node postRewriteFfNotEq(TNode t)
+{
+  Assert(t.getKind() == Kind::NOT);
+  Assert(t[0].getKind() == Kind::EQUAL);
+  if (t[0][0].isConst() && t[0][1].isConst())
+  {
+    FiniteField l = t[0][0].getConst<FiniteField>();
+    FiniteField r = t[0][1].getConst<FiniteField>();
+    return NodeManager::currentNM()->mkConst<bool>(l != r);
+  }
+  else if (t[0] == t[1])
+  {
+    return NodeManager::currentNM()->mkConst<bool>(false);
+  }
+  else
+  {
+    return t;
+  }
+}
+
 /** Parse as a product with a constant scalar */
 std::optional<std::pair<Node, FiniteField>> parseScalar(TNode t)
 {
@@ -174,6 +236,6 @@ Node mkNary(Kind k, std::vector<Node>&& children)
   }
 }
 
-}  // namespace arith
+}  // namespace ff
 }  // namespace theory
 }  // namespace cvc5::internal

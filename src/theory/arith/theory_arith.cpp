@@ -131,10 +131,11 @@ TrustNode TheoryArith::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
   Trace("arith::preprocess") << "arith::preprocess() : " << atom << endl;
 
   // For finite-field assertions, do no preprocessing
-  if (isFfAtom(atom))
+  if (isFfAtom(atom) || atom.getType().isFiniteField())
   {
     // TODO: refl?
-    return TrustNode::mkTrustRewrite(atom, atom);
+    return TrustNode::null();
+    //return TrustNode::mkTrustRewrite(atom, atom);
   }
 
   if (atom.getKind() == kind::EQUAL)

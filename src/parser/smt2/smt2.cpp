@@ -534,7 +534,6 @@ Command* Smt2::setLogic(std::string name, bool fromCommand)
     {
       defineType("Real", d_solver->getRealSort(), true);
       addArithmeticOperators();
-      addFiniteFieldOperators();
       addOperator(cvc5::DIVISION, "/");
       if (!strictModeEnabled())
       {
@@ -689,6 +688,11 @@ Command* Smt2::setLogic(std::string name, bool fromCommand)
               d_solver->mkRoundingMode(cvc5::ROUND_TOWARD_ZERO));
 
     addFloatingPointOperators();
+  }
+
+  if (d_logic.isTheoryEnabled(internal::theory::THEORY_FF))
+  {
+    addFiniteFieldOperators();
   }
 
   if (d_logic.isTheoryEnabled(internal::theory::THEORY_SEP))

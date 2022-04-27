@@ -770,8 +770,6 @@ private:
 
   RationalVector d_farkasBuffer;
 
-  // Finite-field facts
-  context::CDList<Node> d_ffFacts;
   // CoCoA needs this
   CoCoA::GlobalManager d_cocoaManager;
 

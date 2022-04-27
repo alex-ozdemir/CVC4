@@ -191,43 +191,4 @@ parameterized IAND IAND_OP 2 "integer version of AND operator; first parameter i
 typerule IAND_OP ::cvc5::internal::theory::arith::IAndOpTypeRule
 typerule IAND ::cvc5::internal::theory::arith::IAndTypeRule
 
-# Finite Fields
-# operator FINITE_FIELD_TYPE 1 "finite-field type"
-constant FINITE_FIELD_TYPE \
-  struct \
-  FiniteFieldSize \
-  "::cvc5::internal::FiniteFieldSizeHashFunction" \
-  "util/finite_field.h" \
-  "finite field type"
-
-cardinality FINITE_FIELD_TYPE \
-    "::cvc5::internal::theory::arith::FiniteFieldProperties::computeCardinality(%TYPE%)" \
-    "theory/arith/theory_arith_type_rules.h"
-
-enumerator FINITE_FIELD_TYPE \
-    "::cvc5::internal::theory::arith::FiniteFieldEnumerator" \
-    "theory/arith/type_enumerator.h"
-
-well-founded FINITE_FIELD_TYPE \
-    true \
-    "(*cvc5::internal::theory::TypeEnumerator(%TYPE%))" \
-    "theory/type_enumerator.h"
-
-constant CONST_FINITE_FIELD \
-  class \
-  FiniteField \
-  ::cvc5::internal::FiniteFieldHashFunction \
-  "util/finite_field.h" \
-  "a finite-field constant; payload is an instance of the cvc5::internal::FiniteField class"
-
-## arithmetic kinds
-operator FINITE_FIELD_MULT 2: "multiplication of two or more field elements"
-operator FINITE_FIELD_NEG 1 "unary negation of a field element"
-operator FINITE_FIELD_ADD 2: "addition of two or more field elements"
-
-typerule CONST_FINITE_FIELD ::cvc5::internal::theory::arith::FiniteFieldConstantTypeRule
-typerule FINITE_FIELD_MULT ::cvc5::internal::theory::arith::FiniteFieldFixedFieldTypeRule
-typerule FINITE_FIELD_NEG ::cvc5::internal::theory::arith::FiniteFieldFixedFieldTypeRule
-typerule FINITE_FIELD_ADD ::cvc5::internal::theory::arith::FiniteFieldFixedFieldTypeRule
-
 endtheory
