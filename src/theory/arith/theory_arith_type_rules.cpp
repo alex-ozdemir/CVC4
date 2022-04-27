@@ -15,8 +15,6 @@
 
 #include "theory/arith/theory_arith_type_rules.h"
 
-#include "util/cardinality.h"
-#include "util/integer.h"
 #include "util/rational.h"
 
 namespace cvc5::internal {

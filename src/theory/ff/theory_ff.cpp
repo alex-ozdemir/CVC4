@@ -36,7 +36,8 @@ TheoryFiniteFields::TheoryFiniteFields(Env& env, OutputChannel& out, Valuation v
       d_state(env, valuation),
       d_im(env, *this, d_state, getStatsPrefix(THEORY_FF)),
       d_eqNotify(d_im),
-      d_ffFacts(context())
+      d_ffFacts(context()),
+      d_cocoaGlobalManager()
 {
   d_theoryState = &d_state;
   d_inferManager = &d_im;

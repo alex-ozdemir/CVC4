@@ -18,6 +18,8 @@
 #ifndef CVC5__THEORY__FF__THEORY_FF_H
 #define CVC5__THEORY__FF__THEORY_FF_H
 
+#include <CoCoA/GlobalManager.H>
+
 #include <memory>
 
 #include "context/cdlist.h"
@@ -94,6 +96,9 @@ class TheoryFiniteFields : public Theory
 
   // facts
   context::CDList<Node> d_ffFacts;
+
+  // this needs to be initialized before using CoCoA
+  CoCoA::GlobalManager d_cocoaGlobalManager;
 }; /* class TheoryFiniteFields */
 
 bool isSat(const context::CDList<Node>& assertions);

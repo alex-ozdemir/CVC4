@@ -18,8 +18,6 @@
 
 #pragma once
 
-#include <CoCoA/GlobalManager.H>
-
 #include <map>
 #include <vector>
 
@@ -769,9 +767,6 @@ private:
   uint32_t d_solveIntMaybeHelp, d_solveIntAttempts;
 
   RationalVector d_farkasBuffer;
-
-  // CoCoA needs this
-  CoCoA::GlobalManager d_cocoaManager;
 
   //---------------- during check
   /** Whether there were new facts during preCheck */

@@ -122,6 +122,7 @@ class IndexedRootPredicateTypeRule
  public:
   static TypeNode computeType(NodeManager* nodeManager, TNode n, bool check);
 };
+
 }  // namespace arith
 }  // namespace theory
 }  // namespace cvc5::internal

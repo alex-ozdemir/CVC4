@@ -102,40 +102,6 @@ class IntegerEnumerator : public TypeEnumeratorBase<IntegerEnumerator> {
   bool isFinished() override { return false; }
 };/* class IntegerEnumerator */
 
-class FiniteFieldEnumerator : public TypeEnumeratorBase<FiniteFieldEnumerator>
-{
-  Integer d_modulus;
-  Integer d_current_int;
-
- public:
-  FiniteFieldEnumerator(TypeNode type, TypeEnumeratorProperties* tep = NULL)
-      : TypeEnumeratorBase<FiniteFieldEnumerator>(type),
-        d_modulus(type.getFiniteFieldSize()),
-        d_current_int(0)
-  {
-    // our enumerator assumes this is a prime field
-    Assert(d_modulus.isProbablePrime());
-  }
-
-  Node operator*() override
-  {
-    if (d_current_int == d_modulus)
-    {
-      throw NoMoreValuesException(getType());
-    }
-    // TODO: create the correct term
-    return Node::null();
-  }
-
-  FiniteFieldEnumerator& operator++() override
-  {
-    d_current_int += 1;
-    return *this;
-  }
-
-  bool isFinished() override { return d_current_int == d_modulus; }
-}; /* FiniteFieldEnumerator */
-
 }  // namespace arith
 }  // namespace theory
 }  // namespace cvc5::internal

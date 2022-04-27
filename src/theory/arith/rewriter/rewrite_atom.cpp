@@ -17,7 +17,6 @@
 
 #include "base/check.h"
 #include "theory/arith/rewriter/node_utils.h"
-#include "util/finite_field.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -195,22 +194,6 @@ std::optional<bool> tryEvaluateRelation(Kind rel, TNode left, TNode right)
 {
   if (left.isConst())
   {
-    if (left.getType().isFiniteField())
-    {
-      Assert(right.getType().isFiniteField());
-      if (right.isConst())
-      {
-        Assert(rel == Kind::EQUAL || rel == Kind::DISTINCT);
-        switch (rel) {
-          case kind::EQUAL:
-            return left.getConst<FiniteField>() == right.getConst<FiniteField>();
-          case kind::DISTINCT:
-            return left.getConst<FiniteField>() != right.getConst<FiniteField>();
-          default:
-            Unreachable();
-        }
-      }
-    }
     const Rational& l = left.getConst<Rational>();
     if (right.isConst())
     {
