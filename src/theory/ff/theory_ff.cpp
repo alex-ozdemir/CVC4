@@ -24,6 +24,7 @@
 #include "theory/trust_substitutions.h"
 #include "expr/node_manager_attributes.h"
 #include "expr/node_traversal.h"
+#include "util/cocoa_globals.h"
 
 using namespace cvc5::internal::kind;
 
@@ -36,11 +37,12 @@ TheoryFiniteFields::TheoryFiniteFields(Env& env, OutputChannel& out, Valuation v
       d_state(env, valuation),
       d_im(env, *this, d_state, getStatsPrefix(THEORY_FF)),
       d_eqNotify(d_im),
-      d_ffFacts(context()),
-      d_cocoaGlobalManager()
+      d_ffFacts(context())
 {
   d_theoryState = &d_state;
   d_inferManager = &d_im;
+  // must be initialized before using CoCoA.
+  initCocoaGlobalManager();
 }
 
 TheoryFiniteFields::~TheoryFiniteFields()

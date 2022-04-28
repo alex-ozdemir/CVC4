@@ -21,6 +21,8 @@ libcvc5_add_sources(
   bin_heap.h
   bitvector.cpp
   bitvector.h
+  cocoa_globals.cpp
+  cocoa_globals.h
   finite_field.cpp
   finite_field.h
   bool.h
