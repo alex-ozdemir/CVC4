@@ -110,7 +110,7 @@ bool TheoryFiniteFields::collectModelValues(TheoryModel* m,
                                     const std::set<Node>& termSet)
 {
   // TODO
-  return false;
+  return true;
 }
 
 void TheoryFiniteFields::computeCareGraph()
