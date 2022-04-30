@@ -15,8 +15,8 @@
 
 #include "theory/ff/theory_ff_rewriter.h"
 
-#include "expr/attribute.h"
 #include "expr/algorithm/flatten.h"
+#include "expr/attribute.h"
 #include "expr/node_manager.h"
 #include "util/finite_field.h"
 
@@ -25,36 +25,57 @@ namespace theory {
 namespace ff {
 
 // static
-RewriteResponse TheoryFiniteFieldsRewriter::postRewrite(TNode t) {
+RewriteResponse TheoryFiniteFieldsRewriter::postRewrite(TNode t)
+{
   Trace("ff::rw::post") << "ff::postRewrite: " << t << std::endl;
-  if(t.isConst()){
+  if (t.isConst())
+  {
     return RewriteResponse(REWRITE_DONE, t);
-  }else if(t.isVar()){
+  }
+  else if (t.isVar())
+  {
     return RewriteResponse(REWRITE_DONE, t);
-  }else{
-    switch(Kind k = t.getKind()){
+  }
+  else
+  {
+    switch (Kind k = t.getKind())
+    {
       case kind::FINITE_FIELD_NEG: return RewriteResponse(REWRITE_DONE, t);
-      case kind::FINITE_FIELD_ADD: return RewriteResponse(REWRITE_DONE, postRewriteFfAdd(t));
-      case kind::FINITE_FIELD_MULT: return RewriteResponse(REWRITE_DONE, postRewriteFfMult(t));
-      case kind::EQUAL: return RewriteResponse(REWRITE_DONE, postRewriteFfEq(t));
-      case kind::NOT: return RewriteResponse(REWRITE_DONE, postRewriteFfNotEq(t));
+      case kind::FINITE_FIELD_ADD:
+        return RewriteResponse(REWRITE_DONE, postRewriteFfAdd(t));
+      case kind::FINITE_FIELD_MULT:
+        return RewriteResponse(REWRITE_DONE, postRewriteFfMult(t));
+      case kind::EQUAL:
+        return RewriteResponse(REWRITE_DONE, postRewriteFfEq(t));
+      case kind::NOT:
+        return RewriteResponse(REWRITE_DONE, postRewriteFfNotEq(t));
       default: Unhandled() << k;
     }
   }
 }
 
 // static
-RewriteResponse TheoryFiniteFieldsRewriter::preRewrite(TNode t) {
+RewriteResponse TheoryFiniteFieldsRewriter::preRewrite(TNode t)
+{
   Trace("ff::rw::pre") << "ff::preRewrite: " << t << std::endl;
-  if(t.isConst()){
+  if (t.isConst())
+  {
     return RewriteResponse(REWRITE_DONE, t);
-  }else if(t.isVar()){
+  }
+  else if (t.isVar())
+  {
     return RewriteResponse(REWRITE_DONE, t);
-  }else{
-    switch(Kind k = t.getKind()){
-      case kind::FINITE_FIELD_NEG: return RewriteResponse(REWRITE_DONE, preRewriteFfNeg(t));
-      case kind::FINITE_FIELD_ADD: return RewriteResponse(REWRITE_DONE, preRewriteFfAdd(t));
-      case kind::FINITE_FIELD_MULT: return RewriteResponse(REWRITE_DONE, preRewriteFfMult(t));
+  }
+  else
+  {
+    switch (Kind k = t.getKind())
+    {
+      case kind::FINITE_FIELD_NEG:
+        return RewriteResponse(REWRITE_DONE, preRewriteFfNeg(t));
+      case kind::FINITE_FIELD_ADD:
+        return RewriteResponse(REWRITE_DONE, preRewriteFfAdd(t));
+      case kind::FINITE_FIELD_MULT:
+        return RewriteResponse(REWRITE_DONE, preRewriteFfMult(t));
       case kind::EQUAL: return RewriteResponse(REWRITE_DONE, t);
       case kind::NOT: return RewriteResponse(REWRITE_DONE, t);
       default: Unhandled() << k;
@@ -119,9 +140,24 @@ Node postRewriteFfAdd(TNode t)
   }
   for (const auto& summand : scalarTerms)
   {
-    Node c = nm->mkConst(summand.second);
-    summands.push_back(expr::algorithm::flatten(
-        nm->mkNode(Kind::FINITE_FIELD_MULT, c, summand.first)));
+    if (summand.second.getValue().isZero())
+    {
+      // drop this term
+    }
+    else if (summand.second.getValue().isOne())
+    {
+      summands.push_back(summand.first);
+    }
+    else
+    {
+      Node c = nm->mkConst(summand.second);
+      summands.push_back(expr::algorithm::flatten(
+          nm->mkNode(Kind::FINITE_FIELD_MULT, c, summand.first)));
+    }
+  }
+  if (summands.size() == 0)
+  {
+    return nm->mkConst(FiniteField::mkZero(field.getFiniteFieldSize()));
   }
   return mkNary(Kind::FINITE_FIELD_ADD, std::move(summands));
 }

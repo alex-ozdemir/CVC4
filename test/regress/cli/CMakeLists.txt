@@ -610,6 +610,8 @@ set(regress_0_tests
   regress0/ff/rewriter.smt2
   regress0/ff/univar_conjunction_sat.smt2
   regress0/ff/univar_conjunction_unsat.smt2
+  regress0/ff/bool_nary_or_sound.smt2
+  regress0/ff/bool_nary_or_unsound.smt2
   regress0/ff/simple.smt2
   regress0/flet.smtv1.smt2
   regress0/flet2.smtv1.smt2
