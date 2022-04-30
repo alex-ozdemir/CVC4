@@ -21,14 +21,14 @@ namespace cvc5::internal {
 
 const Integer& FiniteField::getValue() const { return d_value; }
 
-const Integer& FiniteField::getFieldSize() const { return d_modulus; }
+const Integer& FiniteField::getFieldSize() const { return d_size; }
 
 Integer FiniteField::toInteger() const { return d_value; }
 
 Integer FiniteField::toSignedInteger() const
 {
-  Integer half_modulus = d_modulus.divByPow2(1) + 1;
-  return (d_value < half_modulus) ? d_value : d_value - d_modulus;
+  Integer half_modulus = d_size.divByPow2(1) + 1;
+  return (d_value < half_modulus) ? d_value : d_value - d_size;
 }
 
 std::string FiniteField::toString(unsigned int base) const
@@ -36,7 +36,7 @@ std::string FiniteField::toString(unsigned int base) const
   return toSignedInteger().toString();
 }
 
-size_t FiniteField::hash() const { return d_value.hash() + d_modulus.hash(); }
+size_t FiniteField::hash() const { return d_value.hash() + d_size.hash(); }
 
 /* -----------------------------------------------------------------------
  * Operators
@@ -46,13 +46,13 @@ size_t FiniteField::hash() const { return d_value.hash() + d_modulus.hash(); }
 
 bool FiniteField::operator==(const FiniteField& y) const
 {
-  if (d_modulus != y.d_modulus) return false;
+  if (d_size != y.d_size) return false;
   return d_value == y.d_value;
 }
 
 bool FiniteField::operator!=(const FiniteField& y) const
 {
-  if (d_modulus != y.d_modulus) return true;
+  if (d_size != y.d_size) return true;
   return d_value != y.d_value;
 }
 
@@ -82,30 +82,30 @@ bool FiniteField::operator>=(const FiniteField& y) const
 
 FiniteField FiniteField::operator+(const FiniteField& y) const
 {
-  Assert(d_modulus == y.d_modulus)
-      << "Size mismatch: " << d_modulus << " != " << y.d_modulus;
-  Integer sum = d_value.modAdd(y.d_value, d_modulus);
-  return {sum, d_modulus};
+  Assert(d_size == y.d_size)
+      << "Size mismatch: " << d_size << " != " << y.d_size;
+  Integer sum = d_value.modAdd(y.d_value, d_size);
+  return {sum, d_size};
 }
 
 FiniteField FiniteField::operator-(const FiniteField& y) const
 {
-  Assert(d_modulus == y.d_modulus)
-      << "Size mismatch: " << d_modulus << " != " << y.d_modulus;
-  return {d_value - y.d_value, d_modulus};
+  Assert(d_size == y.d_size)
+      << "Size mismatch: " << d_size << " != " << y.d_size;
+  return {d_value - y.d_value, d_size};
 }
 
 FiniteField FiniteField::operator-() const
 {
-  return {d_modulus - d_value, d_modulus};
+  return {d_size - d_value, d_size};
 }
 
 FiniteField FiniteField::operator*(const FiniteField& y) const
 {
-  Assert(d_modulus == y.d_modulus)
-      << "Size mismatch: " << d_modulus << " != " << y.d_modulus;
-  Integer prod = d_value.modMultiply(y.d_value, d_modulus);
-  return {prod, d_modulus};
+  Assert(d_size == y.d_size)
+      << "Size mismatch: " << d_size << " != " << y.d_size;
+  Integer prod = d_value.modMultiply(y.d_value, d_size);
+  return {prod, d_size};
 }
 
 FiniteField FiniteField::operator/(const FiniteField& y) const
@@ -116,7 +116,7 @@ FiniteField FiniteField::operator/(const FiniteField& y) const
 FiniteField FiniteField::recip() const
 {
   CheckArgument(!d_value.isZero(), *this);
-  return {d_value.modInverse(d_modulus), d_modulus};
+  return {d_value.modInverse(d_size), d_size};
 }
 
 /* -----------------------------------------------------------------------

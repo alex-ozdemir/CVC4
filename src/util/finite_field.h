@@ -30,21 +30,21 @@ namespace cvc5::internal {
 class FiniteField
 {
  public:
-  FiniteField(const Integer& val, const Integer& modulus)
+  FiniteField(const Integer& val, const Integer& size)
       // for the normalization
-      : d_modulus(modulus), d_value(val.floorDivideRemainder(modulus))
+      : d_size(size), d_value(val.floorDivideRemainder(size))
   {
-    // we only support prime fields
-    CheckArgument(modulus.isProbablePrime(), modulus);
+    // we only support prime fields right now
+    CheckArgument(size.isProbablePrime(), size);
   }
 
   /**
    * Construct the zero in this field
    */
-  FiniteField(const Integer& modulus) : d_modulus(modulus), d_value(0)
+  FiniteField(const Integer& size) : d_size(size), d_value(0)
   {
-    // we only support prime fields
-    CheckArgument(modulus.isProbablePrime(), modulus);
+    // we only support prime fields right now
+    CheckArgument(size.isProbablePrime(), size);
   }
 
   ~FiniteField() {}
@@ -52,7 +52,7 @@ class FiniteField
   FiniteField& operator=(const FiniteField& x)
   {
     if (this == &x) return *this;
-    d_modulus = x.d_modulus;
+    d_size = x.d_size;
     d_value = x.d_value;
     return *this;
   }
@@ -142,7 +142,7 @@ class FiniteField
    *  - no negative numbers: d_value >= 0
    */
 
-  Integer d_modulus;
+  Integer d_size;
   Integer d_value;
 
 }; /* class FiniteField */
