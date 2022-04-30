@@ -50,6 +50,7 @@
 #include "util/bitvector.h"
 #include "util/divisible.h"
 #include "util/floatingpoint.h"
+#include "util/finite_field.h"
 #include "util/iand.h"
 #include "util/indexed_root_predicate.h"
 #include "util/real_algebraic_number.h"
@@ -189,6 +190,9 @@ void Smt2Printer::toStream(std::ostream& out,
       break;
     case kind::BITVECTOR_TYPE:
       out << "(_ BitVec " << n.getConst<BitVectorSize>().d_size << ")";
+      break;
+    case kind::FINITE_FIELD_TYPE:
+      out << "(_ FiniteField " << n.getConst<FiniteFieldSize>().d_size << ")";
       break;
     case kind::FLOATINGPOINT_TYPE:
       out << "(_ FloatingPoint "
