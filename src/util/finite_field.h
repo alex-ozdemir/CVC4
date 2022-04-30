@@ -11,6 +11,10 @@
  * ****************************************************************************
  *
  * A finite-field element, implemented as a wrapper around Integer.
+ *
+ * TODOs:
+ * * consider montgomery form
+ * * extend to non-prime fields
  */
 
 #include "cvc5_public.h"
