@@ -175,7 +175,6 @@ struct FiniteFieldSizeHashFunction
  * Output stream
  * ----------------------------------------------------------------------- */
 
-inline std::ostream& operator<<(std::ostream& os, const FiniteField& ff);
 inline std::ostream& operator<<(std::ostream& os, const FiniteField& ff)
 {
   return os << ff.toString();

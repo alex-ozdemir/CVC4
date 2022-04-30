@@ -27,8 +27,8 @@ Integer FiniteField::toInteger() const { return d_value; }
 
 Integer FiniteField::toSignedInteger() const
 {
-  Integer half_modulus = d_size.divByPow2(1) + 1;
-  return (d_value < half_modulus) ? d_value : d_value - d_size;
+  Integer half_size = d_size.divByPow2(1) + 1;
+  return (d_value < half_size) ? d_value : d_value - d_size;
 }
 
 std::string FiniteField::toString(unsigned int base) const
@@ -123,8 +123,8 @@ FiniteField FiniteField::recip() const
  * Static helpers.
  * ----------------------------------------------------------------------- */
 
-FiniteField FiniteField::mkZero(const Integer& modulus) { return {0, modulus}; }
+FiniteField FiniteField::mkZero(const Integer& size) { return {0, size}; }
 
-FiniteField FiniteField::mkOne(const Integer& modulus) { return {1, modulus}; }
+FiniteField FiniteField::mkOne(const Integer& size) { return {1, size}; }
 
 }  // namespace cvc5::internal
