@@ -25,7 +25,7 @@
 namespace cvc5::internal {
 
 #ifdef CVC5_USE_COCOA
-static CoCoA::GlobalManager* s_cocoaGlobalManager = nullptr;
+[[maybe_unused]] static CoCoA::GlobalManager* s_cocoaGlobalManager = nullptr;
 #endif /* CVC5_USE_COCOA */
 
 /**
