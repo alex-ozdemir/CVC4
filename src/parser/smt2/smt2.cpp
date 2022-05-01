@@ -893,6 +893,14 @@ void Smt2::parseOpApplyTypeAscription(ParseOp& p, cvc5::Sort type)
     if (p.d_name.find("ff") == 0)
     {
       std::string rest = p.d_name.substr(2);
+      if (!type.isFiniteField())
+      {
+        std::stringstream ss;
+        ss << "expected finite field sort to ascribe "
+           << p.d_name
+           << " but found sort: " << type;
+        parseError(ss.str());
+      }
       p.d_expr = d_solver->mkFiniteFieldElem(rest, type);
     }
     if (p.d_expr.isNull())
