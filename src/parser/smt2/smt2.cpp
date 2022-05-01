@@ -890,6 +890,11 @@ void Smt2::parseOpApplyTypeAscription(ParseOp& p, cvc5::Sort type)
       p.d_expr = getExpressionForNameAndType(p.d_name, type);
       p.d_name = std::string("");
     }
+    if (p.d_name.find("ff") == 0)
+    {
+      std::string rest = p.d_name.substr(2);
+      p.d_expr = d_solver->mkFiniteFieldElem(rest, type);
+    }
     if (p.d_expr.isNull())
     {
       std::stringstream ss;
