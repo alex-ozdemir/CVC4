@@ -161,6 +161,23 @@ bool TheoryFiniteFields::isEntailed( Node n, bool pol )
   return false;
 }
 
+CoCoA::RingElem bigPower(CoCoA::RingElem b, CoCoA::BigInt e)
+{
+  CoCoA::RingElem acc = CoCoA::one(CoCoA::owner(b));
+  CoCoA::BigInt two = CoCoA::BigInt(2);
+  while (!CoCoA::IsZero(e))
+  {
+    if (CoCoA::IsOdd(e))
+    {
+      acc *= b;
+      e -= 1;
+    }
+    b *= b;
+    CoCoA::divexact(e, e, two);
+  }
+  return acc;
+}
+
 bool isSat(const context::CDList<Node>& assertions)
 {
   std::unordered_set<Node> vars = getVars(assertions);
@@ -186,12 +203,16 @@ bool isSat(const context::CDList<Node>& assertions)
   std::vector<Node> nodes;
   std::vector<CoCoA::symbol> symbolVec;
   std::vector<CoCoA::symbol> invSyms;
+
+  // Create true variables
   for (const auto& var : vars)
   {
     CoCoA::symbol sym(var.getAttribute(expr::VarNameAttr()));
     symbolVec.push_back(sym);
     nodes.push_back(var);
   }
+
+  // Create disequality inversion witnesses
   size_t numDisequalities = countDisequalities(assertions);
   for (size_t i = 0; i < numDisequalities; ++i)
   {
@@ -199,6 +220,8 @@ bool isSat(const context::CDList<Node>& assertions)
     symbolVec.push_back(sym);
     invSyms.push_back(sym);
   }
+
+  // Create the polynomial ring and find the variable polynomials
   CoCoA::SparsePolyRing ringPoly = CoCoA::NewPolyRing(ringFp, symbolVec);
   std::unordered_map<Node, CoCoA::RingElem> varPolys;
   for (size_t i = 0; i < nodes.size(); ++i)
@@ -212,6 +235,8 @@ bool isSat(const context::CDList<Node>& assertions)
   {
     invPolys.push_back(CoCoA::indet(ringPoly, nodePolys.size() + i));
   }
+
+  // Build polynomials for terms
   for (const auto& term : assertions)
   {
     for (const auto& node :
@@ -261,6 +286,8 @@ bool isSat(const context::CDList<Node>& assertions)
     }
   }
   std::vector<CoCoA::RingElem> generators;
+
+  // Add one polynomial per assertion
   size_t disequalityIndex = 0;
   for (const auto& assertion : assertions)
   {
@@ -294,6 +321,21 @@ bool isSat(const context::CDList<Node>& assertions)
                        << std::endl;
     generators.push_back(p);
   }
+
+//  Commented out b/c CoCoA can't handle huge exponents
+//
+//  // Size of multiplicative group
+//  CoCoA::BigInt mSize = size - 1;
+//
+//  // Add one polynomial per variable, to bar solutions in the extension field
+//  // For variable x, x^(order-1) - 1.
+//  for (size_t i = 0; i < symbolVec.size(); ++i)
+//  {
+//    CoCoA::RingElem x = CoCoA::indet(ringPoly, i);
+//    CoCoA::RingElem x_to_q_less_one = bigPower(x, mSize);
+//    generators.push_back(x_to_q_less_one - CoCoA::one(ringPoly));
+//  }
+
   CoCoA::ideal ideal = CoCoA::ideal(generators);
   const auto basis = CoCoA::GBasis(ideal);
   Trace("ff::check") << "Groebner basis " << basis << std::endl;
