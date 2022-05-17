@@ -1962,7 +1962,7 @@ sortSymbol[cvc5::Sort& t]
 @declarations {
   std::string name;
   std::vector<cvc5::Sort> args;
-  std::vector<uint32_t> numerals;
+  std::vector<std::string> numerals;
   bool indexed = false;
 }
   : sortName[name,CHECK_NONE]
@@ -1971,7 +1971,7 @@ sortSymbol[cvc5::Sort& t]
     }
   | LPAREN_TOK (INDEX_TOK {indexed = true;} | {indexed = false;})
     symbol[name,CHECK_NONE,SYM_SORT]
-    ( nonemptyNumeralList[numerals]
+    ( nonemptyNumeralStringList[numerals]
       { 
         if (!indexed) 
         {
@@ -1984,28 +1984,28 @@ sortSymbol[cvc5::Sort& t]
           if( numerals.size() != 1 ) {
             PARSER_STATE->parseError("Illegal bitvector type.");
           }
-          if(numerals.front() == 0) {
+          if(numerals.front() == "0") {
             PARSER_STATE->parseError("Illegal bitvector size: 0");
           }
-          t = SOLVER->mkBitVectorSort(numerals.front());
+          t = SOLVER->mkBitVectorSort(AntlrInput::stringToUnsigned(numerals.front()));
         } else if( name == "FiniteField" ) {
           if( numerals.size() != 1 ) {
             PARSER_STATE->parseError("Illegal finite field type.");
           }
-          // HACK! Won't work for fields of size >32 bits
-          std::string s = std::to_string(numerals.front());
-          t = SOLVER->mkFiniteFieldSort(s);
+          t = SOLVER->mkFiniteFieldSort(numerals.front());
         } else if ( name == "FloatingPoint" ) {
           if( numerals.size() != 2 ) {
             PARSER_STATE->parseError("Illegal floating-point type.");
           }
-          if(!internal::validExponentSize(numerals[0])) {
+          uint32_t n0 = AntlrInput::stringToUnsigned(numerals[0]);
+          uint32_t n1 = AntlrInput::stringToUnsigned(numerals[1]);
+          if(!internal::validExponentSize(n0)) {
             PARSER_STATE->parseError("Illegal floating-point exponent size");
           }
-          if(!internal::validSignificandSize(numerals[1])) {
+          if(!internal::validSignificandSize(n1)) {
             PARSER_STATE->parseError("Illegal floating-point significand size");
           }
-          t = SOLVER->mkFloatingPointSort(numerals[0],numerals[1]);
+          t = SOLVER->mkFloatingPointSort(n0, n1);
         } else {
           std::stringstream ss;
           ss << "unknown indexed sort symbol `" << name << "'";
@@ -2121,12 +2121,22 @@ symbol[std::string& id,
   ;
 
 /**
- * Matches a nonempty list of numerals.
+ * Matches a nonempty list of unsigned numerals and returns their unsigned values, capped at 2^32-1.
  * @param numerals the (empty) vector to house the numerals.
  */
 nonemptyNumeralList[std::vector<uint32_t>& numerals]
   : ( INTEGER_LITERAL
       { numerals.push_back(AntlrInput::tokenToUnsigned($INTEGER_LITERAL)); }
+    )+
+  ;
+
+/**
+ * Matches a nonempty list of numerals.
+ * @param numerals the (empty) vector to house the numerals.
+ */
+nonemptyNumeralStringList[std::vector<std::string>& numeralStrings]
+  : ( INTEGER_LITERAL
+      { numeralStrings.push_back(AntlrInput::tokenText($INTEGER_LITERAL)); }
     )+
   ;
 
