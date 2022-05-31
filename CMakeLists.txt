@@ -417,6 +417,8 @@ endif()
 if(USE_COCOA)
   find_package(CoCoA REQUIRED 0.99711)
   add_definitions(-DCVC5_USE_COCOA)
+  # Perhaps try to scope this to only the targets that need it?
+  add_definitions(-DFF_MODEL_SCRIPT_PATH="${CMAKE_SOURCE_DIR}/contrib/ff/model.sage")
 endif()
 
 if(USE_EDITLINE)

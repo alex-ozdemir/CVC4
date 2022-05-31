@@ -17,14 +17,18 @@
 
 #include <CoCoA/library.H>
 
+#include <cerrno>
+#include <fstream>
 #include <numeric>
+#include <sstream>
 #include <unordered_map>
 
-#include "theory/theory_model.h"
-#include "theory/trust_substitutions.h"
 #include "expr/node_manager_attributes.h"
 #include "expr/node_traversal.h"
+#include "theory/theory_model.h"
+#include "theory/trust_substitutions.h"
 #include "util/cocoa_globals.h"
+#include "util/utility.h"
 
 using namespace cvc5::internal::kind;
 
@@ -32,12 +36,15 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-TheoryFiniteFields::TheoryFiniteFields(Env& env, OutputChannel& out, Valuation valuation)
+TheoryFiniteFields::TheoryFiniteFields(Env& env,
+                                       OutputChannel& out,
+                                       Valuation valuation)
     : Theory(THEORY_FF, env, out, valuation),
       d_state(env, valuation),
       d_im(env, *this, d_state, getStatsPrefix(THEORY_FF)),
       d_eqNotify(d_im),
-      d_ffFacts(context())
+      d_ffFacts(context()),
+      d_solution(context())
 {
   d_theoryState = &d_state;
   d_inferManager = &d_im;
@@ -45,14 +52,9 @@ TheoryFiniteFields::TheoryFiniteFields(Env& env, OutputChannel& out, Valuation v
   initCocoaGlobalManager();
 }
 
-TheoryFiniteFields::~TheoryFiniteFields()
-{
-}
+TheoryFiniteFields::~TheoryFiniteFields() {}
 
-TheoryRewriter* TheoryFiniteFields::getTheoryRewriter()
-{
-  return &d_rewriter;
-}
+TheoryRewriter* TheoryFiniteFields::getTheoryRewriter() { return &d_rewriter; }
 
 ProofRuleChecker* TheoryFiniteFields::getProofChecker() { return nullptr; }
 
@@ -82,20 +84,28 @@ void TheoryFiniteFields::postCheck(Effort level)
   // Handle ff facts
   if (!d_ffFacts.empty() && Theory::fullEffort(level))
   {
-    if (!isSat(d_ffFacts))
+    auto output = isSat(d_ffFacts);
+    bool sat = output.first;
+    if (!sat)
     {
       std::vector<Node> conflict(d_ffFacts.begin(), d_ffFacts.end());
-      d_im.conflict(NodeManager::currentNM()->mkAnd(conflict), InferenceId::ARITH_FF);
+      d_im.conflict(NodeManager::currentNM()->mkAnd(conflict),
+                    InferenceId::ARITH_FF);
+    }
+    else
+    {
+      d_solution = std::move(output.second);
     }
   }
 }
 
 void TheoryFiniteFields::notifyFact(TNode atom,
-                            bool polarity,
-                            TNode fact,
-                            bool isInternal)
+                                    bool polarity,
+                                    TNode fact,
+                                    bool isInternal)
 {
-  Trace("ff::check") << "ff::notifyFact : " << atom << " = " << polarity << std::endl;
+  Trace("ff::check") << "ff::notifyFact : " << atom << " = " << polarity
+                     << std::endl;
   if (polarity)
   {
     d_ffFacts.push_back(atom);
@@ -107,8 +117,19 @@ void TheoryFiniteFields::notifyFact(TNode atom,
 }
 
 bool TheoryFiniteFields::collectModelValues(TheoryModel* m,
-                                    const std::set<Node>& termSet)
+                                            const std::set<Node>& termSet)
 {
+  Trace("ff::model") << "Term set: " << termSet << std::endl;
+  for (const auto& node : termSet)
+  {
+    if (d_solution.get().count(node))
+    {
+      Node value = d_solution.get().at(node);
+      Trace("ff::model") << "Model entry: " << node << " -> " << value << std::endl;
+      bool okay = m->assertEquality(node, value, true);
+      Assert(okay) << "Our model was rejected";
+    }
+  }
   // TODO
   return true;
 }
@@ -155,7 +176,7 @@ void TheoryFiniteFields::presolve()
   // TODO
 }
 
-bool TheoryFiniteFields::isEntailed( Node n, bool pol )
+bool TheoryFiniteFields::isEntailed(Node n, bool pol)
 {
   // TODO
   return false;
@@ -178,7 +199,8 @@ CoCoA::RingElem bigPower(CoCoA::RingElem b, CoCoA::BigInt e)
   return acc;
 }
 
-bool isSat(const context::CDList<Node>& assertions)
+std::pair<bool, std::unordered_map<Node, Node>> isSat(
+    const context::CDList<Node>& assertions)
 {
   std::unordered_set<Node> vars = getVars(assertions);
   std::unordered_set<Integer, IntegerHashFunction> sizes =
@@ -198,8 +220,10 @@ bool isSat(const context::CDList<Node>& assertions)
   }
   AlwaysAssert(sizes.size() == 1)
       << "Unsupported: multiple field sizes. See ff::check channel.";
-  CoCoA::BigInt size = CoCoA::BigIntFromString(sizes.begin()->toString());
+  Integer sizeInternal = *sizes.begin();
+  CoCoA::BigInt size = CoCoA::BigIntFromString(sizeInternal.toString());
   CoCoA::QuotientRing ringFp = CoCoA::NewZZmod(size);
+  std::unordered_map<std::string, Node> symNameNodes;
   std::vector<Node> nodes;
   std::vector<CoCoA::symbol> symbolVec;
   std::vector<CoCoA::symbol> invSyms;
@@ -207,9 +231,11 @@ bool isSat(const context::CDList<Node>& assertions)
   // Create true variables
   for (const auto& var : vars)
   {
-    CoCoA::symbol sym(var.getAttribute(expr::VarNameAttr()));
+    std::string varName = var.getAttribute(expr::VarNameAttr());
+    CoCoA::symbol sym(varName);
     symbolVec.push_back(sym);
     nodes.push_back(var);
+    symNameNodes.insert(std::make_pair(varName, var));
   }
 
   // Create disequality inversion witnesses
@@ -322,19 +348,20 @@ bool isSat(const context::CDList<Node>& assertions)
     generators.push_back(p);
   }
 
-//  Commented out b/c CoCoA can't handle huge exponents
-//
-//  // Size of multiplicative group
-//  CoCoA::BigInt mSize = size - 1;
-//
-//  // Add one polynomial per variable, to bar solutions in the extension field
-//  // For variable x, x^(order-1) - 1.
-//  for (size_t i = 0; i < symbolVec.size(); ++i)
-//  {
-//    CoCoA::RingElem x = CoCoA::indet(ringPoly, i);
-//    CoCoA::RingElem x_to_q_less_one = bigPower(x, mSize);
-//    generators.push_back(x_to_q_less_one - CoCoA::one(ringPoly));
-//  }
+  //  Commented out b/c CoCoA can't handle huge exponents
+  //
+  //  // Size of multiplicative group
+  //  CoCoA::BigInt mSize = size - 1;
+  //
+  //  // Add one polynomial per variable, to bar solutions in the extension
+  //  field
+  //  // For variable x, x^(order-1) - 1.
+  //  for (size_t i = 0; i < symbolVec.size(); ++i)
+  //  {
+  //    CoCoA::RingElem x = CoCoA::indet(ringPoly, i);
+  //    CoCoA::RingElem x_to_q_less_one = bigPower(x, mSize);
+  //    generators.push_back(x_to_q_less_one - CoCoA::one(ringPoly));
+  //  }
 
   CoCoA::ideal ideal = CoCoA::ideal(generators);
   const auto basis = CoCoA::GBasis(ideal);
@@ -343,11 +370,79 @@ bool isSat(const context::CDList<Node>& assertions)
   {
     if (CoCoA::deg(basisPoly) == 0)
     {
-      return false;
+      return {false, {}};
     }
   }
 
-  return true;
+  Trace("ff::check") << "No 1 in G-Basis, so proceeding to model extraction"
+                     << std::endl;
+  Trace("ff::check") << "Using script at: " << FF_MODEL_SCRIPT_PATH
+                     << std::endl;
+
+  // Write the root-finding problem to a temporary file.
+  std::string problemPath = "cvc5-ff-problem-XXXXXX";
+  std::unique_ptr<std::fstream> problemFile = openTmpFile(&problemPath);
+  *problemFile << "size: " << size << std::endl;
+  *problemFile << "variables:";
+  for (const auto& symbol : symbolVec)
+  {
+    *problemFile << " " << symbol;
+  }
+  *problemFile << std::endl;
+  // use the g-basis that we already have.
+  for (const auto& basisPoly : basis)
+  {
+    *problemFile << "polynomial: " << basisPoly << std::endl;
+  }
+  problemFile->flush();
+
+  // create a temporary file for the solution.
+  std::string solutionPath = "cvc5-ff-solution-XXXXXX";
+  std::unique_ptr<std::fstream> solutionFile = openTmpFile(&solutionPath);
+
+  // run the script
+  std::ostringstream cmdBuilder;
+  cmdBuilder << FF_MODEL_SCRIPT_PATH << " -i " << problemPath << " -o "
+             << solutionPath;
+  std::string cmd = cmdBuilder.str();
+  int retValue = std::system(cmd.c_str());
+  Assert(retValue == 0) << "Non-zero return code from model script";
+
+  // parse the output
+  std::unordered_map<std::string, std::string> solutionStrs;
+  while (true)
+  {
+    std::string var;
+    std::string val;
+    *solutionFile >> var >> val;
+    if (solutionFile->eof())
+    {
+      break;
+    }
+    Assert(solutionFile->good())
+        << "IO error in reading solution file" << std::strerror(errno);
+    Trace("ff::check::model") << var << ": " << val << std::endl;
+    solutionStrs.emplace(var, val);
+  }
+
+  // The output is non-empty if there are non-extension ("real") roots.
+  if (!solutionStrs.size())
+  {
+    return {false, {}};
+  }
+
+  std::unordered_map<Node, Node> model;
+  NodeManager* nm = NodeManager::currentNM();
+  for (const auto& line : solutionStrs)
+  {
+    Node var = symNameNodes[line.first];
+    Integer integer(line.second, 10);
+    FiniteField literal(integer, sizeInternal);
+    Node value = nm->mkConst(literal);
+    model.emplace(var, value);
+  }
+
+  return {true, std::move(model)};
 }
 
 std::unordered_set<Node> getVars(const context::CDList<Node>& terms)

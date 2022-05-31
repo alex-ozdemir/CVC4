@@ -11,6 +11,7 @@ import sage.rings.polynomial.toy_buchberger as toy_buchberger
 from sage.matrix.constructor import diagonal_matrix
 from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
 from sage.rings.polynomial.ideal import Ideal_1poly_field
+from sage.rings.ideal import Ideal_pid
 from sage.misc.verbose import set_verbose
 from typing import Tuple, List
 import itertools
@@ -19,7 +20,6 @@ import unittest
 import string
 import argparse
 import sys
-import regex
 
 def vars_of_poly_or_const(g):
     if hasattr(g, 'variables'):
@@ -54,6 +54,11 @@ def ideal_dimension(I):
     elif isinstance(I, Ideal_1poly_field):
         # TODO: trivial ideal?
         dim = total_vars - 1
+    elif isinstance(I, Ideal_pid):
+        if 1 in I:
+            dim = -1
+        else:
+            dim = total_vars
     else:
         assert False, f"Cannot get the dimension of 'ideal' {I} of type {type(I)}"
     if dim == -1:
@@ -133,13 +138,12 @@ def triangular_factorization(B, n=-1, xs=None):
         family.extend([t + [q] for t in T])
     return family
 
-def variety_zero_dim(B):
+def variety_zero_dim(ring, B):
     """ Return common roots, a set of vectors.
 
     Asserts that the dimension of the variety is zero
     """
     G = B if isinstance(B, (list, tuple)) else B.gens()
-    ring = G[0].parent()
     I = ring.ideal(G)
     assert ideal_dimension(I) == 0
     basis = I.groebner_basis()
@@ -152,7 +156,7 @@ def variety_zero_dim(B):
             v.add(tuple(x))
     return v
 
-def variety_elem(B, mapping = {}):
+def variety_elem(ring, B, mapping = {}):
     """ Return a common root, if one can be found.
 
     A map from variable names to values.
@@ -163,11 +167,10 @@ def variety_elem(B, mapping = {}):
     vs = variables_of(G)
     for k in mapping:
         assert k not in vs
-    ring = G[0].parent()
     I = ring.ideal(G)
     dim = ideal_dimension(I)
     if dim == 0:
-        variety = variety_zero_dim(G)
+        variety = variety_zero_dim(ring, G)
         if len(variety) == 0:
             return None
         else:
@@ -184,7 +187,7 @@ def variety_elem(B, mapping = {}):
                     m = mapping.copy()
                     m[var] = root
                     GG = [g(**{var: root}) for g in G]
-                    common_root = variety_elem(GG, m)
+                    common_root = variety_elem(ring, GG, m)
                     if common_root is not None:
                         return common_root
                 return None
@@ -194,7 +197,7 @@ def variety_elem(B, mapping = {}):
             m = mapping.copy()
             m[var] = value
             GG = [g(**{var: value}) for g in G]
-            common_root = variety_elem(GG, m)
+            common_root = variety_elem(ring, GG, m)
             if common_root is not None:
                 return common_root
         return None
@@ -269,22 +272,22 @@ class MyUnitTests(unittest.TestCase):
                 ])
 
     def test_variety_zero_dim(self):
-        self.assertEqual(variety_zero_dim([self.a^2-self.a]), {(1,), (0,)})
-        self.assertEqual(variety_zero_dim([self.b^2-self.b]), {(1,), (0,)})
-        self.assertEqual(variety_zero_dim([self.a^2-self.a,self.b^2-self.b]), {(1,1), (0,1), (1,0), (0,0)})
-        self.assertEqual(variety_zero_dim([self.a^2-self.a,self.b^2-self.b,self.a-self.b]), {(1,1), (0,0)})
-        self.assertEqual(variety_zero_dim([self.a^2-self.a,self.b^2-self.b,2*self.a-self.b]), {(0,0)})
+        self.assertEqual(variety_zero_dim(self.P, [self.a^2-self.a]), {(1,), (0,)})
+        self.assertEqual(variety_zero_dim(self.P, [self.b^2-self.b]), {(1,), (0,)})
+        self.assertEqual(variety_zero_dim(self.P, [self.a^2-self.a,self.b^2-self.b]), {(1,1), (0,1), (1,0), (0,0)})
+        self.assertEqual(variety_zero_dim(self.P, [self.a^2-self.a,self.b^2-self.b,self.a-self.b]), {(1,1), (0,0)})
+        self.assertEqual(variety_zero_dim(self.P, [self.a^2-self.a,self.b^2-self.b,2*self.a-self.b]), {(0,0)})
 
     def test_variety_elem(self):
-        self.assertEqual(variety_elem([self.a, self.b-1]), {'a': 0, 'b': 1})
-        self.assertEqual(variety_elem([self.a, self.b-1, -1*self.c-3]), {'a': 0, 'b': 1, 'c': -3})
-        self.assertEqual(variety_elem([self.a, self.a*self.b-1]), None)
+        self.assertEqual(variety_elem(self.P, [self.a, self.b-1]), {'a': 0, 'b': 1})
+        self.assertEqual(variety_elem(self.P, [self.a, self.b-1, -1*self.c-3]), {'a': 0, 'b': 1, 'c': -3})
+        self.assertEqual(variety_elem(self.P, [self.a, self.a*self.b-1]), None)
         self.check_variety_elem([self.a*self.b-1])
         self.check_variety_elem([self.a*self.b+self.a-1])
         self.check_variety_elem([self.a*self.b+self.a-1, self.c-4])
 
     def check_variety_elem(self, polys):
-        root = variety_elem(polys)
+        root = variety_elem(self.P, polys)
         self.assertNotEqual(root, None)
         for p in polys:
             self.assertEqual(p(**root), 0)
@@ -317,15 +320,15 @@ class MyUnitTests(unittest.TestCase):
                  (-1, [('d2', 1)]),
                  ])
         self.assertEqual(parse_poly('f0*inv_witness[0] -1'),
-                [(1, [('f0', 1), ('inv_witness[0]', 1)]),
+                [(1, [('f0', 1), ('invEUwitnessEO0EC', 1)]),
                  (-1, []),
                  ])
         self.assertEqual(parse_poly('d0*inv_witness[1] -1'),
-                [(1, [('d0', 1), ('inv_witness[1]', 1)]),
+                [(1, [('d0', 1), ('invEUwitnessEO1EC', 1)]),
                  (-1, []),
                  ])
         self.assertEqual(parse_poly('f3*inv_witness[2] -1'),
-                [(1, [('f3', 1), ('inv_witness[2]', 1)]),
+                [(1, [('f3', 1), ('invEUwitnessEO2EC', 1)]),
                  (-1, []),
                  ])
 
@@ -356,7 +359,36 @@ output:
 """
 
 def name_san(s: str) -> str:
+    """ Sanitize a name from CoCoA (which may include _ and brackets) into a sage-friendly name
+
+    Rewrites:
+      [ -> EO  (escape open)
+      ] -> EC  (escape close)
+      _ -> EU  (escape underscore)
+      E -> EE  (escape escape)
+    """
     return s.replace('E', 'EE').replace('_', 'EU').replace('[', 'EO').replace(']', 'EC')
+
+def name_unsan(s: str) -> str:
+    """ Undo sanitization. See `name_san`. """
+    o = ""
+    while s:
+        if s[:2] == "EE":
+            o += "E"
+            s = s[2:]
+        elif s[:2] == "EU":
+            o += "_"
+            s = s[2:]
+        elif s[:2] == "EO":
+            o += "["
+            s = s[2:]
+        elif s[:2] == "EC":
+            o += "]"
+            s = s[2:]
+        else:
+            o += s[0]
+            s = s[1:]
+    return o
 
 def parse_monomial(s: str) -> Tuple[int, List[Tuple[str, int]]]:
     s = s.strip()
@@ -418,11 +450,11 @@ def main():
     else:
         with open(args.input) as f:
             F, R, vs, ps = parse_problem(f.read())
-        solution = variety_elem(ps)
-        assert solution is not None
+        solution = variety_elem(R, ps)
         with open(args.output, 'w') as f:
-            for v in vs:
-                f.write(f"{v} {solution[v]}\n")
+            if solution is not None:
+                for v in vs:
+                    f.write(f"{name_unsan(v)} {solution[v]}\n")
 
 
 if __name__ == "__main__":

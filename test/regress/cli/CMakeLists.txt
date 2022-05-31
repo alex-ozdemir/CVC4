@@ -619,6 +619,7 @@ set(regress_0_tests
   regress0/ff/bigff_is_zero_unsound.smt2
   regress0/ff/ff_xor_sound.smt2
   regress0/ff/ff_xor_unsound.smt2
+  regress0/ff/ff_xor_unsound_model.smt2
   regress0/ff/simple.smt2
   regress0/flet.smtv1.smt2
   regress0/flet2.smtv1.smt2

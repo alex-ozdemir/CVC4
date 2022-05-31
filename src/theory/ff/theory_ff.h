@@ -20,14 +20,15 @@
 
 #include <memory>
 
-#include "context/cdlist.h"
+#include "context/cdlist_forward.h"
+#include "context/cdo.h"
 #include "smt/logic_exception.h"
 #include "theory/care_pair_argument_callback.h"
+#include "theory/ff/theory_ff_rewriter.h"
 #include "theory/theory.h"
+#include "theory/theory_eq_notify.h"
 #include "theory/theory_inference_manager.h"
 #include "theory/theory_state.h"
-#include "theory/theory_eq_notify.h"
-#include "theory/ff/theory_ff_rewriter.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -36,7 +37,8 @@ namespace ff {
 class TheoryFiniteFields : public Theory
 {
  public:
-  /** Constructs a new instance of TheoryFiniteFields w.r.t. the provided contexts. */
+  /** Constructs a new instance of TheoryFiniteFields w.r.t. the provided
+   * contexts. */
   TheoryFiniteFields(Env& env, OutputChannel& out, Valuation valuation);
   ~TheoryFiniteFields() override;
 
@@ -94,13 +96,25 @@ class TheoryFiniteFields : public Theory
 
   // facts
   context::CDList<Node> d_ffFacts;
+
+  // The solution, if we've found one. A map from variable nodes to their
+  // constant values.
+  context::CDO<std::unordered_map<Node, Node>> d_solution;
 }; /* class TheoryFiniteFields */
 
-bool isSat(const context::CDList<Node>& assertions);
+// Returns a boolean indicating whether these assertions are satisfiable.
+//
+// If true, returns a map from the variables in the assertion to their constant
+// values in the satisfying assignment.
+//
+// If false, the map is empty.
+std::pair<bool, std::unordered_map<Node, Node>> isSat(
+    const context::CDList<Node>& assertions);
 
 std::unordered_set<Node> getVars(const context::CDList<Node>& terms);
 
-std::unordered_set<Integer, IntegerHashFunction> getFieldSizes(const context::CDList<Node>& terms);
+std::unordered_set<Integer, IntegerHashFunction> getFieldSizes(
+    const context::CDList<Node>& terms);
 
 size_t countDisequalities(const context::CDList<Node>& terms);
 

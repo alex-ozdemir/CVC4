@@ -1,5 +1,4 @@
 ; EXPECT: sat
-; COMMAND-LINE: --no-debug-check-models
 ; x, m, is_zero: field
 ; The constraints mx - 1 + is_zero = 0
 ;                 is_zero*m = 0                     ;; Note: this *should* be is_zero*x=0
