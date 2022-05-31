@@ -1530,6 +1530,21 @@ class CVC5_EXPORT Term
   std::string getBitVectorValue(uint32_t base = 2) const;
 
   /**
+   * @return True if the term is a finite field value.
+   */
+  bool isFiniteFieldValue() const;
+  /**
+   * Get the string representation of a finite field value (base 10).
+   *
+   * @note Asserts isFiniteFieldValue().
+   *
+   * @note Uses the integer representative of smallest absolute value.
+   *
+   * @return The string representation of the integer representation of this finite field value.
+   */
+  std::string getFiniteFieldValue() const;
+
+  /**
    * @return True if the term is an abstract value.
    */
   bool isUninterpretedSortValue() const;
@@ -3324,10 +3339,10 @@ class CVC5_EXPORT Solver
 
   /**
    * Create a finite-field sort.
-   * @param modulus the modulus of the field. Must be prime.
+   * @param size the modulus of the field. Must be prime.
    * @return The finite-field sort.
    */
-  Sort mkFiniteFieldSort(std::string& modulus) const;
+  Sort mkFiniteFieldSort(const std::string& size) const;
 
   /**
    * Create a datatype sort.

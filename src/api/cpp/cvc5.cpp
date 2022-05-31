@@ -2985,6 +2985,28 @@ std::string Term::getBitVectorValue(std::uint32_t base) const
   CVC5_API_TRY_CATCH_END;
 }
 
+bool Term::isFiniteFieldValue() const
+{
+  CVC5_API_TRY_CATCH_BEGIN;
+  CVC5_API_CHECK_NOT_NULL;
+  //////// all checks before this line
+  return d_node->getKind() == internal::Kind::CONST_FINITE_FIELD;
+  ////////
+  CVC5_API_TRY_CATCH_END;
+}
+std::string Term::getFiniteFieldValue() const
+{
+  CVC5_API_TRY_CATCH_BEGIN;
+  CVC5_API_CHECK_NOT_NULL;
+  CVC5_API_ARG_CHECK_EXPECTED(
+      d_node->getKind() == internal::Kind::CONST_FINITE_FIELD, *d_node)
+      << "Term to be a finite field value when calling getFiniteFieldValue()";
+  //////// all checks before this line
+  return d_node->getConst<internal::FiniteField>().toSignedInteger().toString();
+  ////////
+  CVC5_API_TRY_CATCH_END;
+}
+
 bool Term::isUninterpretedSortValue() const
 {
   CVC5_API_TRY_CATCH_BEGIN;
@@ -5468,7 +5490,7 @@ Sort Solver::mkBitVectorSort(uint32_t size) const
   CVC5_API_TRY_CATCH_END;
 }
 
-Sort Solver::mkFiniteFieldSort(std::string& modulus) const
+Sort Solver::mkFiniteFieldSort(const std::string& modulus) const
 {
   CVC5_API_TRY_CATCH_BEGIN;
   //////// all checks before this line
