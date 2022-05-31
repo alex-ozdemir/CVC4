@@ -44,7 +44,8 @@ TheoryFiniteFields::TheoryFiniteFields(Env& env,
       d_im(env, *this, d_state, getStatsPrefix(THEORY_FF)),
       d_eqNotify(d_im),
       d_ffFacts(context()),
-      d_solution(context())
+      d_solution(context()),
+      d_stats(statisticsRegistry(), "theory::ff::")
 {
   d_theoryState = &d_state;
   d_inferManager = &d_im;
@@ -84,17 +85,11 @@ void TheoryFiniteFields::postCheck(Effort level)
   // Handle ff facts
   if (!d_ffFacts.empty() && Theory::fullEffort(level))
   {
-    auto output = isSat(d_ffFacts);
-    bool sat = output.first;
-    if (!sat)
+    if (!isSat())
     {
       std::vector<Node> conflict(d_ffFacts.begin(), d_ffFacts.end());
       d_im.conflict(NodeManager::currentNM()->mkAnd(conflict),
                     InferenceId::ARITH_FF);
-    }
-    else
-    {
-      d_solution = std::move(output.second);
     }
   }
 }
@@ -199,9 +194,19 @@ CoCoA::RingElem bigPower(CoCoA::RingElem b, CoCoA::BigInt e)
   return acc;
 }
 
-std::pair<bool, std::unordered_map<Node, Node>> isSat(
-    const context::CDList<Node>& assertions)
+
+TheoryFiniteFields::Statistics::Statistics(StatisticsRegistry& registry,
+                                      const std::string& prefix)
+    : d_numReductions(registry.registerInt(prefix + "num_reductions")),
+      d_reductionTime(registry.registerTimer(prefix + "reduction_time")),
+      d_modelScriptTime(registry.registerTimer(prefix + "model_script_time"))
+  {
+    Trace("ff::stats") << "Registered 3 stats" << std::endl;
+}
+
+bool TheoryFiniteFields::isSat()
 {
+  const context::CDList<Node>& assertions = d_ffFacts;
   std::unordered_set<Node> vars = getVars(assertions);
   std::unordered_set<Integer, IntegerHashFunction> sizes =
       getFieldSizes(assertions);
@@ -305,7 +310,7 @@ std::pair<bool, std::unordered_map<Node, Node>> isSat(
           default:
             Unreachable() << "Invalid finite field kind: " << node.getKind();
         }
-        Trace("ff::check") << "Translated " << node << "\t-> " << poly
+        Trace("ff::check::trans") << "Translated " << node << "\t-> " << poly
                            << std::endl;
         nodePolys.insert(std::make_pair(node, poly));
       }
@@ -317,7 +322,7 @@ std::pair<bool, std::unordered_map<Node, Node>> isSat(
   size_t disequalityIndex = 0;
   for (const auto& assertion : assertions)
   {
-    Trace("ff::check") << "Assertion " << assertion << std::endl;
+    Trace("ff::check::trans") << "Assertion " << assertion << std::endl;
 
     CoCoA::RingElem p = ringPoly->myZero();
     switch (assertion.getKind())
@@ -325,7 +330,7 @@ std::pair<bool, std::unordered_map<Node, Node>> isSat(
       case Kind::EQUAL:
       {
         p = nodePolys[assertion[0]] - nodePolys[assertion[1]];
-        Trace("ff::check") << "Translated " << assertion << "\t-> " << p
+        Trace("ff::check::trans") << "Translated " << assertion << "\t-> " << p
                            << std::endl;
         break;
       }
@@ -343,7 +348,7 @@ std::pair<bool, std::unordered_map<Node, Node>> isSat(
         Unhandled() << "Kind " << assertion.getKind()
                     << " in finite field sat check";
     }
-    Trace("ff::check") << "Translated " << assertion << "\t-> " << p
+    Trace("ff::check::trans") << "Translated " << assertion << "\t-> " << p
                        << std::endl;
     generators.push_back(p);
   }
@@ -364,13 +369,17 @@ std::pair<bool, std::unordered_map<Node, Node>> isSat(
   //  }
 
   CoCoA::ideal ideal = CoCoA::ideal(generators);
-  const auto basis = CoCoA::GBasis(ideal);
-  Trace("ff::check") << "Groebner basis " << basis << std::endl;
+  const auto basis = [&]() {
+    CodeTimer reductionTimer(d_stats.d_reductionTime);
+    return CoCoA::GBasis(ideal);
+  }();
+  ++d_stats.d_numReductions;
+  Trace("ff::check") << "Groebner basis " << d_stats.d_numReductions.get() << " " << basis << std::endl;
   for (const auto& basisPoly : basis)
   {
     if (CoCoA::deg(basisPoly) == 0)
     {
-      return {false, {}};
+      return false;
     }
   }
 
@@ -379,6 +388,7 @@ std::pair<bool, std::unordered_map<Node, Node>> isSat(
   Trace("ff::check") << "Using script at: " << FF_MODEL_SCRIPT_PATH
                      << std::endl;
 
+  CodeTimer modelScriptTimer(d_stats.d_modelScriptTime);
   // Write the root-finding problem to a temporary file.
   std::string problemPath = "cvc5-ff-problem-XXXXXX";
   std::unique_ptr<std::fstream> problemFile = openTmpFile(&problemPath);
@@ -428,7 +438,7 @@ std::pair<bool, std::unordered_map<Node, Node>> isSat(
   // The output is non-empty if there are non-extension ("real") roots.
   if (!solutionStrs.size())
   {
-    return {false, {}};
+    return false;
   }
 
   std::unordered_map<Node, Node> model;
@@ -441,8 +451,9 @@ std::pair<bool, std::unordered_map<Node, Node>> isSat(
     Node value = nm->mkConst(literal);
     model.emplace(var, value);
   }
+  d_solution = model;
 
-  return {true, std::move(model)};
+  return true;
 }
 
 std::unordered_set<Node> getVars(const context::CDList<Node>& terms)

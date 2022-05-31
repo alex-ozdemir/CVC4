@@ -29,6 +29,7 @@
 #include "theory/theory_eq_notify.h"
 #include "theory/theory_inference_manager.h"
 #include "theory/theory_state.h"
+#include "util/statistics_stats.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -83,6 +84,9 @@ class TheoryFiniteFields : public Theory
   bool isEntailed(Node n, bool pol);
 
  private:
+  // Returns a boolean indicating whether d_ffFacts are satisfiable.
+  bool isSat();
+
   TheoryFiniteFieldsRewriter d_rewriter{};
 
   /** The state of the ff solver at full effort */
@@ -100,16 +104,23 @@ class TheoryFiniteFields : public Theory
   // The solution, if we've found one. A map from variable nodes to their
   // constant values.
   context::CDO<std::unordered_map<Node, Node>> d_solution;
-}; /* class TheoryFiniteFields */
 
-// Returns a boolean indicating whether these assertions are satisfiable.
-//
-// If true, returns a map from the variables in the assertion to their constant
-// values in the satisfying assignment.
-//
-// If false, the map is empty.
-std::pair<bool, std::unordered_map<Node, Node>> isSat(
-    const context::CDList<Node>& assertions);
+  struct Statistics
+  {
+    friend std::pair<bool, std::unordered_map<Node, Node>> isSat(
+        const context::CDList<Node>& assertions,
+        const TheoryFiniteFields::Statistics& stats);
+    // Number of groebner-basis reductions
+    IntStat d_numReductions;
+    // Time spent in groebner-basis reductions
+    TimerStat d_reductionTime;
+    // Time spent in model script
+    TimerStat d_modelScriptTime;
+    Statistics(StatisticsRegistry& reg, const std::string& prefix);
+  };
+
+  Statistics d_stats;
+}; /* class TheoryFiniteFields */
 
 std::unordered_set<Node> getVars(const context::CDList<Node>& terms);
 
