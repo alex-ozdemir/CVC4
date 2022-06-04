@@ -906,7 +906,7 @@ cdef class Solver:
         sort.csort = self.csolver.mkFloatingPointSort(exp, sig)
         return sort
 
-    def mkFiniteFieldSort(self, int size):
+    def mkFiniteFieldSort(self, size):
         """
             Create a finite field sort.
 
@@ -1452,7 +1452,7 @@ cdef class Solver:
             raise ValueError("Unexpected inputs to mkBitVector")
         return term
 
-    def mkFiniteFieldElem(self, int value, Sort sort):
+    def mkFiniteFieldElem(self, value, Sort sort):
         """
             Create finite field value.
 
