@@ -22,32 +22,32 @@ from cvc5 import Kind
 
 slv = cvc5.Solver()
 slv.setOption("produce-models", "true")
-F = slv.mkFiniteFieldSort("5")
+F = slv.mkFiniteFieldSort(5)
 a = slv.mkConst(F, "a")
 b = slv.mkConst(F, "b")
-assert "5" == F.getFiniteFieldSize()
+assert 5 == F.getFiniteFieldSize()
 
 inv = slv.mkTerm(
     Kind.EQUAL,
     slv.mkTerm(Kind.FINITE_FIELD_MULT, a, b),
-    slv.mkFiniteFieldElem("1", F),
+    slv.mkFiniteFieldElem(1, F),
 )
 aIsTwo = slv.mkTerm(
     Kind.EQUAL,
     a,
-    slv.mkFiniteFieldElem("2", F),
+    slv.mkFiniteFieldElem(2, F),
 )
 slv.assertFormula(inv)
 slv.assertFormula(aIsTwo)
 r = slv.checkSat()
 assert r.isSat()
-print(slv.getValue(a).toPythonObj())
+assert slv.getValue(a).toPythonObj() == 2
 assert slv.getValue(b).toPythonObj() == -2
 
 bIsTwo = slv.mkTerm(
     Kind.EQUAL,
     b,
-    slv.mkFiniteFieldElem("2", F),
+    slv.mkFiniteFieldElem(2, F),
 )
 slv.assertFormula(bIsTwo)
 r = slv.checkSat()

@@ -906,14 +906,14 @@ cdef class Solver:
         sort.csort = self.csolver.mkFloatingPointSort(exp, sig)
         return sort
 
-    def mkFiniteFieldSort(self, str size):
+    def mkFiniteFieldSort(self, int size):
         """
             Create a finite field sort.
 
             :param size: The size of the field. Must be a prime-power.
         """
         cdef Sort sort = Sort(self)
-        sort.csort = self.csolver.mkFiniteFieldSort(size.encode())
+        sort.csort = self.csolver.mkFiniteFieldSort(str(size).encode())
         return sort
 
     def mkDatatypeSort(self, DatatypeDecl dtypedecl):
@@ -1452,7 +1452,7 @@ cdef class Solver:
             raise ValueError("Unexpected inputs to mkBitVector")
         return term
 
-    def mkFiniteFieldElem(self, str value, Sort sort):
+    def mkFiniteFieldElem(self, int value, Sort sort):
         """
             Create finite field value.
 
@@ -1461,7 +1461,7 @@ cdef class Solver:
             :param sort: The field to create the element in.
         """
         cdef Term term = Term(self)
-        term.cterm = self.csolver.mkFiniteFieldElem(value.encode(), sort.csort)
+        term.cterm = self.csolver.mkFiniteFieldElem(str(value).encode(), sort.csort)
         return term
 
     def mkConstArray(self, Sort sort, Term val):
@@ -3430,7 +3430,7 @@ cdef class Sort:
         """
             :return: The size of the finite field sort.
         """
-        return self.csort.getFiniteFieldSize().decode()
+        return int(self.csort.getFiniteFieldSize().decode())
 
     def getFloatingPointExponentSize(self):
         """
@@ -4091,7 +4091,7 @@ cdef class Term:
            :return: The representation of a finite field value in string
                     representation.
         """
-        return self.cterm.getFiniteFieldValue().decode()
+        return int(self.cterm.getFiniteFieldValue().decode())
 
     def toPythonObj(self):
         """
@@ -4118,7 +4118,7 @@ cdef class Term:
         elif self.isBitVectorValue():
             return int(self.getBitVectorValue(), 2)
         elif self.isFiniteFieldValue():
-            return int(self.getFiniteFieldValue())
+            return self.getFiniteFieldValue()
         elif self.isStringValue():
             return self.getStringValue()
         elif self.getSort().isArray():
