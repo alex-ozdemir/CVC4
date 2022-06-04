@@ -3426,6 +3426,12 @@ cdef class Sort:
         """
         return self.csort.getBitVectorSize()
 
+    def getFiniteFieldSize(self):
+        """
+            :return: The size of the finite field sort.
+        """
+        return self.csort.getFiniteFieldSize().decode()
+
     def getFloatingPointExponentSize(self):
         """
             :return: The bit-width of the exponent of the floating-point sort.

@@ -421,6 +421,7 @@ cdef extern from "api/cpp/cvc5.h" namespace "cvc5":
         Sort getSequenceElementSort() except +
         size_t getUninterpretedSortConstructorArity() except +
         uint32_t getBitVectorSize() except +
+        string getFiniteFieldSize() except +
         uint32_t getFloatingPointExponentSize() except +
         uint32_t getFloatingPointSignificandSize() except +
         size_t getDatatypeArity() except +

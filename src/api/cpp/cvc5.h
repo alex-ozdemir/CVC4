@@ -796,6 +796,13 @@ class CVC5_EXPORT Sort
    */
   uint32_t getBitVectorSize() const;
 
+  /* Finite field sort --------------------------------------------------- */
+
+  /**
+   * @return The size of the finite field sort.
+   */
+  std::string getFiniteFieldSize() const;
+
   /* Floating-point sort ------------------------------------------------- */
 
   /**

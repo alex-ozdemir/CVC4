@@ -25,6 +25,7 @@ slv.setOption("produce-models", "true")
 F = slv.mkFiniteFieldSort("5")
 a = slv.mkConst(F, "a")
 b = slv.mkConst(F, "b")
+assert "5" == F.getFiniteFieldSize()
 
 inv = slv.mkTerm(
     Kind.EQUAL,

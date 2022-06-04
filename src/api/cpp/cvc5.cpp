@@ -222,6 +222,7 @@ const static std::unordered_map<Kind, std::pair<internal::Kind, std::string>>
         KIND_ENUM(INT_TO_BITVECTOR, internal::Kind::INT_TO_BITVECTOR),
         KIND_ENUM(BITVECTOR_TO_NAT, internal::Kind::BITVECTOR_TO_NAT),
         /* Finite Fields --------------------------------------------------- */
+        KIND_ENUM(CONST_FINITE_FIELD, internal::Kind::CONST_FINITE_FIELD),
         KIND_ENUM(FINITE_FIELD_MULT, internal::Kind::FINITE_FIELD_MULT),
         KIND_ENUM(FINITE_FIELD_ADD, internal::Kind::FINITE_FIELD_ADD),
         KIND_ENUM(FINITE_FIELD_NEG, internal::Kind::FINITE_FIELD_NEG),
@@ -526,6 +527,7 @@ const static std::unordered_map<internal::Kind,
         {internal::Kind::INT_TO_BITVECTOR, INT_TO_BITVECTOR},
         {internal::Kind::BITVECTOR_TO_NAT, BITVECTOR_TO_NAT},
         /* Finite Fields --------------------------------------------------- */
+        {internal::Kind::CONST_FINITE_FIELD, CONST_FINITE_FIELD},
         {internal::Kind::FINITE_FIELD_MULT, FINITE_FIELD_MULT},
         {internal::Kind::FINITE_FIELD_ADD, FINITE_FIELD_ADD},
         {internal::Kind::FINITE_FIELD_NEG, FINITE_FIELD_NEG},
@@ -1726,6 +1728,19 @@ uint32_t Sort::getBitVectorSize() const
   CVC5_API_CHECK(isBitVector()) << "Not a bit-vector sort.";
   //////// all checks before this line
   return d_type->getBitVectorSize();
+  ////////
+  CVC5_API_TRY_CATCH_END;
+}
+
+/* Finite field sort --------------------------------------------------- */
+
+std::string Sort::getFiniteFieldSize() const
+{
+  CVC5_API_TRY_CATCH_BEGIN;
+  CVC5_API_CHECK_NOT_NULL;
+  CVC5_API_CHECK(isFiniteField()) << "Not a finite field sort.";
+  //////// all checks before this line
+  return d_type->getFiniteFieldSize().toString();
   ////////
   CVC5_API_TRY_CATCH_END;
 }

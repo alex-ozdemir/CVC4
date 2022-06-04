@@ -1817,6 +1817,14 @@ enum Kind : int32_t
   /* Finite Fields --------------------------------------------------------- */
 
   /**
+   * Finite field constant.
+   *
+   * - Create Term of this Kind with:
+   *
+   *   - Solver::mkFiniteFieldElem(const std::string&, const Sort&) const
+   */
+  CONST_FINITE_FIELD,
+  /**
    * Negation of a finite field element (additive inverse).
    *
    * - Arity: ``1``
