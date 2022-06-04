@@ -110,7 +110,10 @@ Node postRewriteFfAdd(TNode t)
   FiniteField constantTerm = FiniteField::mkZero(field.getFiniteFieldSize());
   std::map<Node, FiniteField> scalarTerms;
 
-  for (const auto& child : t)
+  std::vector<TNode> children;
+  expr::algorithm::flatten(t, children);
+
+  for (const auto& child : children)
   {
     if (child.isConst())
     {
@@ -180,7 +183,10 @@ Node postRewriteFfMult(TNode t)
   FiniteField constantTerm = FiniteField::mkOne(field.getFiniteFieldSize());
   std::vector<Node> summands;
 
-  for (const auto& child : t)
+  std::vector<TNode> children;
+  expr::algorithm::flatten(t, children);
+
+  for (const auto& child : children)
   {
     if (child.isConst())
     {
