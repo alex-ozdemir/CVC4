@@ -616,6 +616,7 @@ set(regress_0_tests
   regress0/ff/ff_is_zero_unsound.smt2
   regress0/ff/ff_xor_sound.smt2
   regress0/ff/ff_xor_unsound.smt2
+  regress0/ff/xor_unsound_missing.smt2
   regress0/ff/ff_xor_unsound_model.smt2
   regress0/ff/negneg.smt2
   regress0/ff/rewriter.smt2
