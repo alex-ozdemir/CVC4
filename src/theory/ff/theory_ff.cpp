@@ -120,7 +120,8 @@ bool TheoryFiniteFields::collectModelValues(TheoryModel* m,
     if (d_solution.get().count(node))
     {
       Node value = d_solution.get().at(node);
-      Trace("ff::model") << "Model entry: " << node << " -> " << value << std::endl;
+      Trace("ff::model") << "Model entry: " << node << " -> " << value
+                         << std::endl;
       bool okay = m->assertEquality(node, value, true);
       Assert(okay) << "Our model was rejected";
     }
@@ -194,14 +195,43 @@ CoCoA::RingElem bigPower(CoCoA::RingElem b, CoCoA::BigInt e)
   return acc;
 }
 
-
 TheoryFiniteFields::Statistics::Statistics(StatisticsRegistry& registry,
-                                      const std::string& prefix)
+                                           const std::string& prefix)
     : d_numReductions(registry.registerInt(prefix + "num_reductions")),
       d_reductionTime(registry.registerTimer(prefix + "reduction_time")),
       d_modelScriptTime(registry.registerTimer(prefix + "model_script_time"))
+{
+  Trace("ff::stats") << "Registered 3 stats" << std::endl;
+}
+
+// CoCoA symbols must start with a letter and contain only letters and
+// underscores.
+//
+// Thus, our encoding is: v_ESCAPED
+// where any underscore or invalid character in NAME is replace in ESCAPED with
+// an underscore followed by a base-16 encoding of its ASCII code using
+// alphabet abcde fghij klmno p, followed by another _.
+//
+// Sorry. It sucks, but we don't have much to work with here...
+std::string varNameToSymName(const std::string& varName)
+{
+  std::ostringstream o;
+  o << "v_";
+  for (const auto c : varName)
   {
-    Trace("ff::stats") << "Registered 3 stats" << std::endl;
+    if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'))
+    {
+      o << c;
+    }
+    else
+    {
+      uint8_t code = c;
+      o << "_"
+        << "abcdefghijklmnop"[code & 0x0f]
+        << "abcdefghijklmnop"[(code >> 4) & 0x0f] << "_";
+    }
+  }
+  return o.str();
 }
 
 bool TheoryFiniteFields::isSat()
@@ -236,18 +266,20 @@ bool TheoryFiniteFields::isSat()
   // Create true variables
   for (const auto& var : vars)
   {
-    std::string varName = var.getAttribute(expr::VarNameAttr());
-    CoCoA::symbol sym(varName);
+    const std::string varName = var.getAttribute(expr::VarNameAttr());
+    const CoCoA::symbol sym(varNameToSymName(varName));
+    std::ostringstream fullSymName;
+    fullSymName << sym;
     symbolVec.push_back(sym);
     nodes.push_back(var);
-    symNameNodes.insert(std::make_pair(varName, var));
+    symNameNodes.insert(std::make_pair(fullSymName.str(), var));
   }
 
   // Create disequality inversion witnesses
   size_t numDisequalities = countDisequalities(assertions);
   for (size_t i = 0; i < numDisequalities; ++i)
   {
-    CoCoA::symbol sym("inv_witness", i);
+    const CoCoA::symbol sym("invwitness", i);
     symbolVec.push_back(sym);
     invSyms.push_back(sym);
   }
@@ -310,8 +342,8 @@ bool TheoryFiniteFields::isSat()
           default:
             Unreachable() << "Invalid finite field kind: " << node.getKind();
         }
-        Trace("ff::check::trans") << "Translated " << node << "\t-> " << poly
-                           << std::endl;
+        Trace("ff::check::trans")
+            << "Translated " << node << "\t-> " << poly << std::endl;
         nodePolys.insert(std::make_pair(node, poly));
       }
     }
@@ -330,8 +362,8 @@ bool TheoryFiniteFields::isSat()
       case Kind::EQUAL:
       {
         p = nodePolys[assertion[0]] - nodePolys[assertion[1]];
-        Trace("ff::check::trans") << "Translated " << assertion << "\t-> " << p
-                           << std::endl;
+        Trace("ff::check::trans")
+            << "Translated " << assertion << "\t-> " << p << std::endl;
         break;
       }
       case Kind::NOT:
@@ -348,8 +380,8 @@ bool TheoryFiniteFields::isSat()
         Unhandled() << "Kind " << assertion.getKind()
                     << " in finite field sat check";
     }
-    Trace("ff::check::trans") << "Translated " << assertion << "\t-> " << p
-                       << std::endl;
+    Trace("ff::check::trans")
+        << "Translated " << assertion << "\t-> " << p << std::endl;
     generators.push_back(p);
   }
 
@@ -374,7 +406,8 @@ bool TheoryFiniteFields::isSat()
     return CoCoA::GBasis(ideal);
   }();
   ++d_stats.d_numReductions;
-  Trace("ff::check") << "Groebner basis " << d_stats.d_numReductions.get() << " " << basis << std::endl;
+  Trace("ff::check") << "Groebner basis " << d_stats.d_numReductions.get()
+                     << " " << basis << std::endl;
   for (const auto& basisPoly : basis)
   {
     if (CoCoA::deg(basisPoly) == 0)
@@ -445,11 +478,15 @@ bool TheoryFiniteFields::isSat()
   NodeManager* nm = NodeManager::currentNM();
   for (const auto& line : solutionStrs)
   {
-    Node var = symNameNodes[line.first];
-    Integer integer(line.second, 10);
-    FiniteField literal(integer, sizeInternal);
-    Node value = nm->mkConst(literal);
-    model.emplace(var, value);
+    if (symNameNodes.count(line.first))
+    {
+      Node var = symNameNodes[line.first];
+      Integer integer(line.second, 10);
+      FiniteField literal(integer, sizeInternal);
+      Node value = nm->mkConst(literal);
+      Trace("ff::check::model") << var << ": " << value << std::endl;
+      model.emplace(var, value);
+    }
   }
   d_solution = model;
 
