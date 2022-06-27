@@ -87,6 +87,8 @@ class TheoryFiniteFields : public Theory
   // Returns a boolean indicating whether d_ffFacts are satisfiable.
   bool isSat();
 
+  bool isSat(const std::vector<Node>& assertions, bool constructModel);
+
   TheoryFiniteFieldsRewriter d_rewriter{};
 
   /** The state of the ff solver at full effort */
@@ -107,9 +109,6 @@ class TheoryFiniteFields : public Theory
 
   struct Statistics
   {
-    friend std::pair<bool, std::unordered_map<Node, Node>> isSat(
-        const context::CDList<Node>& assertions,
-        const TheoryFiniteFields::Statistics& stats);
     // Number of groebner-basis reductions
     IntStat d_numReductions;
     // Time spent in groebner-basis reductions
@@ -122,12 +121,12 @@ class TheoryFiniteFields : public Theory
   Statistics d_stats;
 }; /* class TheoryFiniteFields */
 
-std::unordered_set<Node> getVars(const context::CDList<Node>& terms);
+std::unordered_set<Node> getVars(const std::vector<Node>& terms);
 
 std::unordered_set<Integer, IntegerHashFunction> getFieldSizes(
-    const context::CDList<Node>& terms);
+    const std::vector<Node>& terms);
 
-size_t countDisequalities(const context::CDList<Node>& terms);
+size_t countDisequalities(const std::vector<Node>& terms);
 
 }  // namespace ff
 }  // namespace theory

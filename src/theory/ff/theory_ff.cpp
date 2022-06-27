@@ -25,6 +25,7 @@
 
 #include "expr/node_manager_attributes.h"
 #include "expr/node_traversal.h"
+#include "options/ff_options.h"
 #include "theory/theory_model.h"
 #include "theory/trust_substitutions.h"
 #include "util/cocoa_globals.h"
@@ -236,7 +237,67 @@ std::string varNameToSymName(const std::string& varName)
 
 bool TheoryFiniteFields::isSat()
 {
-  const context::CDList<Node>& assertions = d_ffFacts;
+  const std::vector<Node> assertions(d_ffFacts.begin(), d_ffFacts.end());
+  bool sat = isSat(assertions, true);
+  if (!sat && options().ff.ffMeasureConflictQuality)
+  {
+    size_t smallest = assertions.size();
+    std::vector<Node> smallestAssertions = assertions;
+    // Each item is a (idx, bitvec) pair, where only indices post idx in bitvec
+    // can be zero'd
+    std::vector<std::pair<size_t, std::vector<bool>>> stack;
+    stack.push_back(std::make_pair(0, std::vector(assertions.size(), true)));
+    while (!stack.empty())
+    {
+      const size_t idx = stack.back().first;
+      const std::vector<bool> include = stack.back().second;
+      stack.pop_back();
+      std::vector<Node> subAs;
+      for (size_t i = 0; i < include.size(); ++i)
+      {
+        if (include[i])
+        {
+          subAs.push_back(assertions[i]);
+        }
+      }
+      bool res = isSat(subAs, false);
+      if (!res)
+      {
+        if (subAs.size() < smallest)
+        {
+          if (TraceIsOn("ff::measure::conflict"))
+          {
+            Trace("ff::measure::conflict") << "[";
+            for (const auto& a : subAs)
+            {
+              Trace("ff::measure::conflict") << ", " << a;
+            }
+            Trace("ff::measure::conflict") << "]" << std::endl;
+            ;
+          }
+          smallest = subAs.size();
+          smallestAssertions = std::move(subAs);
+        }
+        for (size_t i = idx; i < include.size(); ++i)
+        {
+          if (include[i])
+          {
+            std::vector<bool> subInclude = include;
+            subInclude[i] = false;
+            stack.push_back(std::make_pair(i + 1, std::move(subInclude)));
+          }
+        }
+      }
+    }
+    Trace("ff::measure::conflict")
+        << "size " << smallest << " / " << assertions.size() << std::endl;
+  }
+  return sat;
+}
+
+bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
+                               bool constructModel)
+{
   std::unordered_set<Node> vars = getVars(assertions);
   std::unordered_set<Integer, IntegerHashFunction> sizes =
       getFieldSizes(assertions);
@@ -416,6 +477,11 @@ bool TheoryFiniteFields::isSat()
     }
   }
 
+  if (!constructModel)
+  {
+    return true;
+  }
+
   Trace("ff::check") << "No 1 in G-Basis, so proceeding to model extraction"
                      << std::endl;
   Trace("ff::check") << "Using script at: " << FF_MODEL_SCRIPT_PATH
@@ -493,7 +559,7 @@ bool TheoryFiniteFields::isSat()
   return true;
 }
 
-std::unordered_set<Node> getVars(const context::CDList<Node>& terms)
+std::unordered_set<Node> getVars(const std::vector<Node>& terms)
 {
   std::unordered_set<Node> vars;
   for (const auto& term : terms)
@@ -510,7 +576,7 @@ std::unordered_set<Node> getVars(const context::CDList<Node>& terms)
 }
 
 std::unordered_set<Integer, IntegerHashFunction> getFieldSizes(
-    const context::CDList<Node>& terms)
+    const std::vector<Node>& terms)
 {
   std::unordered_set<Integer, IntegerHashFunction> sizes = {};
   for (const auto& term : terms)
@@ -527,7 +593,7 @@ std::unordered_set<Integer, IntegerHashFunction> getFieldSizes(
   return sizes;
 }
 
-size_t countDisequalities(const context::CDList<Node>& terms)
+size_t countDisequalities(const std::vector<Node>& terms)
 {
   size_t ct = 0;
   for (const auto& term : terms)

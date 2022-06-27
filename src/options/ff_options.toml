@@ -1,0 +1,10 @@
+id     = "FF"
+name   = "Finite Field Theory"
+
+[[option]]
+  name       = "ffMeasureConflictQuality"
+  category   = "expert"
+  long       = "ff-measure-conflict-quality"
+  type       = "bool"
+  default    = "false"
+  help       = "whether the ff engine should measure the smallest conflict"

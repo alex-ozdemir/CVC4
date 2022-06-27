@@ -1215,6 +1215,7 @@ set(options_toml_files
   options/datatypes_options.toml
   options/decision_options.toml
   options/expr_options.toml
+  options/ff_options.toml
   options/fp_options.toml
   options/main_options.toml
   options/parallel_options.toml
