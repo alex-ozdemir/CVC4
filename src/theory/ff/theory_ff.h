@@ -105,6 +105,8 @@ class TheoryFiniteFields : public Theory
   // facts
   context::CDList<Node> d_ffFacts;
 
+  std::vector<size_t> d_blame{};
+
   // The solution, if we've found one. A map from variable nodes to their
   // constant values.
   context::CDO<std::unordered_map<Node, Node>> d_solution;

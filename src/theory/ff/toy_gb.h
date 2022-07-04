@@ -27,7 +27,9 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-const std::vector<CoCoA::RingElem>& toyGBasis(CoCoA::ideal I);
+std::vector<CoCoA::RingElem> toyGBasis(CoCoA::ideal I);
+
+std::vector<CoCoA::RingElem> toyGBasisBlame(CoCoA::ideal I, std::vector<size_t>& blame);
 
 }  // namespace ff
 }  // namespace theory

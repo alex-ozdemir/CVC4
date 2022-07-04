@@ -16,3 +16,11 @@ name   = "Finite Field Theory"
   type       = "bool"
   default    = "false"
   help       = "whether to use the toy groebner basis engine"
+
+[[option]]
+  name       = "ffTraceToyGb"
+  category   = "expert"
+  long       = "ff-trace-toy-gb"
+  type       = "bool"
+  default    = "false"
+  help       = "whether to use the toy groebner basis engine"

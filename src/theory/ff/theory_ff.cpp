@@ -19,6 +19,7 @@
 
 #include <cerrno>
 #include <fstream>
+#include <iostream>
 #include <numeric>
 #include <sstream>
 #include <unordered_map>
@@ -240,6 +241,24 @@ std::optional<std::vector<Node>> TheoryFiniteFields::isSat()
 {
   const std::vector<Node> assertions(d_ffFacts.begin(), d_ffFacts.end());
   bool sat = isSat(assertions, true);
+  if (!sat && options().ff.ffTraceToyGb)
+  {
+    std::vector<Node> core;
+    for (const auto i : d_blame)
+    {
+      core.push_back(assertions[i]);
+    }
+    if (TraceIsOn("ff::measure::conflict"))
+    {
+      Trace("ff::measure::conflict") << "conflict [";
+      for (const auto& a : core)
+      {
+        Trace("ff::measure::conflict") << ", " << a;
+      }
+      Trace("ff::measure::conflict") << "]" << std::endl;
+    }
+    return core;
+  }
   if (!sat && options().ff.ffMeasureConflictQuality)
   {
     size_t smallest = assertions.size();
@@ -293,7 +312,7 @@ std::optional<std::vector<Node>> TheoryFiniteFields::isSat()
         << "size " << smallest << " / " << assertions.size() << std::endl;
     if (TraceIsOn("ff::measure::conflict"))
     {
-      Trace("ff::measure::conflict") << "[";
+      Trace("ff::measure::conflict") << "conflict [";
       for (const auto& a : smallestAssertions)
       {
         Trace("ff::measure::conflict") << ", " << a;
@@ -484,7 +503,22 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
     CodeTimer reductionTimer(d_stats.d_reductionTime);
     if (options().ff.ffUseToyGb)
     {
-      basis = toyGBasis(ideal);
+      if (options().ff.ffTraceToyGb)
+      {
+        d_blame.clear();
+        basis = toyGBasisBlame(ideal, d_blame);
+        auto basis2 = toyGBasis(ideal);
+        if (basis != basis2)
+        {
+          std::cerr << "First basis: " << basis << std::endl;
+          std::cerr << "Real  basis: " << basis2 << std::endl;
+          Assert(false);
+        }
+      }
+      else
+      {
+        basis = toyGBasis(ideal);
+      }
     }
     else
     {
