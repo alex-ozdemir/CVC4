@@ -84,8 +84,10 @@ class TheoryFiniteFields : public Theory
   bool isEntailed(Node n, bool pol);
 
  private:
-  // Returns a boolean indicating whether d_ffFacts are satisfiable.
-  bool isSat();
+  // If d_ffFacts are unsatisfiable, returns a vector of them that are unsatisfiable.
+  //
+  // If d_ffFacts are satisfiable, return nothing.
+  std::optional<std::vector<Node>> isSat();
 
   bool isSat(const std::vector<Node>& assertions, bool constructModel);
 

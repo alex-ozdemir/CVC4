@@ -86,10 +86,10 @@ void TheoryFiniteFields::postCheck(Effort level)
   // Handle ff facts
   if (!d_ffFacts.empty() && Theory::fullEffort(level))
   {
-    if (!isSat())
+    std::optional<std::vector<Node>> conflict = isSat();
+    if (conflict.has_value())
     {
-      std::vector<Node> conflict(d_ffFacts.begin(), d_ffFacts.end());
-      d_im.conflict(NodeManager::currentNM()->mkAnd(conflict),
+      d_im.conflict(NodeManager::currentNM()->mkAnd(*conflict),
                     InferenceId::ARITH_FF);
     }
   }
@@ -235,7 +235,7 @@ std::string varNameToSymName(const std::string& varName)
   return o.str();
 }
 
-bool TheoryFiniteFields::isSat()
+std::optional<std::vector<Node>> TheoryFiniteFields::isSat()
 {
   const std::vector<Node> assertions(d_ffFacts.begin(), d_ffFacts.end());
   bool sat = isSat(assertions, true);
@@ -265,15 +265,14 @@ bool TheoryFiniteFields::isSat()
       {
         if (subAs.size() < smallest)
         {
-          if (TraceIsOn("ff::measure::conflict"))
+          if (TraceIsOn("ff::measure::conflict::steps"))
           {
-            Trace("ff::measure::conflict") << "[";
+            Trace("ff::measure::conflict::steps") << "[";
             for (const auto& a : subAs)
             {
-              Trace("ff::measure::conflict") << ", " << a;
+              Trace("ff::measure::conflict::steps") << ", " << a;
             }
-            Trace("ff::measure::conflict") << "]" << std::endl;
-            ;
+            Trace("ff::measure::conflict::steps") << "]" << std::endl;
           }
           smallest = subAs.size();
           smallestAssertions = std::move(subAs);
@@ -291,8 +290,25 @@ bool TheoryFiniteFields::isSat()
     }
     Trace("ff::measure::conflict")
         << "size " << smallest << " / " << assertions.size() << std::endl;
+    if (TraceIsOn("ff::measure::conflict"))
+    {
+      Trace("ff::measure::conflict") << "[";
+      for (const auto& a : smallestAssertions)
+      {
+        Trace("ff::measure::conflict") << ", " << a;
+      }
+      Trace("ff::measure::conflict") << "]" << std::endl;
+    }
+    return smallestAssertions;
   }
-  return sat;
+  if (sat)
+  {
+    return {};
+  }
+  else
+  {
+    return std::vector(d_ffFacts.begin(), d_ffFacts.end());
+  }
 }
 
 bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
