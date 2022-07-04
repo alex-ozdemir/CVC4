@@ -26,6 +26,7 @@
 #include "expr/node_manager_attributes.h"
 #include "expr/node_traversal.h"
 #include "options/ff_options.h"
+#include "theory/ff/toy_gb.h"
 #include "theory/theory_model.h"
 #include "theory/trust_substitutions.h"
 #include "util/cocoa_globals.h"
@@ -478,10 +479,18 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
   //  }
 
   CoCoA::ideal ideal = CoCoA::ideal(generators);
-  const auto basis = [&]() {
+  std::vector<CoCoA::RingElem> basis;
+  {
     CodeTimer reductionTimer(d_stats.d_reductionTime);
-    return CoCoA::GBasis(ideal);
-  }();
+    if (options().ff.ffUseToyGb)
+    {
+      basis = toyGBasis(ideal);
+    }
+    else
+    {
+      basis = CoCoA::GBasis(ideal);
+    }
+  }
   ++d_stats.d_numReductions;
   Trace("ff::check") << "Groebner basis " << d_stats.d_numReductions.get()
                      << " " << basis << std::endl;

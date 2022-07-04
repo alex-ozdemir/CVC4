@@ -8,3 +8,11 @@ name   = "Finite Field Theory"
   type       = "bool"
   default    = "false"
   help       = "whether the ff engine should measure the smallest conflict"
+
+[[option]]
+  name       = "ffUseToyGb"
+  category   = "expert"
+  long       = "ff-use-toy-gb"
+  type       = "bool"
+  default    = "false"
+  help       = "whether to use the toy groebner basis engine"
