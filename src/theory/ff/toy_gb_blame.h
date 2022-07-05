@@ -10,13 +10,13 @@
  * directory for licensing information.
  * ****************************************************************************
  *
- * Toy Groebner basis impl.
+ * Toy Groebner basis impl with blame-tracking.
  */
 
 #include "cvc5_private.h"
 
-#ifndef CVC5__THEORY__FF__TOY_GB_H
-#define CVC5__THEORY__FF__TOY_GB_H
+#ifndef CVC5__THEORY__FF__TOY_GB_BLAME_H
+#define CVC5__THEORY__FF__TOY_GB_BLAME_H
 
 #include <utility>
 
@@ -36,10 +36,10 @@ namespace ff {
  * (2) if the basis contains a constant: the indices of the generators of I that are to blame
  *     otherwise, and empty vector.
  */
-std::pair<std::vector<CoCoA::RingElem>, std::vector<size_t>> toyGBasis(CoCoA::ideal I);
+std::pair<std::vector<CoCoA::RingElem>, std::vector<size_t>> toyGBasisBlame(CoCoA::ideal I);
 
 }  // namespace ff
 }  // namespace theory
 }  // namespace cvc5::internal
 
-#endif /* CVC5__THEORY__FF__TOY_GB_H */
+#endif /* CVC5__THEORY__FF__TOY_GB_BLAME_H */

@@ -105,6 +105,7 @@ class TheoryFiniteFields : public Theory
   // facts
   context::CDList<Node> d_ffFacts;
 
+  // indices in d_ffFacts that are responsible for the current conflict
   std::vector<size_t> d_blame{};
 
   // The solution, if we've found one. A map from variable nodes to their

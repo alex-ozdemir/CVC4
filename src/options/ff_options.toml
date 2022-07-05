@@ -7,7 +7,7 @@ name   = "Finite Field Theory"
   long       = "ff-measure-conflict-quality"
   type       = "bool"
   default    = "false"
-  help       = "whether the ff engine should measure the smallest conflict"
+  help       = "brute-force the smallest conflict"
 
 [[option]]
   name       = "ffUseToyGb"
@@ -15,7 +15,7 @@ name   = "Finite Field Theory"
   long       = "ff-use-toy-gb"
   type       = "bool"
   default    = "false"
-  help       = "whether to use the toy groebner basis engine"
+  help       = "use the toy groebner basis engine"
 
 [[option]]
   name       = "ffTraceToyGb"
@@ -23,4 +23,12 @@ name   = "Finite Field Theory"
   long       = "ff-trace-toy-gb"
   type       = "bool"
   default    = "false"
-  help       = "whether to use the toy groebner basis engine"
+  help       = "use the traced toy groebner basis engine"
+
+[[option]]
+  name       = "ffCheckTraceToyGb"
+  category   = "expert"
+  long       = "ff-check-trace-toy-gb"
+  type       = "bool"
+  default    = "false"
+  help       = "check the traced toy groebner basis engine against the untraced variant"

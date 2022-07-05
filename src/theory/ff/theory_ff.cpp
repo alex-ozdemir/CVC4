@@ -28,6 +28,7 @@
 #include "expr/node_traversal.h"
 #include "options/ff_options.h"
 #include "theory/ff/toy_gb.h"
+#include "theory/ff/toy_gb_blame.h"
 #include "theory/theory_model.h"
 #include "theory/trust_substitutions.h"
 #include "util/cocoa_globals.h"
@@ -506,23 +507,34 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
       if (options().ff.ffTraceToyGb)
       {
         d_blame.clear();
-        basis = toyGBasisBlame(ideal, d_blame);
-        auto basis2 = toyGBasis(ideal);
-        if (basis != basis2)
+        auto o = toyGBasisBlame(ideal);
+        basis = std::move(o.first);
+        d_blame = std::move(o.second);
+        if (options().ff.ffCheckTraceToyGb)
         {
-          std::cerr << "First basis: " << basis << std::endl;
-          std::cerr << "Real  basis: " << basis2 << std::endl;
-          Assert(false);
+          const auto basis2 = toyGBasis(ideal).first;
+          if (basis != basis2)
+          {
+            std::cerr << "First basis: " << basis << std::endl;
+            std::cerr << "Real  basis: " << basis2 << std::endl;
+            Assert(false);
+          }
         }
       }
       else
       {
-        basis = toyGBasis(ideal);
+        auto o = toyGBasis(ideal);
+        basis = std::move(o.first);
+        d_blame = std::move(o.second);
       }
     }
     else
     {
       basis = CoCoA::GBasis(ideal);
+      for (size_t i = 0; i< generators.size(); ++i)
+      {
+        d_blame.push_back(i);
+      }
     }
   }
   ++d_stats.d_numReductions;
