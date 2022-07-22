@@ -242,7 +242,7 @@ std::optional<std::vector<Node>> TheoryFiniteFields::isSat()
 {
   const std::vector<Node> assertions(d_ffFacts.begin(), d_ffFacts.end());
   bool sat = isSat(assertions, true);
-  if (!sat && options().ff.ffTraceToyGb)
+  if (!sat && options().ff.ffTraceGb)
   {
     std::vector<Node> core;
     for (const auto i : d_blame)
@@ -504,13 +504,13 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
     CodeTimer reductionTimer(d_stats.d_reductionTime);
     if (options().ff.ffUseToyGb)
     {
-      if (options().ff.ffTraceToyGb)
+      if (options().ff.ffTraceGb)
       {
         d_blame.clear();
         auto o = toyGBasisBlame(ideal);
         basis = std::move(o.first);
         d_blame = std::move(o.second);
-        if (options().ff.ffCheckTraceToyGb)
+        if (options().ff.ffCheckTraceGb)
         {
           const auto basis2 = toyGBasis(ideal).first;
           if (basis != basis2)
@@ -531,9 +531,23 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
     else
     {
       basis = CoCoA::GBasis(ideal);
-      for (size_t i = 0; i< generators.size(); ++i)
+      Trace("ff::check::cocoa")
+          << "CoCoA blames " << CoCoA::BlameIndices.size() << "/"
+          << generators.size() << " polynomials" << std::endl;
+      d_blame.clear();
+      if (options().ff.ffTraceGb)
       {
-        d_blame.push_back(i);
+        for (size_t i : CoCoA::BlameIndices)
+        {
+          d_blame.push_back(i);
+        }
+      }
+      else
+      {
+        for (size_t i = 0; i < generators.size(); ++i)
+        {
+          d_blame.push_back(i);
+        }
       }
     }
   }

@@ -18,17 +18,17 @@ name   = "Finite Field Theory"
   help       = "use the toy groebner basis engine"
 
 [[option]]
-  name       = "ffTraceToyGb"
+  name       = "ffTraceGb"
   category   = "expert"
-  long       = "ff-trace-toy-gb"
+  long       = "ff-trace-gb"
   type       = "bool"
   default    = "false"
-  help       = "use the traced toy groebner basis engine"
+  help       = "use a traced groebner basis engine"
 
 [[option]]
-  name       = "ffCheckTraceToyGb"
+  name       = "ffCheckTraceGb"
   category   = "expert"
-  long       = "ff-check-trace-toy-gb"
+  long       = "ff-check-trace-gb"
   type       = "bool"
   default    = "false"
-  help       = "check the traced toy groebner basis engine against the untraced variant"
+  help       = "check the traced groebner basis engine against the untraced variant"
