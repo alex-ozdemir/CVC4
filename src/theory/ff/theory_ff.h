@@ -118,8 +118,8 @@ class TheoryFiniteFields : public Theory
     IntStat d_numReductions;
     // Time spent in groebner-basis reductions
     TimerStat d_reductionTime;
-    // Time spent in model script
-    TimerStat d_modelScriptTime;
+    // Time spent in root construction
+    TimerStat d_rootConstructionTime;
     Statistics(StatisticsRegistry& reg, const std::string& prefix);
   };
 

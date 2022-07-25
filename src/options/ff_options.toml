@@ -32,3 +32,11 @@ name   = "Finite Field Theory"
   type       = "bool"
   default    = "false"
   help       = "check the traced groebner basis engine against the untraced variant"
+
+[[option]]
+  name       = "ffSageRoots"
+  category   = "expert"
+  long       = "ff-sage-roots"
+  type       = "bool"
+  default    = "false"
+  help       = "use Sage to extract common roots (instead of CoCoA)"

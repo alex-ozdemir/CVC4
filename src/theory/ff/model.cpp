@@ -82,7 +82,6 @@ RoundRobinEnumerator::RoundRobinEnumerator(
           CoCoA::power(CoCoA::characteristic(ring), CoCoA::LogCardinality(ring))
           * vars.size())
 {
-  AlwaysAssert(CoCoA::IsRingFp(d_ring));
 }
 
 RoundRobinEnumerator::~RoundRobinEnumerator() {}
@@ -197,7 +196,7 @@ std::unique_ptr<AssignmentEnumerator> brancher(const CoCoA::ideal& ideal)
       }
     }
     return std::make_unique<RoundRobinEnumerator>(toGuess,
-                                                  CoCoA::CoeffRing(polyRing));
+                                                  polyRing->myBaseRing());
   }
 }
 

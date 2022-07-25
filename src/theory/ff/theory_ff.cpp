@@ -204,7 +204,7 @@ TheoryFiniteFields::Statistics::Statistics(StatisticsRegistry& registry,
                                            const std::string& prefix)
     : d_numReductions(registry.registerInt(prefix + "num_reductions")),
       d_reductionTime(registry.registerTimer(prefix + "reduction_time")),
-      d_modelScriptTime(registry.registerTimer(prefix + "model_script_time"))
+      d_rootConstructionTime(registry.registerTimer(prefix + "root_construction_time"))
 {
   Trace("ff::stats") << "Registered 3 stats" << std::endl;
 }
@@ -575,8 +575,15 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
 
   std::vector<CoCoA::RingElem> values;
   {
-    CodeTimer modelScriptTimer(d_stats.d_modelScriptTime);
-    values = commonRootSage(ideal);
+    CodeTimer rootConstructionTimer(d_stats.d_rootConstructionTime);
+    if (options().ff.ffSageRoots)
+    {
+      values = commonRootSage(ideal);
+    }
+    else
+    {
+      values = commonRoot(ideal);
+    }
   }
 
   // The output is non-empty if there are non-extension ("real") roots.
