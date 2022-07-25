@@ -116,7 +116,8 @@ std::string ostring(const T& t)
   return o.str();
 }
 
-std::pair<size_t, CoCoA::RingElem> extractAssignment(const CoCoA::RingElem& elem)
+std::pair<size_t, CoCoA::RingElem> extractAssignment(
+    const CoCoA::RingElem& elem)
 {
   Assert(CoCoA::deg(elem) == 1);
   Assert(CoCoA::NumTerms(elem) <= 2);
@@ -136,8 +137,7 @@ std::unordered_set<std::string> assignedVars(const CoCoA::ideal& ideal)
       int varNumber = CoCoA::UnivariateIndetIndex(g);
       if (varNumber >= 0)
       {
-        ret.insert(
-            ostring(CoCoA::indet(ideal->myRing(), varNumber)));
+        ret.insert(ostring(CoCoA::indet(ideal->myRing(), varNumber)));
       }
     }
   }
@@ -179,7 +179,8 @@ std::unique_ptr<AssignmentEnumerator> brancher(const CoCoA::ideal& ideal)
         return factorEnumerator(minPoly);
       }
     }
-    Unreachable() << "There should be no unset variables in zero-dimensional ideal";
+    Unreachable()
+        << "There should be no unset variables in zero-dimensional ideal";
   }
   else
   {
@@ -264,6 +265,75 @@ std::vector<CoCoA::RingElem> commonRoot(const CoCoA::ideal& initialIdeal)
   }
   // Could not find any solution; return empty.
   return {};
+}
+
+// Sage common root.
+std::vector<CoCoA::RingElem> commonRootSage(const CoCoA::ideal& ideal)
+{
+  CoCoA::ring polyRing = ideal->myRing();
+  CoCoA::ring ring = ideal->myRing()->myBaseRing();
+  CoCoA::BigInt size =
+      CoCoA::power(CoCoA::characteristic(ring), CoCoA::LogCardinality(ring));
+  // Write the root-finding problem to a temporary file.
+  std::string problemPath = "cvc5-ff-problem-XXXXXX";
+  std::unique_ptr<std::fstream> problemFile = openTmpFile(&problemPath);
+  *problemFile << "size: " << size << std::endl;
+  *problemFile << "variables:";
+  for (const auto& symbol : CoCoA::indets(polyRing))
+  {
+    *problemFile << " " << symbol;
+  }
+  *problemFile << std::endl;
+  // use the g-basis that we already have.
+  for (const auto& basisPoly : CoCoA::GBasis(ideal))
+  {
+    *problemFile << "polynomial: " << basisPoly << std::endl;
+  }
+  problemFile->flush();
+
+  // create a temporary file for the solution.
+  std::string solutionPath = "cvc5-ff-solution-XXXXXX";
+  std::unique_ptr<std::fstream> solutionFile = openTmpFile(&solutionPath);
+
+  // run the script
+  std::ostringstream cmdBuilder;
+  cmdBuilder << FF_MODEL_SCRIPT_PATH << " -i " << problemPath << " -o "
+             << solutionPath;
+  std::string cmd = cmdBuilder.str();
+  int retValue = std::system(cmd.c_str());
+  Assert(retValue == 0) << "Non-zero return code from model script";
+
+  // parse the output
+  std::unordered_map<std::string, std::string> solutionStrs;
+  while (true)
+  {
+    std::string var;
+    std::string val;
+    *solutionFile >> var >> val;
+    if (solutionFile->eof())
+    {
+      break;
+    }
+    Assert(solutionFile->good())
+        << "IO error in reading solution file" << std::strerror(errno);
+    Trace("ff::check::model") << var << ": " << val << std::endl;
+    solutionStrs.emplace(var, val);
+  }
+
+  // The output is non-empty if there are non-extension ("real") roots.
+  if (!solutionStrs.size())
+  {
+    return {};
+  }
+
+  std::vector<CoCoA::RingElem> ret;
+  size_t nVars = CoCoA::NumIndets(polyRing);
+  for (size_t i = 0; i < nVars; ++i)
+  {
+    ret.push_back(CoCoA::RingElem(
+        ring, solutionStrs.at(ostring(CoCoA::indet(polyRing, i)))));
+  }
+  return ret;
 }
 
 }  // namespace ff

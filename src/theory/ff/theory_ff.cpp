@@ -27,6 +27,7 @@
 #include "expr/node_manager_attributes.h"
 #include "expr/node_traversal.h"
 #include "options/ff_options.h"
+#include "theory/ff/model.h"
 #include "theory/ff/toy_gb.h"
 #include "theory/ff/toy_gb_blame.h"
 #include "theory/theory_model.h"
@@ -383,18 +384,18 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
   }
 
   // Create the polynomial ring and find the variable polynomials
-  CoCoA::SparsePolyRing ringPoly = CoCoA::NewPolyRing(ringFp, symbolVec);
+  CoCoA::SparsePolyRing polyRing = CoCoA::NewPolyRing(ringFp, symbolVec);
   std::unordered_map<Node, CoCoA::RingElem> varPolys;
   for (size_t i = 0; i < nodes.size(); ++i)
   {
-    CoCoA::RingElem poly = CoCoA::indet(ringPoly, i);
+    CoCoA::RingElem poly = CoCoA::indet(polyRing, i);
     varPolys.insert(std::make_pair(nodes[i], poly));
   }
   std::unordered_map<Node, CoCoA::RingElem> nodePolys(varPolys);
   std::vector<CoCoA::RingElem> invPolys;
   for (size_t i = 0; i < numDisequalities; ++i)
   {
-    invPolys.push_back(CoCoA::indet(ringPoly, nodePolys.size() + i));
+    invPolys.push_back(CoCoA::indet(polyRing, nodePolys.size() + i));
   }
 
   // Build polynomials for terms
@@ -419,7 +420,7 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
             poly = std::accumulate(
                 subPolys.begin(),
                 subPolys.end(),
-                CoCoA::RingElem(ringPoly->myZero()),
+                CoCoA::RingElem(polyRing->myZero()),
                 [](CoCoA::RingElem a, CoCoA::RingElem b) { return a + b; });
             break;
           case Kind::FINITE_FIELD_NEG: poly = -subPolys[0]; break;
@@ -427,14 +428,14 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
             poly = std::accumulate(
                 subPolys.begin(),
                 subPolys.end(),
-                CoCoA::RingElem(ringPoly->myOne()),
+                CoCoA::RingElem(polyRing->myOne()),
                 [](CoCoA::RingElem a, CoCoA::RingElem b) { return a * b; });
             break;
           case Kind::CONST_FINITE_FIELD:
           {
             CoCoA::BigInt constant = CoCoA::BigIntFromString(
                 node.getConst<FiniteField>().getValue().toString());
-            poly = ringPoly->myOne() * constant;
+            poly = polyRing->myOne() * constant;
             break;
           }
           default:
@@ -454,7 +455,7 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
   {
     Trace("ff::check::trans") << "Assertion " << assertion << std::endl;
 
-    CoCoA::RingElem p = ringPoly->myZero();
+    CoCoA::RingElem p = polyRing->myZero();
     switch (assertion.getKind())
     {
       case Kind::EQUAL:
@@ -470,7 +471,7 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
         Assert(disequalityIndex < numDisequalities);
         CoCoA::RingElem diff =
             nodePolys[assertion[0][0]] - nodePolys[assertion[0][1]];
-        p = diff * invPolys[disequalityIndex] - ringPoly->myOne();
+        p = diff * invPolys[disequalityIndex] - polyRing->myOne();
         ++disequalityIndex;
         break;
       }
@@ -493,9 +494,9 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
   //  // For variable x, x^(order-1) - 1.
   //  for (size_t i = 0; i < symbolVec.size(); ++i)
   //  {
-  //    CoCoA::RingElem x = CoCoA::indet(ringPoly, i);
+  //    CoCoA::RingElem x = CoCoA::indet(polyRing, i);
   //    CoCoA::RingElem x_to_q_less_one = bigPower(x, mSize);
-  //    generators.push_back(x_to_q_less_one - CoCoA::one(ringPoly));
+  //    generators.push_back(x_to_q_less_one - CoCoA::one(polyRing));
   //  }
 
   CoCoA::ideal ideal = CoCoA::ideal(generators);
@@ -572,69 +573,35 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
   Trace("ff::check") << "Using script at: " << FF_MODEL_SCRIPT_PATH
                      << std::endl;
 
-  CodeTimer modelScriptTimer(d_stats.d_modelScriptTime);
-  // Write the root-finding problem to a temporary file.
-  std::string problemPath = "cvc5-ff-problem-XXXXXX";
-  std::unique_ptr<std::fstream> problemFile = openTmpFile(&problemPath);
-  *problemFile << "size: " << size << std::endl;
-  *problemFile << "variables:";
-  for (const auto& symbol : symbolVec)
+  std::vector<CoCoA::RingElem> values;
   {
-    *problemFile << " " << symbol;
-  }
-  *problemFile << std::endl;
-  // use the g-basis that we already have.
-  for (const auto& basisPoly : basis)
-  {
-    *problemFile << "polynomial: " << basisPoly << std::endl;
-  }
-  problemFile->flush();
-
-  // create a temporary file for the solution.
-  std::string solutionPath = "cvc5-ff-solution-XXXXXX";
-  std::unique_ptr<std::fstream> solutionFile = openTmpFile(&solutionPath);
-
-  // run the script
-  std::ostringstream cmdBuilder;
-  cmdBuilder << FF_MODEL_SCRIPT_PATH << " -i " << problemPath << " -o "
-             << solutionPath;
-  std::string cmd = cmdBuilder.str();
-  int retValue = std::system(cmd.c_str());
-  Assert(retValue == 0) << "Non-zero return code from model script";
-
-  // parse the output
-  std::unordered_map<std::string, std::string> solutionStrs;
-  while (true)
-  {
-    std::string var;
-    std::string val;
-    *solutionFile >> var >> val;
-    if (solutionFile->eof())
-    {
-      break;
-    }
-    Assert(solutionFile->good())
-        << "IO error in reading solution file" << std::strerror(errno);
-    Trace("ff::check::model") << var << ": " << val << std::endl;
-    solutionStrs.emplace(var, val);
+    CodeTimer modelScriptTimer(d_stats.d_modelScriptTime);
+    values = commonRootSage(ideal);
   }
 
   // The output is non-empty if there are non-extension ("real") roots.
-  if (!solutionStrs.size())
+  if (values.empty())
   {
     return false;
   }
 
   std::unordered_map<Node, Node> model;
   NodeManager* nm = NodeManager::currentNM();
-  for (const auto& line : solutionStrs)
+  size_t numVars = CoCoA::NumIndets(polyRing);
+  for (size_t i = 0; i < numVars; ++i)
   {
-    if (symNameNodes.count(line.first))
+    std::ostringstream symName;
+    symName << CoCoA::indet(polyRing, i);
+    if (symNameNodes.count(symName.str()))
     {
-      Node var = symNameNodes[line.first];
-      Integer integer(line.second, 10);
+      Node var = symNameNodes[symName.str()];
+
+      std::ostringstream valStr;
+      valStr << values[i];
+      Integer integer(valStr.str(), 10);
       FiniteField literal(integer, sizeInternal);
       Node value = nm->mkConst(literal);
+
       Trace("ff::check::model") << var << ": " << value << std::endl;
       model.emplace(var, value);
     }

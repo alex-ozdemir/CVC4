@@ -36,6 +36,9 @@ namespace ff {
 // Find a common zero for all poynomials in this ideal.
 std::vector<CoCoA::RingElem> commonRoot(const CoCoA::ideal& ideal);
 
+// Sage common root.
+std::vector<CoCoA::RingElem> commonRootSage(const CoCoA::ideal& ideal);
+
 // Enumerates **assignment**s: monic, degree-one, univariate polynomials.
 class AssignmentEnumerator
 {
