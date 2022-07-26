@@ -120,6 +120,9 @@ class TheoryFiniteFields : public Theory
     TimerStat d_reductionTime;
     // Time spent in root construction
     TimerStat d_rootConstructionTime;
+    // Number of times that model construction gave an error
+    IntStat d_numConstructionErrors;
+
     Statistics(StatisticsRegistry& reg, const std::string& prefix);
   };
 

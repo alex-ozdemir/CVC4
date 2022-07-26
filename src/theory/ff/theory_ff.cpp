@@ -204,9 +204,10 @@ TheoryFiniteFields::Statistics::Statistics(StatisticsRegistry& registry,
                                            const std::string& prefix)
     : d_numReductions(registry.registerInt(prefix + "num_reductions")),
       d_reductionTime(registry.registerTimer(prefix + "reduction_time")),
-      d_rootConstructionTime(registry.registerTimer(prefix + "root_construction_time"))
+      d_rootConstructionTime(registry.registerTimer(prefix + "root_construction_time")),
+      d_numConstructionErrors(registry.registerInt(prefix + "num_construction_errors"))
 {
-  Trace("ff::stats") << "Registered 3 stats" << std::endl;
+  Trace("ff::stats") << "ff registered 4 stats" << std::endl;
 }
 
 // CoCoA symbols must start with a letter and contain only letters and
@@ -589,6 +590,7 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
   // The output is non-empty if there are non-extension ("real") roots.
   if (values.empty())
   {
+    ++d_stats.d_numConstructionErrors;
     return false;
   }
 
