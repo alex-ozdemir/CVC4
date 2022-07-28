@@ -701,6 +701,8 @@ libcvc5_add_sources(
   theory/ff/toy_gb.h
   theory/ff/toy_gb_blame.cpp
   theory/ff/toy_gb_blame.h
+  theory/ff/trace.cpp
+  theory/ff/trace.h
   theory/fp/fp_word_blaster.cpp
   theory/fp/fp_word_blaster.h
   theory/fp/fp_expand_defs.cpp

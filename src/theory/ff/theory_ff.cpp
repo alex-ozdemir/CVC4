@@ -50,12 +50,17 @@ TheoryFiniteFields::TheoryFiniteFields(Env& env,
       d_eqNotify(d_im),
       d_ffFacts(context()),
       d_solution(context()),
-      d_stats(statisticsRegistry(), "theory::ff::")
+      d_stats(statisticsRegistry(), "theory::ff::"),
+      d_tracer()
 {
   d_theoryState = &d_state;
   d_inferManager = &d_im;
   // must be initialized before using CoCoA.
   initCocoaGlobalManager();
+  if (options().ff.ffTraceGb && !options().ff.ffUseToyGb)
+  {
+    d_tracer.initFunctionPointers();
+  }
 }
 
 TheoryFiniteFields::~TheoryFiniteFields() {}
@@ -204,8 +209,10 @@ TheoryFiniteFields::Statistics::Statistics(StatisticsRegistry& registry,
                                            const std::string& prefix)
     : d_numReductions(registry.registerInt(prefix + "num_reductions")),
       d_reductionTime(registry.registerTimer(prefix + "reduction_time")),
-      d_rootConstructionTime(registry.registerTimer(prefix + "root_construction_time")),
-      d_numConstructionErrors(registry.registerInt(prefix + "num_construction_errors"))
+      d_rootConstructionTime(
+          registry.registerTimer(prefix + "root_construction_time")),
+      d_numConstructionErrors(
+          registry.registerInt(prefix + "num_construction_errors"))
 {
   Trace("ff::stats") << "ff registered 4 stats" << std::endl;
 }
@@ -532,16 +539,28 @@ bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
     }
     else
     {
+      if (options().ff.ffTraceGb)
+      {
+        d_tracer.reset();
+        for (const auto& g : generators)
+        {
+          d_tracer.addInput(g);
+        }
+      }
       basis = CoCoA::GBasis(ideal);
-      Trace("ff::check::cocoa")
-          << "CoCoA blames " << CoCoA::BlameIndices.size() << "/"
-          << generators.size() << " polynomials" << std::endl;
       d_blame.clear();
       if (options().ff.ffTraceGb)
       {
-        for (size_t i : CoCoA::BlameIndices)
+        if (basis.size() == 1 && CoCoA::deg(basis.front()) == 0)
         {
-          d_blame.push_back(i);
+          std::vector<size_t> blameIndices = d_tracer.trace(basis.front());
+          Trace("ff::check")
+              << "CoCoA blames " << blameIndices.size() << "/"
+              << generators.size() << " polynomials" << std::endl;
+          for (size_t i : blameIndices)
+          {
+            d_blame.push_back(i);
+          }
         }
       }
       else

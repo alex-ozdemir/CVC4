@@ -24,6 +24,7 @@
 #include "context/cdo.h"
 #include "smt/logic_exception.h"
 #include "theory/care_pair_argument_callback.h"
+#include "theory/ff/trace.h"
 #include "theory/ff/theory_ff_rewriter.h"
 #include "theory/theory.h"
 #include "theory/theory_eq_notify.h"
@@ -127,6 +128,8 @@ class TheoryFiniteFields : public Theory
   };
 
   Statistics d_stats;
+
+  Tracer d_tracer;
 }; /* class TheoryFiniteFields */
 
 std::unordered_set<Node> getVars(const std::vector<Node>& terms);
