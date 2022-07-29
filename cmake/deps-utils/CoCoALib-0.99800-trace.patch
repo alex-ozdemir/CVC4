@@ -1,5 +1,5 @@
 diff --git a/include/CoCoA/TmpGPoly.H b/include/CoCoA/TmpGPoly.H
-index 4c4d51e..8216570 100644
+index 4c4d51e..6847c10 100644
 --- a/include/CoCoA/TmpGPoly.H
 +++ b/include/CoCoA/TmpGPoly.H
 @@ -29,6 +29,7 @@
@@ -14,7 +14,7 @@ index 4c4d51e..8216570 100644
  
  class GPoly;
  
-+extern bool handlersInited;
++extern bool handlersEnabled;
 +extern std::function<void(const GPoly *p, const GPoly*q, const GPoly*s)> sPolyHandler;
 +extern std::function<void(const GPoly *p)> reductionStartHandler;
 +extern std::function<void(const GPoly *q)> reductionStepHandler;
@@ -23,14 +23,14 @@ index 4c4d51e..8216570 100644
  typedef std::list<GPoly> GPolyList;
  
 diff --git a/src/AlgebraicCore/SparsePolyOps-reduce.C b/src/AlgebraicCore/SparsePolyOps-reduce.C
-index b5b8b43..bee212f 100644
+index b5b8b43..d7abf1d 100644
 --- a/src/AlgebraicCore/SparsePolyOps-reduce.C
 +++ b/src/AlgebraicCore/SparsePolyOps-reduce.C
 @@ -134,6 +134,7 @@ degree HereForProfilingOnlyWDeg(ConstRefPPMonoidElem cofactor1)
        v.myGRingInfo().myCheckForTimeout("ReduceActiveLM");
        s->myUpdate(F, *g);
        F->myReduce(poly(*g), NumTerms(*g));
-+      if ( handlersInited ) reductionStepHandler(g);
++      if ( handlersEnabled ) reductionStepHandler(g);
      }//while
    }//ReduceActiveLM
  
@@ -38,7 +38,7 @@ index b5b8b43..bee212f 100644
    void GPoly::myReduce(const Reductors& theReductors)
    {
      if ( IsZero(*this) ) return;
-+    if ( handlersInited ) reductionStartHandler(this);
++    if ( handlersEnabled ) reductionStartHandler(this);
      ReductionCog F = ChooseReductionCogGeobucket(myGRingInfo());
      F->myAssignReset(myPolyValue, myNumTerms); // myPolyValue gets 0
      reduce(F, mySugar, theReductors); // mySugar updated
@@ -46,19 +46,19 @@ index b5b8b43..bee212f 100644
      if ( !IsZero(*this) && !IsOne(myLCValue) ) // makes myPolyValue monic
        if ( myGRingInfo().myCoeffRingType()==CoeffEncoding::Field )
          myGRingInfo().myNewSPR()->myDivByCoeff(raw(myPolyValue), raw(myLCValue));
-+    if ( handlersInited ) reductionEndHandler(this);
++    if ( handlersEnabled ) reductionEndHandler(this);
      // if CoeffEncoding::Field myRelease does NOT make poly monic
      // if CoeffEncoding::FrFldOfGCDDomain myRelease makes poly content free
    }
 diff --git a/src/AlgebraicCore/TmpGPoly.C b/src/AlgebraicCore/TmpGPoly.C
-index ea250d4..ed2b41d 100644
+index ea250d4..efb21d8 100644
 --- a/src/AlgebraicCore/TmpGPoly.C
 +++ b/src/AlgebraicCore/TmpGPoly.C
 @@ -47,6 +47,11 @@ using std::vector;
  namespace CoCoA
  {  
  
-+  bool handlersInited = false;
++  bool handlersEnabled = false;
 +  std::function<void(const GPoly *p, const GPoly*q, const GPoly*s)> sPolyHandler = nullptr;
 +  std::function<void(const GPoly *p)> reductionStartHandler = nullptr;
 +  std::function<void(const GPoly *q)> reductionStepHandler = nullptr;
@@ -72,7 +72,7 @@ index ea250d4..ed2b41d 100644
      else
 +    {
        myPolySetSPoly(the_gp.myFirstGPoly(), the_gp.mySecondGPoly());
-+      if ( handlersInited ) sPolyHandler(&the_gp.myFirstGPoly(), &the_gp.mySecondGPoly(), this);
++      if ( handlersEnabled ) sPolyHandler(&the_gp.myFirstGPoly(), &the_gp.mySecondGPoly(), this);
 +    }
      myUpdateLenLPPLCDegComp();
      myAge = the_age;
