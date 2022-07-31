@@ -39,10 +39,9 @@ class Smt2Printer : public cvc5::internal::Printer
  public:
   Smt2Printer(Variant variant = no_variant) : d_variant(variant) {}
   using cvc5::internal::Printer::toStream;
-  void toStream(std::ostream& out,
-                TNode n,
-                int toDepth,
-                size_t dag) const override;
+  void toStream(std::ostream& out, TNode n) const override;
+  void toStream(std::ostream& out, TNode n, int toDepth, size_t dag) const;
+  void toStream(std::ostream& out, Kind k) const override;
   void toStream(std::ostream& out, const cvc5::CommandStatus* s) const override;
   void toStream(std::ostream& out, const smt::Model& m) const override;
   /**
@@ -64,15 +63,22 @@ class Smt2Printer : public cvc5::internal::Printer
   void toStreamCmdAssert(std::ostream& out, Node n) const override;
 
   /** Print push command */
-  void toStreamCmdPush(std::ostream& out) const override;
+  void toStreamCmdPush(std::ostream& out, uint32_t nscopes) const override;
 
   /** Print pop command */
-  void toStreamCmdPop(std::ostream& out) const override;
+  void toStreamCmdPop(std::ostream& out, uint32_t nscopes) const override;
 
   /** Print declare-fun command */
   void toStreamCmdDeclareFunction(std::ostream& out,
                                   const std::string& id,
                                   TypeNode type) const override;
+
+  /** Print declare-oracle-fun command */
+  void toStreamCmdDeclareOracleFun(std::ostream& out,
+                                   const std::string& id,
+                                   TypeNode type,
+                                   const std::string& binName) const override;
+
   /** Print declare-pool command */
   void toStreamCmdDeclarePool(std::ostream& out,
                                       const std::string& id,
@@ -246,26 +252,16 @@ class Smt2Printer : public cvc5::internal::Printer
                               TypeNode locType,
                               TypeNode dataType) const override;
 
-  /** Print command sequence command */
-  void toStreamCmdCommandSequence(
-      std::ostream& out,
-      const std::vector<cvc5::Command*>& sequence) const override;
-
-  /** Print declaration sequence command */
-  void toStreamCmdDeclarationSequence(
-      std::ostream& out,
-      const std::vector<cvc5::Command*>& sequence) const override;
-
   /**
    * Get the string for a kind k, which returns how the kind k is printed in
-   * the SMT-LIB format (with variant v).
+   * the SMT-LIB format.
    */
-  static std::string smtKindString(Kind k, Variant v = smt2_6_variant);
+  static std::string smtKindString(Kind k);
   /**
    * Same as above, but also takes into account the type of the node, which
    * makes a difference for printing sequences.
    */
-  static std::string smtKindStringOf(const Node& n, Variant v = smt2_6_variant);
+  static std::string smtKindStringOf(const Node& n);
   /**
    * Get the string corresponding to the sygus datatype t printed as a grammar.
    */
@@ -292,15 +288,7 @@ class Smt2Printer : public cvc5::internal::Printer
   void toStreamDeclareType(std::ostream& out, TypeNode tn) const;
   /** To stream type node, which ensures tn is printed in smt2 format */
   void toStreamType(std::ostream& out, TypeNode tn) const;
-  /**
-   * To stream, with a forced type. This method is used in some corner cases
-   * to force a node n to be printed as if it had type tn. This is used e.g.
-   * for the body of define-fun commands and arguments of singleton terms.
-   */
-  void toStreamCastToType(std::ostream& out,
-                          TNode n,
-                          int toDepth,
-                          TypeNode tn) const;
+  /** To stream datatype */
   void toStream(std::ostream& out, const DType& dt) const;
   /**
    * To stream model sort. This prints the appropriate output for type

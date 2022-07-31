@@ -18,6 +18,7 @@
 #ifndef CVC5__API__CVC5_H
 #define CVC5__API__CVC5_H
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -840,9 +841,6 @@ class CVC5_EXPORT Sort
   /** @return The internal wrapped TypeNode of this sort. */
   const internal::TypeNode& getTypeNode(void) const;
 
-  /** Helper to convert a set of Sorts to internal TypeNodes. */
-  std::set<internal::TypeNode> static sortSetToTypeNodes(
-      const std::set<Sort>& sorts);
   /** Helper to convert a vector of Sorts to internal TypeNodes. */
   std::vector<internal::TypeNode> static sortVectorToTypeNodes(
       const std::vector<Sort>& sorts);
@@ -1407,51 +1405,60 @@ class CVC5_EXPORT Term
   int32_t getRealOrIntegerValueSign() const;
   /**
    * @return True if the term is an integer value that fits within int32_t.
+   * Note that this method will return true for integer constants and real
+   * constants that have integer value.
    */
   bool isInt32Value() const;
   /**
-   * Get the `int32_t` representation of  this integer value.
+   * Get the `int32_t` representation of this integral value.
    * @note Asserts isInt32Value().
    * @return This integer value as a `int32_t`.
    */
   int32_t getInt32Value() const;
   /**
    * @return True if the term is an integer value that fits within uint32_t.
+   * Note that this method will return true for integer constants and real
+   * constants that have integral value.
    */
   bool isUInt32Value() const;
   /**
-   * Get the `uint32_t` representation of this integer value.
+   * Get the `uint32_t` representation of this integral value.
    * @note Asserts isUInt32Value().
    * @return This integer value as a `uint32_t`.
    */
   uint32_t getUInt32Value() const;
   /**
    * @return True if the term is an integer value that fits within int64_t.
+   * Note that this method will return true for integer constants and real
+   * constants that have integral value.
    */
   bool isInt64Value() const;
   /**
-   * Get the `int64_t` representation of this integer value.
+   * Get the `int64_t` representation of this integral value.
    * @note Asserts isInt64Value().
    * @return This integer value as a `int64_t`.
    */
   int64_t getInt64Value() const;
   /**
    * @return True if the term is an integer value that fits within uint64_t.
+   * Note that this method will return true for integer constants and real
+   * constants that have integral value.
    */
   bool isUInt64Value() const;
   /**
-   * Get the `uint64_t` representation of this integer value.
+   * Get the `uint64_t` representation of this integral value.
    * @note Asserts isUInt64Value().
    * @return This integer value as a `uint64_t`.
    */
   uint64_t getUInt64Value() const;
   /**
-   * @return True if the term is an integer value.
+   * @return True if the term is an integer constant or a real constant that
+   * has an integral value.
    */
   bool isIntegerValue() const;
   /**
    * @note Asserts isIntegerValue().
-   * @return The integer term in (decimal) string representation.
+   * @return The integral term in (decimal) string representation.
    */
   std::string getIntegerValue() const;
 
@@ -1750,11 +1757,6 @@ class CVC5_EXPORT Term
   Kind getKindHelper() const;
 
   /**
-   * @return True if the current term is a constant integer that is casted into
-   *         real using the operator CAST_TO_REAL, and returns false otherwise
-   */
-  bool isCastedReal() const;
-  /**
    * The internal node wrapped by this term.
    * @note This is a ``std::shared_ptr`` rather than a ``std::unique_ptr`` to
    *       avoid overhead due to memory allocation (``internal::Node`` is
@@ -2000,19 +2002,6 @@ class CVC5_EXPORT DatatypeDecl
    */
   DatatypeDecl(const Solver* slv,
                const std::string& name,
-               bool isCoDatatype = false);
-
-  /**
-   * Constructor for parameterized datatype declaration.
-   * Create sorts parameter with Solver::mkParamSort().
-   * @param slv The associated solver object.
-   * @param name The name of the datatype.
-   * @param param The sort parameter.
-   * @param isCoDatatype True if a codatatype is to be constructed.
-   */
-  DatatypeDecl(const Solver* slv,
-               const std::string& name,
-               const Sort& param,
                bool isCoDatatype = false);
 
   /**
@@ -3494,8 +3483,7 @@ class CVC5_EXPORT Solver
   Term mkTerm(const Op& op, const std::vector<Term>& children = {}) const;
 
   /**
-   * Create a tuple term. Terms are automatically converted if sorts are
-   * compatible.
+   * Create a tuple term, where terms have the provided sorts.
    * @param sorts The sorts of the elements in the tuple.
    * @param terms The elements in the tuple.
    * @return The tuple Term.
@@ -4495,6 +4483,36 @@ class CVC5_EXPORT Solver
                    const Sort& sort,
                    const std::vector<Term>& initValue) const;
   /**
+   * Declare an oracle function with reference to an implementation.
+   *
+   * Oracle functions have a different semantics with respect to ordinary
+   * declared functions. In particular, for an input to be satisfiable,
+   * its oracle functions are implicitly universally quantified.
+   *
+   * This method is used in part for implementing this command:
+   *
+   * \verbatim embed:rst:leading-asterisk
+   * .. code:: smtlib
+   *
+   * (declare-oracle-fun <sym> (<sort>*) <sort> <sym>)
+   * \endverbatim
+   *
+   * In particular, the above command is implemented by constructing a
+   * function over terms that wraps a call to binary sym via a text interface.
+   *
+   * @warning This method is experimental and may change in future versions.
+   *
+   * @param symbol The name of the oracle
+   * @param sorts The sorts of the parameters to this function
+   * @param sort The sort of the return value of this function
+   * @param fn The function that implements the oracle function.
+   * @return The oracle function
+   */
+  Term declareOracleFun(const std::string& symbol,
+                        const std::vector<Sort>& sorts,
+                        const Sort& sort,
+                        std::function<Term(const std::vector<Term>&)> fn) const;
+  /**
    * Pop (a) level(s) from the assertion stack.
    *
    * SMT-LIB:
@@ -5008,6 +5026,12 @@ class CVC5_EXPORT Solver
   Statistics getStatistics() const;
 
   /**
+   * Print the statistics to the given file descriptor, suitable for usage in
+   * signal handlers.
+   */
+  void printStatisticsSafe(int fd) const;
+
+  /**
    * Determione the output stream for the given tag is enabled. Tags can be
    * enabled with the `output` option (and `-o <tag>` on the command line).
    * Raises an exception when an invalid tag is given.
@@ -5028,12 +5052,6 @@ class CVC5_EXPORT Solver
   internal::NodeManager* getNodeManager(void) const;
   /** Reset the API statistics */
   void resetStatistics();
-
-  /**
-   * Print the statistics to the given file descriptor, suitable for usage in
-   * signal handlers.
-   */
-  void printStatisticsSafe(int fd) const;
 
   /** Helper to check for API misuse in mkOp functions. */
   void checkMkTerm(Kind kind, uint32_t nchildren) const;
@@ -5068,14 +5086,6 @@ class CVC5_EXPORT Solver
   Term mkCharFromStrHelper(const std::string& s) const;
   /** Get value helper, which accounts for subtyping */
   Term getValueHelper(const Term& term) const;
-
-  /**
-   * Helper function that ensures that a given term is of sort real (as opposed
-   * to being of sort integer).
-   * @param t A term of sort integer or real.
-   * @return A term of sort real.
-   */
-  Term ensureRealSort(const Term& t) const;
 
   /**
    * Create n-ary term of given kind. This handles the cases of left/right
@@ -5121,18 +5131,6 @@ class CVC5_EXPORT Solver
 
   /** Check whether string s is a valid decimal integer. */
   bool isValidInteger(const std::string& s) const;
-
-  /**
-   * If needed, convert this term to a given sort.
-   *
-   * The sort of the term must be convertible into the target sort.
-   * Currently only Int to Real conversions are supported.
-   *
-   * @param t The term.
-   * @param s The target sort.
-   * @return The term wrapped into a sort conversion if needed.
-   */
-  Term ensureTermSort(const Term& t, const Sort& s) const;
 
   /**
    * Check that the given term is a valid closed term, which can be used as an

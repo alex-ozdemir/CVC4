@@ -362,6 +362,7 @@ cdef extern from "api/cpp/cvc5.h" namespace "cvc5":
         void addAnyConstant(Term ntSymbol) except +
         void addAnyVariable(Term ntSymbol) except +
         void addRules(Term ntSymbol, vector[Term] rules) except +
+        string toString() except +
 
     cdef cppclass Sort:
         Sort() except +
@@ -403,6 +404,7 @@ cdef extern from "api/cpp/cvc5.h" namespace "cvc5":
         Datatype getDatatype() except +
         Sort instantiate(const vector[Sort]& params) except +
         vector[Sort] getInstantiatedParameters() except +
+        Sort substitute(const Sort & es, const Sort & reps) except +
         Sort substitute(const vector[Sort] & es, const vector[Sort] & reps) except +
         size_t getDatatypeConstructorArity() except +
         vector[Sort] getDatatypeConstructorDomainSorts() except +
@@ -469,6 +471,7 @@ cdef extern from "api/cpp/cvc5.h" namespace "cvc5":
         uint64_t getId() except +
         Kind getKind() except +
         Sort getSort() except +
+        Term substitute(const Term & es, const Term & reps) except +
         Term substitute(const vector[Term] & es, const vector[Term] & reps) except +
         bint hasOp() except +
         Op getOp() except +

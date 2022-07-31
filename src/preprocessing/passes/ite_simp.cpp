@@ -21,7 +21,6 @@
 #include "options/smt_options.h"
 #include "preprocessing/assertion_pipeline.h"
 #include "preprocessing/preprocessing_pass_context.h"
-#include "smt/smt_statistics_registry.h"
 #include "theory/arith/arith_ite_utils.h"
 #include "theory/theory_engine.h"
 
@@ -202,24 +201,6 @@ bool ITESimp::doneSimpITE(AssertionPipeline* assertionsToPreprocess)
     if (options().smt.compressItes)
     {
       result = d_iteUtilities.compress(assertionsToPreprocess);
-    }
-
-    if (result)
-    {
-      // if false, don't bother to reclaim memory here.
-      NodeManager* nm = NodeManager::currentNM();
-      if (nm->poolSize() >= zombieHuntThreshold)
-      {
-        verbose(2) << "..ite simplifier did quite a bit of work.. "
-               << nm->poolSize() << endl;
-        verbose(2) << "....node manager contains " << nm->poolSize()
-               << " nodes before cleanup" << endl;
-        d_iteUtilities.clear();
-        d_env.getRewriter()->clearCaches();
-        nm->reclaimZombiesUntil(zombieHuntThreshold);
-        verbose(2) << "....node manager contains " << nm->poolSize()
-               << " nodes after cleanup" << endl;
-      }
     }
   }
 

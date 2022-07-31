@@ -617,7 +617,7 @@ bool LfscPrinter::computeProofArgs(const ProofNode* pn,
     {
       Node res = pn->getResult();
       Assert(res.getNumChildren() == 2);
-      Assert(res[1].getKind() == CONST_RATIONAL);
+      Assert(res[1].isConst());
       pf << h << h << d_tproc.convert(res[1]) << cs[0];
     }
     break;
@@ -683,7 +683,7 @@ bool LfscPrinter::computeProofArgs(const ProofNode* pn,
     // quantifiers
     case PfRule::SKOLEM_INTRO:
     {
-      pf << h << d_tproc.convert(SkolemManager::getOriginalForm(args[0]));
+      pf << d_tproc.convert(SkolemManager::getUnpurifiedForm(args[0]));
     }
     break;
     // ---------- arguments of non-translated rules go here
@@ -704,6 +704,11 @@ bool LfscPrinter::computeProofArgs(const ProofNode* pn,
         case LfscRule::PROCESS_SCOPE: pf << h << h << as[2] << cs[0]; break;
         case LfscRule::AND_INTRO2: pf << h << h << cs[0] << cs[1]; break;
         case LfscRule::ARITH_SUM_UB: pf << h << h << h << cs[0] << cs[1]; break;
+        case LfscRule::CONCAT_CONFLICT_DEQ:
+          pf << h << h << h << h << as[2].getConst<bool>()
+             << d_tproc.convertType(children[0]->getResult()[0].getType())
+             << cs[0] << cs[1];
+          break;
         default: return false; break;
       }
     }

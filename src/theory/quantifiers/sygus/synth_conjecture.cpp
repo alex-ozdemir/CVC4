@@ -23,7 +23,6 @@
 #include "options/quantifiers_options.h"
 #include "printer/printer.h"
 #include "smt/logic_exception.h"
-#include "smt/smt_statistics_registry.h"
 #include "theory/datatypes/sygus_datatype_utils.h"
 #include "theory/quantifiers/first_order_model.h"
 #include "theory/quantifiers/instantiate.h"
@@ -614,7 +613,7 @@ bool SynthConjecture::checkSideCondition(const std::vector<Node>& cvals) const
     Trace("sygus-engine") << "Check side condition..." << std::endl;
     Trace("cegqi-debug") << "Check side condition : " << sc << std::endl;
     sc = rewrite(sc);
-    Result r = checkWithSubsolver(sc, options(), logicInfo());
+    Result r = checkWithSubsolver(sc, d_env);
     Trace("cegqi-debug") << "...got side condition : " << r << std::endl;
     if (r == Result::UNSAT)
     {
@@ -953,12 +952,12 @@ bool SynthConjecture::getSynthSolutions(
       // since we don't have function subtyping, this assertion should only
       // check the return type
       Assert(fvar.getType().isFunction());
-      Assert(fvar.getType().getRangeType().isComparableTo(bsol.getType()));
+      Assert(fvar.getType().getRangeType() == bsol.getType());
       bsol = nm->mkNode(LAMBDA, bvl, bsol);
     }
     else
     {
-      Assert(fvar.getType().isComparableTo(bsol.getType()));
+      Assert(fvar.getType() == bsol.getType());
     }
     // store in map
     smc[fvar] = bsol;
