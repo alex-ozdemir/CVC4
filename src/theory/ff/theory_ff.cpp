@@ -27,13 +27,11 @@
 #include "expr/node_manager_attributes.h"
 #include "expr/node_traversal.h"
 #include "options/ff_options.h"
-#include "theory/ff/model.h"
-#include "theory/ff/toy_gb.h"
-#include "theory/ff/toy_gb_blame.h"
 #include "theory/theory_model.h"
 #include "theory/trust_substitutions.h"
 #include "util/cocoa_globals.h"
 #include "util/utility.h"
+#include "util/statistics_registry.h"
 
 using namespace cvc5::internal::kind;
 
@@ -48,7 +46,7 @@ TheoryFiniteFields::TheoryFiniteFields(Env& env,
       d_state(env, valuation),
       d_im(env, *this, d_state, getStatsPrefix(THEORY_FF)),
       d_eqNotify(d_im),
-      d_stats(statisticsRegistry(), "theory::ff::")
+      d_stats(std::make_unique<FfStatistics>(statisticsRegistry(), "theory::ff::"))
 {
   d_theoryState = &d_state;
   d_inferManager = &d_im;
@@ -157,7 +155,7 @@ void TheoryFiniteFields::preRegisterTerm(TNode node)
   if (d_subTheories.count(fieldTy) == 0)
   {
     d_subTheories.try_emplace(
-        fieldTy, d_env, Incrementality::Eager, ty.getFiniteFieldSize());
+        fieldTy, d_env, d_stats.get(), ty.getFiniteFieldSize());
   }
   d_subTheories.at(fieldTy).preRegisterTerm(node);
 }
@@ -203,18 +201,6 @@ CoCoA::RingElem bigPower(CoCoA::RingElem b, CoCoA::BigInt e)
     CoCoA::divexact(e, e, two);
   }
   return acc;
-}
-
-TheoryFiniteFields::Statistics::Statistics(StatisticsRegistry& registry,
-                                           const std::string& prefix)
-    : d_numReductions(registry.registerInt(prefix + "num_reductions")),
-      d_reductionTime(registry.registerTimer(prefix + "reduction_time")),
-      d_rootConstructionTime(
-          registry.registerTimer(prefix + "root_construction_time")),
-      d_numConstructionErrors(
-          registry.registerInt(prefix + "num_construction_errors"))
-{
-  Trace("ff::stats") << "ff registered 4 stats" << std::endl;
 }
 
 // // CoCoA symbols must start with a letter and contain only letters and

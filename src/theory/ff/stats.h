@@ -10,36 +10,38 @@
  * directory for licensing information.
  * ****************************************************************************
  *
- * Toy Groebner basis impl with blame-tracking.
+ * Finite fields stats
  */
 
 #include "cvc5_private.h"
 
-#ifndef CVC5__THEORY__FF__TOY_GB_BLAME_H
-#define CVC5__THEORY__FF__TOY_GB_BLAME_H
+#ifndef CVC5__THEORY__FF__STATS_H
+#define CVC5__THEORY__FF__STATS_H
 
-#include <utility>
+#include <string>
 
-#include <CoCoA/PolyRing.H>
-#include <CoCoA/SparsePolyOps-ideal.H>
+#include "util/statistics_stats.h"
 
 namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-/**
- * Compute a Groebner basis for the ideal I.
- *
- * Returns
- *
- * (1) the basis
- * (2) if the basis contains a constant: the indices of the generators of I that are to blame
- *     otherwise, and empty vector.
- */
-std::pair<std::vector<CoCoA::RingElem>, std::vector<size_t>> toyGBasisBlame(CoCoA::ideal I);
+struct FfStatistics
+{
+  // Number of groebner-basis reductions
+  IntStat d_numReductions;
+  // Time spent in groebner-basis reductions
+  TimerStat d_reductionTime;
+  // Time spent in root construction
+  TimerStat d_rootConstructionTime;
+  // Number of times that model construction gave an error
+  IntStat d_numConstructionErrors;
+
+  FfStatistics(StatisticsRegistry& reg, const std::string& prefix);
+};
 
 }  // namespace ff
 }  // namespace theory
 }  // namespace cvc5::internal
 
-#endif /* CVC5__THEORY__FF__TOY_GB_BLAME_H */
+#endif /* CVC5__THEORY__FF__STATS_H */

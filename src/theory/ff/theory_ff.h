@@ -20,18 +20,15 @@
 
 #include <memory>
 
-#include "context/cdlist_forward.h"
-#include "context/cdo.h"
 #include "smt/logic_exception.h"
 #include "theory/care_pair_argument_callback.h"
-#include "theory/ff/trace.h"
 #include "theory/ff/theory_ff_rewriter.h"
-#include "theory/ff/groebner.h"
+#include "theory/ff/sub_theory.h"
+#include "theory/ff/stats.h"
 #include "theory/theory.h"
 #include "theory/theory_eq_notify.h"
 #include "theory/theory_inference_manager.h"
 #include "theory/theory_state.h"
-#include "util/statistics_stats.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -100,21 +97,7 @@ class TheoryFiniteFields : public Theory
   // Map from field types to sub-theories.
   std::unordered_map<TypeNode, SubTheory> d_subTheories;
 
-  struct Statistics
-  {
-    // Number of groebner-basis reductions
-    IntStat d_numReductions;
-    // Time spent in groebner-basis reductions
-    TimerStat d_reductionTime;
-    // Time spent in root construction
-    TimerStat d_rootConstructionTime;
-    // Number of times that model construction gave an error
-    IntStat d_numConstructionErrors;
-
-    Statistics(StatisticsRegistry& reg, const std::string& prefix);
-  };
-
-  Statistics d_stats;
+  std::unique_ptr<FfStatistics> d_stats;
 }; /* class TheoryFiniteFields */
 
 }  // namespace ff

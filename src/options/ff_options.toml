@@ -2,22 +2,6 @@ id     = "FF"
 name   = "Finite Field Theory"
 
 [[option]]
-  name       = "ffMeasureConflictQuality"
-  category   = "expert"
-  long       = "ff-measure-conflict-quality"
-  type       = "bool"
-  default    = "false"
-  help       = "brute-force the smallest conflict"
-
-[[option]]
-  name       = "ffUseToyGb"
-  category   = "expert"
-  long       = "ff-use-toy-gb"
-  type       = "bool"
-  default    = "false"
-  help       = "use the toy groebner basis engine"
-
-[[option]]
   name       = "ffTraceGb"
   category   = "expert"
   long       = "ff-trace-gb"
@@ -26,17 +10,19 @@ name   = "Finite Field Theory"
   help       = "use a traced groebner basis engine"
 
 [[option]]
-  name       = "ffCheckTraceGb"
-  category   = "expert"
-  long       = "ff-check-trace-gb"
-  type       = "bool"
-  default    = "false"
-  help       = "check the traced groebner basis engine against the untraced variant"
-
-[[option]]
-  name       = "ffSageRoots"
-  category   = "expert"
-  long       = "ff-sage-roots"
-  type       = "bool"
-  default    = "false"
-  help       = "use Sage to extract common roots (instead of CoCoA)"
+  name       = "ffIncrementality"
+  category   = "regular"
+  long       = "ff-incrementality=MODE"
+  type       = "FfIncrementality"
+  default    = "NONINCREMENTAL"
+  help       = "how incrementally to compute Groebner bases, see --ff-incrementality=help"
+  help_mode  = "how incrementally to compute Groebner bases"
+[[option.mode.NONINCREMENTAL]]
+  name = "nonincremental"
+  help = "Bases are computed at full-effort, no bases are saved"
+[[option.mode.LAZY]]
+  name = "lazy"
+  help = "Bases are computed at full-effort, per-context bases are saved"
+[[option.mode.EAGER]]
+  name = "eager"
+  help = "Bases are computed at standard-effort, per-context bases are saved"

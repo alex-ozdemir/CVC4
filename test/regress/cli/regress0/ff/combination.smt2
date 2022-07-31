@@ -8,14 +8,14 @@
 (define-sort F5 () (_ FiniteField 5))
 (declare-fun a () F3)
 (declare-fun b () F5)
-(assert (= (ffmul
+(assert (or (= (ffmul
     (ffadd a (as ff-0 F3))
     (ffadd a (as ff-1 F3))
     (ffadd a (as ff-2 F3))
-    ) (as ff1 F3)))
-(assert (= (ffmul
+    ) (as ff1 F3))
+(= (ffmul
     (ffadd b (as ff-0 F5))
     (ffadd b (as ff-1 F5))
     (ffadd b (as ff-2 F5))
-    ) (as ff1 F5)))
+    ) (as ff1 F5))))
 (check-sat)
