@@ -22,9 +22,9 @@
 
 #include "smt/logic_exception.h"
 #include "theory/care_pair_argument_callback.h"
-#include "theory/ff/theory_ff_rewriter.h"
-#include "theory/ff/sub_theory.h"
 #include "theory/ff/stats.h"
+#include "theory/ff/sub_theory.h"
+#include "theory/ff/theory_ff_rewriter.h"
 #include "theory/theory.h"
 #include "theory/theory_eq_notify.h"
 #include "theory/theory_inference_manager.h"
@@ -94,8 +94,10 @@ class TheoryFiniteFields : public Theory
   /** Manages notifications from our equality engine */
   TheoryEqNotifyClass d_eqNotify;
 
+#ifdef CVC5_USE_COCOA
   // Map from field types to sub-theories.
   std::unordered_map<TypeNode, SubTheory> d_subTheories;
+#endif /* CVC5_USE_COCOA */
 
   std::unique_ptr<FfStatistics> d_stats;
 }; /* class TheoryFiniteFields */

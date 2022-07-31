@@ -13,6 +13,8 @@
  * An incremental groebner basis engine.
  */
 
+#ifdef CVC5_USE_COCOA
+
 #include "theory/ff/groebner.h"
 
 #include <CoCoA/BigInt.H>
@@ -148,3 +150,5 @@ void IncrementalIdeal::pop()
 }  // namespace ff
 }  // namespace theory
 }  // namespace cvc5::internal
+
+#endif /* CVC5_USE_COCOA */

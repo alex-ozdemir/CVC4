@@ -15,6 +15,8 @@
 
 #include "cvc5_private.h"
 
+#ifdef CVC5_USE_COCOA
+
 #ifndef CVC5__THEORY__FF__MODEL_H
 #define CVC5__THEORY__FF__MODEL_H
 
@@ -120,3 +122,5 @@ std::unique_ptr<AssignmentEnumerator> brancher(const CoCoA::ideal& ideal);
 }  // namespace cvc5::internal
 
 #endif /* CVC5__THEORY__FF__MODEL_H */
+
+#endif /* CVC5_USE_COCOA */

@@ -13,6 +13,8 @@
  * Finite fields UNSAT core construction
  */
 
+#ifdef CVC5_USE_COCOA
+
 #include "theory/ff/inc_trace.h"
 
 #include <CoCoA/TmpGPoly.H>
@@ -217,3 +219,5 @@ void IncrementalTracer::addDep(const std::string& parent,
 }  // namespace ff
 }  // namespace theory
 }  // namespace cvc5::internal
+
+#endif /* CVC5_USE_COCOA */

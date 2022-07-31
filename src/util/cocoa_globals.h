@@ -15,18 +15,17 @@
 
 #include "cvc5_public.h"
 
+#ifdef CVC5_USE_COCOA
+
 #ifndef CVC5__UTIL__COCOA_GLOBALS_H
 #define CVC5__UTIL__COCOA_GLOBALS_H
 
-#ifdef CVC5_USE_COCOA
+
 #include <CoCoA/GlobalManager.H>
-#endif /* CVC5_USE_COCOA */
 
 namespace cvc5::internal {
 
-#ifdef CVC5_USE_COCOA
-[[maybe_unused]] static CoCoA::GlobalManager* s_cocoaGlobalManager = nullptr;
-#endif /* CVC5_USE_COCOA */
+static CoCoA::GlobalManager* s_cocoaGlobalManager = nullptr;
 
 /**
  * Intializes the CoCoA global manager if
@@ -38,3 +37,6 @@ void initCocoaGlobalManager();
 }  // namespace cvc5::internal
 
 #endif /* CVC5__UTIL__COCOA_GLOBALS_H */
+
+#endif /* CVC5_USE_COCOA */
+

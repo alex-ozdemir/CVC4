@@ -15,6 +15,8 @@
 
 #include "cvc5_private.h"
 
+#ifdef CVC5_USE_COCOA
+
 #ifndef CVC5__THEORY__FF__GROEBNER_H
 #define CVC5__THEORY__FF__GROEBNER_H
 
@@ -75,3 +77,5 @@ class IncrementalIdeal : EnvObj
 }  // namespace cvc5::internal
 
 #endif /* CVC5__THEORY__FF__GROEBNER_H */
+
+#endif /* CVC5_USE_COCOA */

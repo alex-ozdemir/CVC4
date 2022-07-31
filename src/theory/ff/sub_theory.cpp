@@ -13,6 +13,8 @@
  * A field-specific theory
  */
 
+#ifdef CVC5_USE_COCOA
+
 #include "theory/ff/sub_theory.h"
 
 #include <CoCoA/BigInt.H>
@@ -26,6 +28,7 @@
 #include "expr/node_traversal.h"
 #include "options/ff_options.h"
 #include "smt/env_obj.h"
+#include "util/cocoa_globals.h"
 #include "util/finite_field.h"
 
 namespace cvc5::internal {
@@ -42,6 +45,8 @@ SubTheory::SubTheory(Env& env, FfStatistics* stats, Integer modulus)
       d_modulus(modulus)
 {
   AlwaysAssert(modulus.isProbablePrime()) << "non-prime fields are unsupported";
+  // must be initialized before using CoCoA.
+  initCocoaGlobalManager();
 }
 
 void SubTheory::preRegisterTerm(TNode n)
@@ -316,3 +321,5 @@ void SubTheory::translate(TNode t)
 }  // namespace ff
 }  // namespace theory
 }  // namespace cvc5::internal
+
+#endif /* CVC5_USE_COCOA */

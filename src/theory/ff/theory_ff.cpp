@@ -15,8 +15,6 @@
 
 #include "theory/ff/theory_ff.h"
 
-#include <CoCoA/library.H>
-
 #include <cerrno>
 #include <fstream>
 #include <iostream>
@@ -29,15 +27,21 @@
 #include "options/ff_options.h"
 #include "theory/theory_model.h"
 #include "theory/trust_substitutions.h"
-#include "util/cocoa_globals.h"
-#include "util/utility.h"
 #include "util/statistics_registry.h"
+#include "util/utility.h"
 
 using namespace cvc5::internal::kind;
 
 namespace cvc5::internal {
 namespace theory {
 namespace ff {
+
+void noCoCoA()
+{
+  throw LogicException(
+      "cvc5 can't solve field problems since it was not configured with "
+      "--cocoa");
+}
 
 TheoryFiniteFields::TheoryFiniteFields(Env& env,
                                        OutputChannel& out,
@@ -46,12 +50,11 @@ TheoryFiniteFields::TheoryFiniteFields(Env& env,
       d_state(env, valuation),
       d_im(env, *this, d_state, getStatsPrefix(THEORY_FF)),
       d_eqNotify(d_im),
-      d_stats(std::make_unique<FfStatistics>(statisticsRegistry(), "theory::ff::"))
+      d_stats(
+          std::make_unique<FfStatistics>(statisticsRegistry(), "theory::ff::"))
 {
   d_theoryState = &d_state;
   d_inferManager = &d_im;
-  // must be initialized before using CoCoA.
-  initCocoaGlobalManager();
 }
 
 TheoryFiniteFields::~TheoryFiniteFields() {}
@@ -82,6 +85,7 @@ void TheoryFiniteFields::finishInit()
 
 void TheoryFiniteFields::postCheck(Effort level)
 {
+#ifdef CVC5_USE_COCOA
   Trace("ff::check") << "ff::check : " << level << std::endl;
   for (auto& subTheory : d_subTheories)
   {
@@ -93,6 +97,9 @@ void TheoryFiniteFields::postCheck(Effort level)
           InferenceId::ARITH_FF);
     }
   }
+#else  /* CVC5_USE_COCOA */
+  noCoCoA();
+#endif /* CVC5_USE_COCOA */
 }
 
 void TheoryFiniteFields::notifyFact(TNode atom,
@@ -100,14 +107,19 @@ void TheoryFiniteFields::notifyFact(TNode atom,
                                     TNode fact,
                                     bool isInternal)
 {
+#ifdef CVC5_USE_COCOA
   Trace("ff::check") << "ff::notifyFact : " << fact << " @ level "
                      << context()->getLevel() << std::endl;
   d_subTheories.at(atom[0].getType()).notifyFact(fact);
+#else  /* CVC5_USE_COCOA */
+  noCoCoA();
+#endif /* CVC5_USE_COCOA */
 }
 
 bool TheoryFiniteFields::collectModelValues(TheoryModel* m,
                                             const std::set<Node>& termSet)
 {
+#ifdef CVC5_USE_COCOA
   Trace("ff::model") << "Term set: " << termSet << std::endl;
   for (const auto& subTheory : d_subTheories)
   {
@@ -122,6 +134,9 @@ bool TheoryFiniteFields::collectModelValues(TheoryModel* m,
       }
     }
   }
+#else  /* CVC5_USE_COCOA */
+  noCoCoA();
+#endif /* CVC5_USE_COCOA */
   return true;
 }
 
@@ -144,6 +159,7 @@ Node TheoryFiniteFields::getModelValue(TNode node)
 
 void TheoryFiniteFields::preRegisterTerm(TNode node)
 {
+#ifdef CVC5_USE_COCOA
   Trace("ff::preRegisterTerm") << "ff::preRegisterTerm : " << node << std::endl;
   TypeNode ty = node.getType();
   TypeNode fieldTy = ty;
@@ -158,6 +174,9 @@ void TheoryFiniteFields::preRegisterTerm(TNode node)
         fieldTy, d_env, d_stats.get(), ty.getFiniteFieldSize());
   }
   d_subTheories.at(fieldTy).preRegisterTerm(node);
+#else  /* CVC5_USE_COCOA */
+  noCoCoA();
+#endif /* CVC5_USE_COCOA */
 }
 
 TrustNode TheoryFiniteFields::ppRewrite(TNode n, std::vector<SkolemLemma>& lems)
@@ -184,23 +203,6 @@ bool TheoryFiniteFields::isEntailed(Node n, bool pol)
 {
   // TODO
   return false;
-}
-
-CoCoA::RingElem bigPower(CoCoA::RingElem b, CoCoA::BigInt e)
-{
-  CoCoA::RingElem acc = CoCoA::one(CoCoA::owner(b));
-  CoCoA::BigInt two = CoCoA::BigInt(2);
-  while (!CoCoA::IsZero(e))
-  {
-    if (CoCoA::IsOdd(e))
-    {
-      acc *= b;
-      e -= 1;
-    }
-    b *= b;
-    CoCoA::divexact(e, e, two);
-  }
-  return acc;
 }
 
 }  // namespace ff

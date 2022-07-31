@@ -15,6 +15,8 @@
 
 #include "cvc5_private.h"
 
+#ifdef CVC5_USE_COCOA
+
 #ifndef CVC5__THEORY__FF__INC_TRACE_H
 #define CVC5__THEORY__FF__INC_TRACE_H
 
@@ -79,3 +81,5 @@ class IncrementalTracer
 }  // namespace cvc5::internal
 
 #endif /* CVC5__THEORY__FF__INC_TRACE_H */
+
+#endif /* CVC5_USE_COCOA */

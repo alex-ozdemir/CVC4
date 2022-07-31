@@ -13,6 +13,8 @@
  * Finite fields model construction
  */
 
+#ifdef CVC5_USE_COCOA
+
 #include "theory/ff/model.h"
 
 #include <CoCoA/BigIntOps.H>
@@ -340,3 +342,5 @@ std::vector<CoCoA::RingElem> commonRootSage(const CoCoA::ideal& ideal)
 }  // namespace ff
 }  // namespace theory
 }  // namespace cvc5::internal
+
+#endif /* CVC5_USE_COCOA */

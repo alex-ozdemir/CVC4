@@ -15,6 +15,8 @@
 
 #include "cvc5_private.h"
 
+#ifdef CVC5_USE_COCOA
+
 #ifndef CVC5__THEORY__FF__SUB_THEORY_H
 #define CVC5__THEORY__FF__SUB_THEORY_H
 
@@ -143,3 +145,5 @@ class SubTheory : EnvObj, context::ContextNotifyObj
 }  // namespace cvc5::internal
 
 #endif /* CVC5__THEORY__FF__SUB_THEORY_H */
+
+#endif /* CVC5_USE_COCOA */

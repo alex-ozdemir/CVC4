@@ -13,22 +13,22 @@
  * Singleton CoCoA global manager
  */
 
+#ifdef CVC5_USE_COCOA
+
 #include "util/cocoa_globals.h"
 
-#ifdef CVC5_USE_COCOA
 #include <CoCoA/GlobalManager.H>
-#endif /* CVC5_USE_COCOA */
 
 namespace cvc5::internal {
 
 void initCocoaGlobalManager()
 {
-#ifdef CVC5_USE_COCOA
   if (s_cocoaGlobalManager == nullptr)
   {
     s_cocoaGlobalManager = new CoCoA::GlobalManager();
   }
-#endif /* CVC5_USE_COCOA */
 }
 
 }  // namespace cvc5::internal
+
+#endif /* CVC5_USE_COCOA */
