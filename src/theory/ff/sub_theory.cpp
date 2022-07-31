@@ -157,7 +157,10 @@ void SubTheory::postCheck(Theory::Effort e)
     {
       computeBasis(d_facts.size());
     }
-    extractModel();
+    if (!inConflict())
+    {
+      extractModel();
+    }
   }
 }
 
@@ -172,9 +175,12 @@ const std::unordered_map<Node, Node>& SubTheory::model() const
 
 void SubTheory::contextNotifyPop()
 {
+  Trace("ff::context") << "pop" << std::endl;
   while (d_updateIndices.back() > d_facts.size())
   {
     d_updateIndices.pop_back();
+    Trace("ff::context") << "pop to " << d_updateIndices.back() << " facts"
+                         << std::endl;
     d_incrementalIdeal.value().pop();
     d_conflict.clear();
   }
@@ -195,6 +201,7 @@ void SubTheory::computeBasis(size_t factIndex)
   }
   {
     CodeTimer reductionTimer(d_stats->d_reductionTime);
+    Trace("ff::gb") << " > " << newGens.size() << " gens" << std::endl;
     ideal.pushGenerators(std::move(newGens));
     d_stats->d_numReductions += 1;
   }
@@ -207,6 +214,12 @@ void SubTheory::computeBasis(size_t factIndex)
     }
     Trace("ff::conflict") << "conflict " << ideal.trivialCoreIndices().size()
                           << "/" << d_facts.size() << " facts" << std::endl;
+    if (TraceChannel.isOn("ff::conflict"))
+    {
+      Trace("ff::conflict::debug")
+          << "conflict " << NodeManager::currentNM()->mkAnd(d_conflict)
+          << std::endl;
+    }
   }
 }
 
