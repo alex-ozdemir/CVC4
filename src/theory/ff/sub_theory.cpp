@@ -205,6 +205,8 @@ void SubTheory::computeBasis(size_t factIndex)
     {
       d_conflict.push_back(d_facts[i]);
     }
+    Trace("ff::conflict") << "conflict " << ideal.trivialCoreIndices().size()
+                          << "/" << d_facts.size() << " facts" << std::endl;
   }
 }
 
