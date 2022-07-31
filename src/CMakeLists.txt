@@ -689,6 +689,8 @@ libcvc5_add_sources(
   theory/evaluator.h
   theory/ext_theory.cpp
   theory/ext_theory.h
+  theory/ff/groebner.cpp
+  theory/ff/groebner.h
   theory/ff/model.cpp
   theory/ff/model.h
   theory/ff/theory_ff.cpp
@@ -703,6 +705,8 @@ libcvc5_add_sources(
   theory/ff/toy_gb_blame.h
   theory/ff/trace.cpp
   theory/ff/trace.h
+  theory/ff/inc_trace.cpp
+  theory/ff/inc_trace.h
   theory/fp/fp_word_blaster.cpp
   theory/fp/fp_word_blaster.h
   theory/fp/fp_expand_defs.cpp

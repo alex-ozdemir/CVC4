@@ -26,6 +26,7 @@
 #include "theory/care_pair_argument_callback.h"
 #include "theory/ff/trace.h"
 #include "theory/ff/theory_ff_rewriter.h"
+#include "theory/ff/groebner.h"
 #include "theory/theory.h"
 #include "theory/theory_eq_notify.h"
 #include "theory/theory_inference_manager.h"
@@ -85,13 +86,6 @@ class TheoryFiniteFields : public Theory
   bool isEntailed(Node n, bool pol);
 
  private:
-  // If d_ffFacts are unsatisfiable, returns a vector of them that are unsatisfiable.
-  //
-  // If d_ffFacts are satisfiable, return nothing.
-  std::optional<std::vector<Node>> isSat();
-
-  bool isSat(const std::vector<Node>& assertions, bool constructModel);
-
   TheoryFiniteFieldsRewriter d_rewriter{};
 
   /** The state of the ff solver at full effort */
@@ -103,15 +97,8 @@ class TheoryFiniteFields : public Theory
   /** Manages notifications from our equality engine */
   TheoryEqNotifyClass d_eqNotify;
 
-  // facts
-  context::CDList<Node> d_ffFacts;
-
-  // indices in d_ffFacts that are responsible for the current conflict
-  std::vector<size_t> d_blame{};
-
-  // The solution, if we've found one. A map from variable nodes to their
-  // constant values.
-  context::CDO<std::unordered_map<Node, Node>> d_solution;
+  // Map from field types to sub-theories.
+  std::unordered_map<TypeNode, SubTheory> d_subTheories;
 
   struct Statistics
   {
@@ -128,16 +115,7 @@ class TheoryFiniteFields : public Theory
   };
 
   Statistics d_stats;
-
-  Tracer d_tracer;
 }; /* class TheoryFiniteFields */
-
-std::unordered_set<Node> getVars(const std::vector<Node>& terms);
-
-std::unordered_set<Integer, IntegerHashFunction> getFieldSizes(
-    const std::vector<Node>& terms);
-
-size_t countDisequalities(const std::vector<Node>& terms);
 
 }  // namespace ff
 }  // namespace theory

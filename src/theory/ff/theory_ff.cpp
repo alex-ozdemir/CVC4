@@ -48,19 +48,12 @@ TheoryFiniteFields::TheoryFiniteFields(Env& env,
       d_state(env, valuation),
       d_im(env, *this, d_state, getStatsPrefix(THEORY_FF)),
       d_eqNotify(d_im),
-      d_ffFacts(context()),
-      d_solution(context()),
-      d_stats(statisticsRegistry(), "theory::ff::"),
-      d_tracer()
+      d_stats(statisticsRegistry(), "theory::ff::")
 {
   d_theoryState = &d_state;
   d_inferManager = &d_im;
   // must be initialized before using CoCoA.
   initCocoaGlobalManager();
-  if (options().ff.ffTraceGb && !options().ff.ffUseToyGb)
-  {
-    d_tracer.initFunctionPointers();
-  }
 }
 
 TheoryFiniteFields::~TheoryFiniteFields() {}
@@ -92,14 +85,14 @@ void TheoryFiniteFields::finishInit()
 void TheoryFiniteFields::postCheck(Effort level)
 {
   Trace("ff::check") << "ff::check : " << level << std::endl;
-  // Handle ff facts
-  if (!d_ffFacts.empty() && Theory::fullEffort(level))
+  for (auto& subTheory : d_subTheories)
   {
-    std::optional<std::vector<Node>> conflict = isSat();
-    if (conflict.has_value())
+    subTheory.second.postCheck(level);
+    if (subTheory.second.inConflict())
     {
-      d_im.conflict(NodeManager::currentNM()->mkAnd(*conflict),
-                    InferenceId::ARITH_FF);
+      d_im.conflict(
+          NodeManager::currentNM()->mkAnd(subTheory.second.conflict()),
+          InferenceId::ARITH_FF);
     }
   }
 }
@@ -109,34 +102,28 @@ void TheoryFiniteFields::notifyFact(TNode atom,
                                     TNode fact,
                                     bool isInternal)
 {
-  Trace("ff::check") << "ff::notifyFact : " << atom << " = " << polarity
-                     << std::endl;
-  if (polarity)
-  {
-    d_ffFacts.push_back(atom);
-  }
-  else
-  {
-    d_ffFacts.push_back(atom.notNode());
-  }
+  Trace("ff::check") << "ff::notifyFact : " << fact << " @ level "
+                     << context()->getLevel() << std::endl;
+  d_subTheories.at(atom[0].getType()).notifyFact(fact);
 }
 
 bool TheoryFiniteFields::collectModelValues(TheoryModel* m,
                                             const std::set<Node>& termSet)
 {
   Trace("ff::model") << "Term set: " << termSet << std::endl;
-  for (const auto& node : termSet)
+  for (const auto& subTheory : d_subTheories)
   {
-    if (d_solution.get().count(node))
+    for (const auto& entry : subTheory.second.model())
     {
-      Node value = d_solution.get().at(node);
-      Trace("ff::model") << "Model entry: " << node << " -> " << value
-                         << std::endl;
-      bool okay = m->assertEquality(node, value, true);
-      Assert(okay) << "Our model was rejected";
+      Trace("ff::model") << "Model entry: " << entry.first << " -> "
+                         << entry.second << std::endl;
+      if (termSet.count(entry.first))
+      {
+        bool okay = m->assertEquality(entry.first, entry.second, true);
+        Assert(okay) << "Our model was rejected";
+      }
     }
   }
-  // TODO
   return true;
 }
 
@@ -159,7 +146,20 @@ Node TheoryFiniteFields::getModelValue(TNode node)
 
 void TheoryFiniteFields::preRegisterTerm(TNode node)
 {
-  // TODO
+  Trace("ff::preRegisterTerm") << "ff::preRegisterTerm : " << node << std::endl;
+  TypeNode ty = node.getType();
+  TypeNode fieldTy = ty;
+  if (!ty.isFiniteField())
+  {
+    Assert(node.getKind() == Kind::EQUAL);
+    fieldTy = node[0].getType();
+  }
+  if (d_subTheories.count(fieldTy) == 0)
+  {
+    d_subTheories.try_emplace(
+        fieldTy, d_env, Incrementality::Eager, ty.getFiniteFieldSize());
+  }
+  d_subTheories.at(fieldTy).preRegisterTerm(node);
 }
 
 TrustNode TheoryFiniteFields::ppRewrite(TNode n, std::vector<SkolemLemma>& lems)
@@ -217,474 +217,477 @@ TheoryFiniteFields::Statistics::Statistics(StatisticsRegistry& registry,
   Trace("ff::stats") << "ff registered 4 stats" << std::endl;
 }
 
-// CoCoA symbols must start with a letter and contain only letters and
-// underscores.
+// // CoCoA symbols must start with a letter and contain only letters and
+// // underscores.
+// //
+// // Thus, our encoding is: v_ESCAPED
+// // where any underscore or invalid character in NAME is replace in ESCAPED
+// with
+// // an underscore followed by a base-16 encoding of its ASCII code using
+// // alphabet abcde fghij klmno p, followed by another _.
+// //
+// // Sorry. It sucks, but we don't have much to work with here...
+// std::string varNameToSymName(const std::string& varName)
+// {
+//   std::ostringstream o;
+//   o << "v_";
+//   for (const auto c : varName)
+//   {
+//     if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'))
+//     {
+//       o << c;
+//     }
+//     else
+//     {
+//       uint8_t code = c;
+//       o << "_"
+//         << "abcdefghijklmnop"[code & 0x0f]
+//         << "abcdefghijklmnop"[(code >> 4) & 0x0f] << "_";
+//     }
+//   }
+//   return o.str();
+// }
+
+// std::optional<std::vector<Node>> TheoryFiniteFields::isSat()
+// {
+//   const std::vector<Node> assertions(d_ffFacts.begin(), d_ffFacts.end());
+//   bool sat = isSat(assertions, true);
+//   if (!sat && options().ff.ffTraceGb)
+//   {
+//     std::vector<Node> core;
+//     for (const auto i : d_blame)
+//     {
+//       core.push_back(assertions[i]);
+//     }
+//     if (TraceIsOn("ff::measure::conflict"))
+//     {
+//       Trace("ff::measure::conflict") << "conflict [";
+//       for (const auto& a : core)
+//       {
+//         Trace("ff::measure::conflict") << ", " << a;
+//       }
+//       Trace("ff::measure::conflict") << "]" << std::endl;
+//     }
+//     return core;
+//   }
+//   if (!sat && options().ff.ffMeasureConflictQuality)
+//   {
+//     size_t smallest = assertions.size();
+//     std::vector<Node> smallestAssertions = assertions;
+//     // Each item is a (idx, bitvec) pair, where only indices post idx in
+//     bitvec
+//     // can be zero'd
+//     std::vector<std::pair<size_t, std::vector<bool>>> stack;
+//     stack.push_back(std::make_pair(0, std::vector(assertions.size(), true)));
+//     while (!stack.empty())
+//     {
+//       const size_t idx = stack.back().first;
+//       const std::vector<bool> include = stack.back().second;
+//       stack.pop_back();
+//       std::vector<Node> subAs;
+//       for (size_t i = 0; i < include.size(); ++i)
+//       {
+//         if (include[i])
+//         {
+//           subAs.push_back(assertions[i]);
+//         }
+//       }
+//       bool res = isSat(subAs, false);
+//       if (!res)
+//       {
+//         if (subAs.size() < smallest)
+//         {
+//           if (TraceIsOn("ff::measure::conflict::steps"))
+//           {
+//             Trace("ff::measure::conflict::steps") << "[";
+//             for (const auto& a : subAs)
+//             {
+//               Trace("ff::measure::conflict::steps") << ", " << a;
+//             }
+//             Trace("ff::measure::conflict::steps") << "]" << std::endl;
+//           }
+//           smallest = subAs.size();
+//           smallestAssertions = std::move(subAs);
+//         }
+//         for (size_t i = idx; i < include.size(); ++i)
+//         {
+//           if (include[i])
+//           {
+//             std::vector<bool> subInclude = include;
+//             subInclude[i] = false;
+//             stack.push_back(std::make_pair(i + 1, std::move(subInclude)));
+//           }
+//         }
+//       }
+//     }
+//     Trace("ff::measure::conflict")
+//         << "size " << smallest << " / " << assertions.size() << std::endl;
+//     if (TraceIsOn("ff::measure::conflict"))
+//     {
+//       Trace("ff::measure::conflict") << "conflict [";
+//       for (const auto& a : smallestAssertions)
+//       {
+//         Trace("ff::measure::conflict") << ", " << a;
+//       }
+//       Trace("ff::measure::conflict") << "]" << std::endl;
+//     }
+//     return smallestAssertions;
+//   }
+//   if (sat)
+//   {
+//     return {};
+//   }
+//   else
+//   {
+//     return std::vector(d_ffFacts.begin(), d_ffFacts.end());
+//   }
+// }
 //
-// Thus, our encoding is: v_ESCAPED
-// where any underscore or invalid character in NAME is replace in ESCAPED with
-// an underscore followed by a base-16 encoding of its ASCII code using
-// alphabet abcde fghij klmno p, followed by another _.
+// bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
+//                                bool constructModel)
+// {
+//   std::unordered_set<Node> vars = getVars(assertions);
+//   std::unordered_set<Integer, IntegerHashFunction> sizes =
+//       getFieldSizes(assertions);
+//   if (TraceIsOn("ff::check::params"))
+//   {
+//     Trace("ff::check::params") << "Vars: " << std::endl;
+//     for (const auto& v : vars)
+//     {
+//       Trace("ff::check::params") << " - " << v << std::endl;
+//     }
+//     Trace("ff::check::params") << "Sizes: " << std::endl;
+//     for (const auto& v : sizes)
+//     {
+//       Trace("ff::check::params") << " - " << v << std::endl;
+//     }
+//   }
+//   AlwaysAssert(sizes.size() == 1)
+//       << "Unsupported: multiple field sizes. See ff::check::params channel.";
+//   Integer sizeInternal = *sizes.begin();
+//   CoCoA::BigInt size = CoCoA::BigIntFromString(sizeInternal.toString());
+//   CoCoA::QuotientRing ringFp = CoCoA::NewZZmod(size);
+//   std::unordered_map<std::string, Node> symNameNodes;
+//   std::vector<Node> nodes;
+//   std::vector<CoCoA::symbol> symbolVec;
+//   std::vector<CoCoA::symbol> invSyms;
 //
-// Sorry. It sucks, but we don't have much to work with here...
-std::string varNameToSymName(const std::string& varName)
-{
-  std::ostringstream o;
-  o << "v_";
-  for (const auto c : varName)
-  {
-    if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'))
-    {
-      o << c;
-    }
-    else
-    {
-      uint8_t code = c;
-      o << "_"
-        << "abcdefghijklmnop"[code & 0x0f]
-        << "abcdefghijklmnop"[(code >> 4) & 0x0f] << "_";
-    }
-  }
-  return o.str();
-}
-
-std::optional<std::vector<Node>> TheoryFiniteFields::isSat()
-{
-  const std::vector<Node> assertions(d_ffFacts.begin(), d_ffFacts.end());
-  bool sat = isSat(assertions, true);
-  if (!sat && options().ff.ffTraceGb)
-  {
-    std::vector<Node> core;
-    for (const auto i : d_blame)
-    {
-      core.push_back(assertions[i]);
-    }
-    if (TraceIsOn("ff::measure::conflict"))
-    {
-      Trace("ff::measure::conflict") << "conflict [";
-      for (const auto& a : core)
-      {
-        Trace("ff::measure::conflict") << ", " << a;
-      }
-      Trace("ff::measure::conflict") << "]" << std::endl;
-    }
-    return core;
-  }
-  if (!sat && options().ff.ffMeasureConflictQuality)
-  {
-    size_t smallest = assertions.size();
-    std::vector<Node> smallestAssertions = assertions;
-    // Each item is a (idx, bitvec) pair, where only indices post idx in bitvec
-    // can be zero'd
-    std::vector<std::pair<size_t, std::vector<bool>>> stack;
-    stack.push_back(std::make_pair(0, std::vector(assertions.size(), true)));
-    while (!stack.empty())
-    {
-      const size_t idx = stack.back().first;
-      const std::vector<bool> include = stack.back().second;
-      stack.pop_back();
-      std::vector<Node> subAs;
-      for (size_t i = 0; i < include.size(); ++i)
-      {
-        if (include[i])
-        {
-          subAs.push_back(assertions[i]);
-        }
-      }
-      bool res = isSat(subAs, false);
-      if (!res)
-      {
-        if (subAs.size() < smallest)
-        {
-          if (TraceIsOn("ff::measure::conflict::steps"))
-          {
-            Trace("ff::measure::conflict::steps") << "[";
-            for (const auto& a : subAs)
-            {
-              Trace("ff::measure::conflict::steps") << ", " << a;
-            }
-            Trace("ff::measure::conflict::steps") << "]" << std::endl;
-          }
-          smallest = subAs.size();
-          smallestAssertions = std::move(subAs);
-        }
-        for (size_t i = idx; i < include.size(); ++i)
-        {
-          if (include[i])
-          {
-            std::vector<bool> subInclude = include;
-            subInclude[i] = false;
-            stack.push_back(std::make_pair(i + 1, std::move(subInclude)));
-          }
-        }
-      }
-    }
-    Trace("ff::measure::conflict")
-        << "size " << smallest << " / " << assertions.size() << std::endl;
-    if (TraceIsOn("ff::measure::conflict"))
-    {
-      Trace("ff::measure::conflict") << "conflict [";
-      for (const auto& a : smallestAssertions)
-      {
-        Trace("ff::measure::conflict") << ", " << a;
-      }
-      Trace("ff::measure::conflict") << "]" << std::endl;
-    }
-    return smallestAssertions;
-  }
-  if (sat)
-  {
-    return {};
-  }
-  else
-  {
-    return std::vector(d_ffFacts.begin(), d_ffFacts.end());
-  }
-}
-
-bool TheoryFiniteFields::isSat(const std::vector<Node>& assertions,
-                               bool constructModel)
-{
-  std::unordered_set<Node> vars = getVars(assertions);
-  std::unordered_set<Integer, IntegerHashFunction> sizes =
-      getFieldSizes(assertions);
-  if (TraceIsOn("ff::check"))
-  {
-    Trace("ff::check") << "Vars: " << std::endl;
-    for (const auto& v : vars)
-    {
-      Trace("ff::check") << " - " << v << std::endl;
-    }
-    Trace("ff::check") << "Sizes: " << std::endl;
-    for (const auto& v : sizes)
-    {
-      Trace("ff::check") << " - " << v << std::endl;
-    }
-  }
-  AlwaysAssert(sizes.size() == 1)
-      << "Unsupported: multiple field sizes. See ff::check channel.";
-  Integer sizeInternal = *sizes.begin();
-  CoCoA::BigInt size = CoCoA::BigIntFromString(sizeInternal.toString());
-  CoCoA::QuotientRing ringFp = CoCoA::NewZZmod(size);
-  std::unordered_map<std::string, Node> symNameNodes;
-  std::vector<Node> nodes;
-  std::vector<CoCoA::symbol> symbolVec;
-  std::vector<CoCoA::symbol> invSyms;
-
-  // Create true variables
-  for (const auto& var : vars)
-  {
-    const std::string varName = var.getAttribute(expr::VarNameAttr());
-    const CoCoA::symbol sym(varNameToSymName(varName));
-    std::ostringstream fullSymName;
-    fullSymName << sym;
-    symbolVec.push_back(sym);
-    nodes.push_back(var);
-    symNameNodes.insert(std::make_pair(fullSymName.str(), var));
-  }
-
-  // Create disequality inversion witnesses
-  size_t numDisequalities = countDisequalities(assertions);
-  for (size_t i = 0; i < numDisequalities; ++i)
-  {
-    const CoCoA::symbol sym("invwitness", i);
-    symbolVec.push_back(sym);
-    invSyms.push_back(sym);
-  }
-
-  // Create the polynomial ring and find the variable polynomials
-  CoCoA::SparsePolyRing polyRing = CoCoA::NewPolyRing(ringFp, symbolVec);
-  std::unordered_map<Node, CoCoA::RingElem> varPolys;
-  for (size_t i = 0; i < nodes.size(); ++i)
-  {
-    CoCoA::RingElem poly = CoCoA::indet(polyRing, i);
-    varPolys.insert(std::make_pair(nodes[i], poly));
-  }
-  std::unordered_map<Node, CoCoA::RingElem> nodePolys(varPolys);
-  std::vector<CoCoA::RingElem> invPolys;
-  for (size_t i = 0; i < numDisequalities; ++i)
-  {
-    invPolys.push_back(CoCoA::indet(polyRing, nodePolys.size() + i));
-  }
-
-  // Build polynomials for terms
-  for (const auto& term : assertions)
-  {
-    for (const auto& node :
-         NodeDfsIterable(term, VisitOrder::POSTORDER, [&nodePolys](TNode nn) {
-           return nodePolys.count(nn) > 0;
-         }))
-    {
-      if (node.getType().isFiniteField())
-      {
-        CoCoA::RingElem poly;
-        std::vector<CoCoA::RingElem> subPolys;
-        std::transform(node.begin(),
-                       node.end(),
-                       std::back_inserter(subPolys),
-                       [&nodePolys](Node n) { return nodePolys[n]; });
-        switch (node.getKind())
-        {
-          case Kind::FINITE_FIELD_ADD:
-            poly = std::accumulate(
-                subPolys.begin(),
-                subPolys.end(),
-                CoCoA::RingElem(polyRing->myZero()),
-                [](CoCoA::RingElem a, CoCoA::RingElem b) { return a + b; });
-            break;
-          case Kind::FINITE_FIELD_NEG: poly = -subPolys[0]; break;
-          case Kind::FINITE_FIELD_MULT:
-            poly = std::accumulate(
-                subPolys.begin(),
-                subPolys.end(),
-                CoCoA::RingElem(polyRing->myOne()),
-                [](CoCoA::RingElem a, CoCoA::RingElem b) { return a * b; });
-            break;
-          case Kind::CONST_FINITE_FIELD:
-          {
-            CoCoA::BigInt constant = CoCoA::BigIntFromString(
-                node.getConst<FiniteField>().getValue().toString());
-            poly = polyRing->myOne() * constant;
-            break;
-          }
-          default:
-            Unreachable() << "Invalid finite field kind: " << node.getKind();
-        }
-        Trace("ff::check::trans")
-            << "Translated " << node << "\t-> " << poly << std::endl;
-        nodePolys.insert(std::make_pair(node, poly));
-      }
-    }
-  }
-  std::vector<CoCoA::RingElem> generators;
-
-  // Add one polynomial per assertion
-  size_t disequalityIndex = 0;
-  for (const auto& assertion : assertions)
-  {
-    Trace("ff::check::trans") << "Assertion " << assertion << std::endl;
-
-    CoCoA::RingElem p = polyRing->myZero();
-    switch (assertion.getKind())
-    {
-      case Kind::EQUAL:
-      {
-        p = nodePolys[assertion[0]] - nodePolys[assertion[1]];
-        Trace("ff::check::trans")
-            << "Translated " << assertion << "\t-> " << p << std::endl;
-        break;
-      }
-      case Kind::NOT:
-      {
-        AlwaysAssert(assertion[0].getKind() == Kind::EQUAL);
-        Assert(disequalityIndex < numDisequalities);
-        CoCoA::RingElem diff =
-            nodePolys[assertion[0][0]] - nodePolys[assertion[0][1]];
-        p = diff * invPolys[disequalityIndex] - polyRing->myOne();
-        ++disequalityIndex;
-        break;
-      }
-      default:
-        Unhandled() << "Kind " << assertion.getKind()
-                    << " in finite field sat check";
-    }
-    Trace("ff::check::trans")
-        << "Translated " << assertion << "\t-> " << p << std::endl;
-    generators.push_back(p);
-  }
-
-  //  Commented out b/c CoCoA can't handle huge exponents
-  //
-  //  // Size of multiplicative group
-  //  CoCoA::BigInt mSize = size - 1;
-  //
-  //  // Add one polynomial per variable, to bar solutions in the extension
-  //  field
-  //  // For variable x, x^(order-1) - 1.
-  //  for (size_t i = 0; i < symbolVec.size(); ++i)
-  //  {
-  //    CoCoA::RingElem x = CoCoA::indet(polyRing, i);
-  //    CoCoA::RingElem x_to_q_less_one = bigPower(x, mSize);
-  //    generators.push_back(x_to_q_less_one - CoCoA::one(polyRing));
-  //  }
-
-  CoCoA::ideal ideal = CoCoA::ideal(generators);
-  std::vector<CoCoA::RingElem> basis;
-  {
-    CodeTimer reductionTimer(d_stats.d_reductionTime);
-    if (options().ff.ffUseToyGb)
-    {
-      if (options().ff.ffTraceGb)
-      {
-        d_blame.clear();
-        auto o = toyGBasisBlame(ideal);
-        basis = std::move(o.first);
-        d_blame = std::move(o.second);
-        if (options().ff.ffCheckTraceGb)
-        {
-          const auto basis2 = toyGBasis(ideal).first;
-          if (basis != basis2)
-          {
-            std::cerr << "First basis: " << basis << std::endl;
-            std::cerr << "Real  basis: " << basis2 << std::endl;
-            Assert(false);
-          }
-        }
-      }
-      else
-      {
-        auto o = toyGBasis(ideal);
-        basis = std::move(o.first);
-        d_blame = std::move(o.second);
-      }
-    }
-    else
-    {
-      if (options().ff.ffTraceGb)
-      {
-        d_tracer.reset();
-        for (const auto& g : generators)
-        {
-          d_tracer.addInput(g);
-        }
-      }
-      basis = CoCoA::GBasis(ideal);
-      d_blame.clear();
-      if (options().ff.ffTraceGb)
-      {
-        if (basis.size() == 1 && CoCoA::deg(basis.front()) == 0)
-        {
-          std::vector<size_t> blameIndices = d_tracer.trace(basis.front());
-          Trace("ff::check")
-              << "CoCoA blames " << blameIndices.size() << "/"
-              << generators.size() << " polynomials" << std::endl;
-          for (size_t i : blameIndices)
-          {
-            d_blame.push_back(i);
-          }
-        }
-      }
-      else
-      {
-        for (size_t i = 0; i < generators.size(); ++i)
-        {
-          d_blame.push_back(i);
-        }
-      }
-    }
-  }
-  ++d_stats.d_numReductions;
-  Trace("ff::check") << "Groebner basis " << d_stats.d_numReductions.get()
-                     << " " << basis << std::endl;
-  for (const auto& basisPoly : basis)
-  {
-    if (CoCoA::deg(basisPoly) == 0)
-    {
-      return false;
-    }
-  }
-
-  if (!constructModel)
-  {
-    return true;
-  }
-
-  Trace("ff::check") << "No 1 in G-Basis, so proceeding to model extraction"
-                     << std::endl;
-  Trace("ff::check") << "Using script at: " << FF_MODEL_SCRIPT_PATH
-                     << std::endl;
-
-  std::vector<CoCoA::RingElem> values;
-  {
-    CodeTimer rootConstructionTimer(d_stats.d_rootConstructionTime);
-    if (options().ff.ffSageRoots)
-    {
-      values = commonRootSage(ideal);
-    }
-    else
-    {
-      values = commonRoot(ideal);
-    }
-  }
-
-  // The output is non-empty if there are non-extension ("real") roots.
-  if (values.empty())
-  {
-    ++d_stats.d_numConstructionErrors;
-    return false;
-  }
-
-  std::unordered_map<Node, Node> model;
-  NodeManager* nm = NodeManager::currentNM();
-  size_t numVars = CoCoA::NumIndets(polyRing);
-  for (size_t i = 0; i < numVars; ++i)
-  {
-    std::ostringstream symName;
-    symName << CoCoA::indet(polyRing, i);
-    if (symNameNodes.count(symName.str()))
-    {
-      Node var = symNameNodes[symName.str()];
-
-      std::ostringstream valStr;
-      valStr << values[i];
-      Integer integer(valStr.str(), 10);
-      FiniteField literal(integer, sizeInternal);
-      Node value = nm->mkConst(literal);
-
-      Trace("ff::check::model") << var << ": " << value << std::endl;
-      model.emplace(var, value);
-    }
-  }
-  d_solution = model;
-
-  return true;
-}
-
-std::unordered_set<Node> getVars(const std::vector<Node>& terms)
-{
-  std::unordered_set<Node> vars;
-  for (const auto& term : terms)
-  {
-    for (const auto& node : NodeDfsIterable(term))
-    {
-      if (node.isVar())
-      {
-        vars.insert(node);
-      }
-    }
-  }
-  return vars;
-}
-
-std::unordered_set<Integer, IntegerHashFunction> getFieldSizes(
-    const std::vector<Node>& terms)
-{
-  std::unordered_set<Integer, IntegerHashFunction> sizes = {};
-  for (const auto& term : terms)
-  {
-    for (const auto& node : NodeDfsIterable(term))
-    {
-      TypeNode ty = node.getType();
-      if (ty.isFiniteField())
-      {
-        sizes.insert(ty.getFiniteFieldSize());
-      }
-    }
-  }
-  return sizes;
-}
-
-size_t countDisequalities(const std::vector<Node>& terms)
-{
-  size_t ct = 0;
-  for (const auto& term : terms)
-  {
-    if (term.getKind() == Kind::NOT)
-    {
-      ++ct;
-    }
-  }
-  return ct;
-}
+//   // Create true variables
+//   for (const auto& var : vars)
+//   {
+//     const std::string varName = var.getAttribute(expr::VarNameAttr());
+//     const CoCoA::symbol sym(varNameToSymName(varName));
+//     std::ostringstream fullSymName;
+//     fullSymName << sym;
+//     symbolVec.push_back(sym);
+//     nodes.push_back(var);
+//     symNameNodes.insert(std::make_pair(fullSymName.str(), var));
+//   }
+//
+//   // Create disequality inversion witnesses
+//   size_t numDisequalities = countDisequalities(assertions);
+//   for (size_t i = 0; i < numDisequalities; ++i)
+//   {
+//     const CoCoA::symbol sym("invwitness", i);
+//     symbolVec.push_back(sym);
+//     invSyms.push_back(sym);
+//   }
+//
+//   // Create the polynomial ring and find the variable polynomials
+//   CoCoA::SparsePolyRing polyRing = CoCoA::NewPolyRing(ringFp, symbolVec);
+//   std::unordered_map<Node, CoCoA::RingElem> varPolys;
+//   for (size_t i = 0; i < nodes.size(); ++i)
+//   {
+//     CoCoA::RingElem poly = CoCoA::indet(polyRing, i);
+//     varPolys.insert(std::make_pair(nodes[i], poly));
+//   }
+//   std::unordered_map<Node, CoCoA::RingElem> nodePolys(varPolys);
+//   std::vector<CoCoA::RingElem> invPolys;
+//   for (size_t i = 0; i < numDisequalities; ++i)
+//   {
+//     invPolys.push_back(CoCoA::indet(polyRing, nodePolys.size() + i));
+//   }
+//
+//   // Build polynomials for terms
+//   for (const auto& term : assertions)
+//   {
+//     for (const auto& node :
+//          NodeDfsIterable(term, VisitOrder::POSTORDER, [&nodePolys](TNode nn)
+//          {
+//            return nodePolys.count(nn) > 0;
+//          }))
+//     {
+//       if (node.getType().isFiniteField())
+//       {
+//         CoCoA::RingElem poly;
+//         std::vector<CoCoA::RingElem> subPolys;
+//         std::transform(node.begin(),
+//                        node.end(),
+//                        std::back_inserter(subPolys),
+//                        [&nodePolys](Node n) { return nodePolys[n]; });
+//         switch (node.getKind())
+//         {
+//           case Kind::FINITE_FIELD_ADD:
+//             poly = std::accumulate(
+//                 subPolys.begin(),
+//                 subPolys.end(),
+//                 CoCoA::RingElem(polyRing->myZero()),
+//                 [](CoCoA::RingElem a, CoCoA::RingElem b) { return a + b; });
+//             break;
+//           case Kind::FINITE_FIELD_NEG: poly = -subPolys[0]; break;
+//           case Kind::FINITE_FIELD_MULT:
+//             poly = std::accumulate(
+//                 subPolys.begin(),
+//                 subPolys.end(),
+//                 CoCoA::RingElem(polyRing->myOne()),
+//                 [](CoCoA::RingElem a, CoCoA::RingElem b) { return a * b; });
+//             break;
+//           case Kind::CONST_FINITE_FIELD:
+//           {
+//             CoCoA::BigInt constant = CoCoA::BigIntFromString(
+//                 node.getConst<FiniteField>().getValue().toString());
+//             poly = polyRing->myOne() * constant;
+//             break;
+//           }
+//           default:
+//             Unreachable() << "Invalid finite field kind: " << node.getKind();
+//         }
+//         Trace("ff::check::trans")
+//             << "Translated " << node << "\t-> " << poly << std::endl;
+//         nodePolys.insert(std::make_pair(node, poly));
+//       }
+//     }
+//   }
+//   std::vector<CoCoA::RingElem> generators;
+//
+//   // Add one polynomial per assertion
+//   size_t disequalityIndex = 0;
+//   for (const auto& assertion : assertions)
+//   {
+//     Trace("ff::check::trans") << "Assertion " << assertion << std::endl;
+//
+//     CoCoA::RingElem p = polyRing->myZero();
+//     switch (assertion.getKind())
+//     {
+//       case Kind::EQUAL:
+//       {
+//         p = nodePolys[assertion[0]] - nodePolys[assertion[1]];
+//         Trace("ff::check::trans")
+//             << "Translated " << assertion << "\t-> " << p << std::endl;
+//         break;
+//       }
+//       case Kind::NOT:
+//       {
+//         AlwaysAssert(assertion[0].getKind() == Kind::EQUAL);
+//         Assert(disequalityIndex < numDisequalities);
+//         CoCoA::RingElem diff =
+//             nodePolys[assertion[0][0]] - nodePolys[assertion[0][1]];
+//         p = diff * invPolys[disequalityIndex] - polyRing->myOne();
+//         ++disequalityIndex;
+//         break;
+//       }
+//       default:
+//         Unhandled() << "Kind " << assertion.getKind()
+//                     << " in finite field sat check";
+//     }
+//     Trace("ff::check::trans")
+//         << "Translated " << assertion << "\t-> " << p << std::endl;
+//     generators.push_back(p);
+//   }
+//
+//   //  Commented out b/c CoCoA can't handle huge exponents
+//   //
+//   //  // Size of multiplicative group
+//   //  CoCoA::BigInt mSize = size - 1;
+//   //
+//   //  // Add one polynomial per variable, to bar solutions in the extension
+//   //  field
+//   //  // For variable x, x^(order-1) - 1.
+//   //  for (size_t i = 0; i < symbolVec.size(); ++i)
+//   //  {
+//   //    CoCoA::RingElem x = CoCoA::indet(polyRing, i);
+//   //    CoCoA::RingElem x_to_q_less_one = bigPower(x, mSize);
+//   //    generators.push_back(x_to_q_less_one - CoCoA::one(polyRing));
+//   //  }
+//
+//   CoCoA::ideal ideal = CoCoA::ideal(generators);
+//   std::vector<CoCoA::RingElem> basis;
+//   {
+//     CodeTimer reductionTimer(d_stats.d_reductionTime);
+//     if (options().ff.ffUseToyGb)
+//     {
+//       if (options().ff.ffTraceGb)
+//       {
+//         d_blame.clear();
+//         auto o = toyGBasisBlame(ideal);
+//         basis = std::move(o.first);
+//         d_blame = std::move(o.second);
+//         if (options().ff.ffCheckTraceGb)
+//         {
+//           const auto basis2 = toyGBasis(ideal).first;
+//           if (basis != basis2)
+//           {
+//             std::cerr << "First basis: " << basis << std::endl;
+//             std::cerr << "Real  basis: " << basis2 << std::endl;
+//             Assert(false);
+//           }
+//         }
+//       }
+//       else
+//       {
+//         auto o = toyGBasis(ideal);
+//         basis = std::move(o.first);
+//         d_blame = std::move(o.second);
+//       }
+//     }
+//     else
+//     {
+//       if (options().ff.ffTraceGb)
+//       {
+//         d_tracer.reset();
+//         for (const auto& g : generators)
+//         {
+//           d_tracer.addInput(g);
+//         }
+//       }
+//       basis = CoCoA::GBasis(ideal);
+//       d_blame.clear();
+//       if (options().ff.ffTraceGb)
+//       {
+//         if (basis.size() == 1 && CoCoA::deg(basis.front()) == 0)
+//         {
+//           std::vector<size_t> blameIndices = d_tracer.trace(basis.front());
+//           Trace("ff::check")
+//               << "CoCoA blames " << blameIndices.size() << "/"
+//               << generators.size() << " polynomials" << std::endl;
+//           for (size_t i : blameIndices)
+//           {
+//             d_blame.push_back(i);
+//           }
+//         }
+//       }
+//       else
+//       {
+//         for (size_t i = 0; i < generators.size(); ++i)
+//         {
+//           d_blame.push_back(i);
+//         }
+//       }
+//     }
+//   }
+//   ++d_stats.d_numReductions;
+//   Trace("ff::check") << "Groebner basis " << d_stats.d_numReductions.get()
+//                      << " " << basis << std::endl;
+//   for (const auto& basisPoly : basis)
+//   {
+//     if (CoCoA::deg(basisPoly) == 0)
+//     {
+//       return false;
+//     }
+//   }
+//
+//   if (!constructModel)
+//   {
+//     return true;
+//   }
+//
+//   Trace("ff::check") << "No 1 in G-Basis, so proceeding to model extraction"
+//                      << std::endl;
+//   Trace("ff::check") << "Using script at: " << FF_MODEL_SCRIPT_PATH
+//                      << std::endl;
+//
+//   std::vector<CoCoA::RingElem> values;
+//   {
+//     CodeTimer rootConstructionTimer(d_stats.d_rootConstructionTime);
+//     if (options().ff.ffSageRoots)
+//     {
+//       values = commonRootSage(ideal);
+//     }
+//     else
+//     {
+//       values = commonRoot(ideal);
+//     }
+//   }
+//
+//   // The output is non-empty if there are non-extension ("real") roots.
+//   if (values.empty())
+//   {
+//     ++d_stats.d_numConstructionErrors;
+//     return false;
+//   }
+//
+//   std::unordered_map<Node, Node> model;
+//   NodeManager* nm = NodeManager::currentNM();
+//   size_t numVars = CoCoA::NumIndets(polyRing);
+//   for (size_t i = 0; i < numVars; ++i)
+//   {
+//     std::ostringstream symName;
+//     symName << CoCoA::indet(polyRing, i);
+//     if (symNameNodes.count(symName.str()))
+//     {
+//       Node var = symNameNodes[symName.str()];
+//
+//       std::ostringstream valStr;
+//       valStr << values[i];
+//       Integer integer(valStr.str(), 10);
+//       FiniteField literal(integer, sizeInternal);
+//       Node value = nm->mkConst(literal);
+//
+//       Trace("ff::check::model") << var << ": " << value << std::endl;
+//       model.emplace(var, value);
+//     }
+//   }
+//   d_solution = model;
+//
+//   return true;
+// }
+//
+// std::unordered_set<Node> getVars(const std::vector<Node>& terms)
+// {
+//   std::unordered_set<Node> vars;
+//   for (const auto& term : terms)
+//   {
+//     for (const auto& node : NodeDfsIterable(term))
+//     {
+//       if (node.isVar())
+//       {
+//         vars.insert(node);
+//       }
+//     }
+//   }
+//   return vars;
+// }
+//
+// std::unordered_set<Integer, IntegerHashFunction> getFieldSizes(
+//     const std::vector<Node>& terms)
+// {
+//   std::unordered_set<Integer, IntegerHashFunction> sizes = {};
+//   for (const auto& term : terms)
+//   {
+//     for (const auto& node : NodeDfsIterable(term))
+//     {
+//       TypeNode ty = node.getType();
+//       if (ty.isFiniteField())
+//       {
+//         sizes.insert(ty.getFiniteFieldSize());
+//       }
+//     }
+//   }
+//   return sizes;
+// }
+//
+// size_t countDisequalities(const std::vector<Node>& terms)
+// {
+//   size_t ct = 0;
+//   for (const auto& term : terms)
+//   {
+//     if (term.getKind() == Kind::NOT)
+//     {
+//       ++ct;
+//     }
+//   }
+//   return ct;
+// }
 
 }  // namespace ff
 }  // namespace theory

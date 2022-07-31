@@ -40,11 +40,11 @@ Tracer::Tracer(){};
 
 void Tracer::initFunctionPointers()
 {
-  Assert(!CoCoA::handlersInited);
+  Assert(!CoCoA::handlersEnabled);
 
   Tracer* t = this;
 
-  CoCoA::handlersInited = true;
+  CoCoA::handlersEnabled = true;
   CoCoA::sPolyHandler = std::function(
       [=](const CoCoA::GPoly* p, const CoCoA::GPoly* q, const CoCoA::GPoly* s) {
         t->sPoly(p, q, s);

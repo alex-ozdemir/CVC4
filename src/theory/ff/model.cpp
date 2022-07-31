@@ -185,6 +185,8 @@ std::unique_ptr<AssignmentEnumerator> brancher(const CoCoA::ideal& ideal)
   {
     // If positive dimensional, we make a list of unset variables and
     // round-robin guess.
+    //
+    // TODO(aozdemir): guess free variables first!
     std::unordered_set<std::string> alreadySet = assignedVars(ideal);
     std::vector<CoCoA::RingElem> toGuess{};
     for (const auto& var : CoCoA::indets(polyRing))
