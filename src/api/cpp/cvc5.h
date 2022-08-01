@@ -1554,7 +1554,8 @@ class CVC5_EXPORT Term
    *
    * @note Uses the integer representative of smallest absolute value.
    *
-   * @return The string representation of the integer representation of this finite field value.
+   * @return The string representation of the integer representation of this
+   * finite field value.
    */
   std::string getFiniteFieldValue() const;
 

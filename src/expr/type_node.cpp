@@ -23,8 +23,8 @@
 #include "options/quantifiers_options.h"
 #include "theory/type_enumerator.h"
 #include "util/bitvector.h"
-#include "util/finite_field.h"
 #include "util/cardinality.h"
+#include "util/finite_field.h"
 
 using namespace std;
 
@@ -100,8 +100,8 @@ CardinalityClass TypeNode::getCardinalityClass()
   {
     ret = CardinalityClass::INTERPRETED_ONE;
   }
-  else if (isBoolean() || isBitVector() || isFloatingPoint()
-           || isRoundingMode() || isFiniteField())
+  else if (isBoolean() || isBitVector() || isFloatingPoint() || isRoundingMode()
+           || isFiniteField())
   {
     ret = CardinalityClass::FINITE;
   }

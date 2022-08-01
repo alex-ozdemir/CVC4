@@ -311,7 +311,8 @@ std::string LogicInfo::getLogicString() const {
         ss << "BV";
         ++seen;
       }
-      if(d_theories[THEORY_FF]) {
+      if (d_theories[THEORY_FF])
+      {
         ss << "FF";
         ++seen;
       }
@@ -449,7 +450,8 @@ void LogicInfo::setLogicString(std::string logicString)
         enableTheory(THEORY_BV);
         p += 2;
       }
-      if(!strncmp(p, "FF", 2)) {
+      if (!strncmp(p, "FF", 2))
+      {
         enableTheory(THEORY_FF);
         p += 2;
       }

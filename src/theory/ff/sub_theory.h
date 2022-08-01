@@ -74,7 +74,6 @@ class SubTheory : EnvObj, context::ContextNotifyObj
   const std::unordered_map<Node, Node>& model() const;
 
  private:
-
   // Called on SAT pop; we pop the incremental ideal if needed.
   void contextNotifyPop() override;
 
@@ -137,7 +136,6 @@ class SubTheory : EnvObj, context::ContextNotifyObj
   Integer d_modulus;
   // Set after registration is done.
   std::optional<CoCoA::ring> d_polyRing{};
-
 };
 
 }  // namespace ff

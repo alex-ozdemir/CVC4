@@ -62,8 +62,10 @@ class ListEnumerator : public AssignmentEnumerator
   std::vector<CoCoA::RingElem> d_remainingOptions;
 };
 
-// Return a list enumerator whose elements are (real) factors of this polynomial.
-std::unique_ptr<ListEnumerator> factorEnumerator(CoCoA::RingElem univariatePoly);
+// Return a list enumerator whose elements are (real) factors of this
+// polynomial.
+std::unique_ptr<ListEnumerator> factorEnumerator(
+    CoCoA::RingElem univariatePoly);
 
 // Guess all values for all variables, in a round robin. Only works for a prime
 // field (order p):
@@ -99,10 +101,12 @@ class RoundRobinEnumerator : public AssignmentEnumerator
 // Is this ideal the whole ring?
 bool isUnsat(const CoCoA::ideal& ideal);
 
-// Given a univariate linear polynomial, extract the assignment that satisfies it.
+// Given a univariate linear polynomial, extract the assignment that satisfies
+// it.
 //
 // An assignment is a variable number and a coefficient ring value.
-std::pair<size_t, CoCoA::RingElem> extractAssignment(const CoCoA::RingElem& elem);
+std::pair<size_t, CoCoA::RingElem> extractAssignment(
+    const CoCoA::RingElem& elem);
 
 // Which variables are assigned? Represented as strings.
 std::unordered_set<std::string> assignedVars(const CoCoA::ideal& ideal);

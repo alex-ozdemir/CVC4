@@ -21,8 +21,8 @@
 #include "expr/kind.h"
 #include "expr/type_node.h"
 #include "theory/type_enumerator.h"
-#include "util/integer.h"
 #include "util/finite_field.h"
+#include "util/integer.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -49,7 +49,8 @@ class FiniteFieldEnumerator : public TypeEnumeratorBase<FiniteFieldEnumerator>
     {
       throw NoMoreValuesException(getType());
     }
-    return NodeManager::currentNM()->mkConst<FiniteField>(FiniteField(d_current_int, d_modulus));
+    return NodeManager::currentNM()->mkConst<FiniteField>(
+        FiniteField(d_current_int, d_modulus));
   }
 
   FiniteFieldEnumerator& operator++() override

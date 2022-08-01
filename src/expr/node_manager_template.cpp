@@ -1323,7 +1323,8 @@ Node NodeManager::mkConstRealOrInt(const Rational& r)
 Node NodeManager::mkConstFiniteFieldElem(const Integer& v, const TypeNode& type)
 {
   Assert(type.isFiniteField());
-  return mkConst(kind::CONST_FINITE_FIELD, FiniteField(v, type.getFiniteFieldSize()));
+  return mkConst(kind::CONST_FINITE_FIELD,
+                 FiniteField(v, type.getFiniteFieldSize()));
 }
 
 Node NodeManager::mkConstRealOrInt(const TypeNode& tn, const Rational& r)

@@ -25,7 +25,7 @@ namespace theory {
 namespace ff {
 
 FfStatistics::FfStatistics(StatisticsRegistry& registry,
-                                           const std::string& prefix)
+                           const std::string& prefix)
     : d_numReductions(registry.registerInt(prefix + "num_reductions")),
       d_reductionTime(registry.registerTimer(prefix + "reduction_time")),
       d_rootConstructionTime(
@@ -35,7 +35,6 @@ FfStatistics::FfStatistics(StatisticsRegistry& registry,
 {
   Trace("ff::stats") << "ff registered 4 stats" << std::endl;
 }
-
 
 }  // namespace ff
 }  // namespace theory

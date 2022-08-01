@@ -38,7 +38,8 @@ TypeNode FiniteFieldConstantTypeRule::computeType(NodeManager* nodeManager,
                                                   TNode n,
                                                   bool _check)
 {
-  return nodeManager->mkFiniteFieldType(n.getConst<FiniteField>().getFieldSize());
+  return nodeManager->mkFiniteFieldType(
+      n.getConst<FiniteField>().getFieldSize());
 }
 
 TypeNode FiniteFieldFixedFieldTypeRule::computeType(NodeManager* nodeManager,

@@ -19,8 +19,8 @@
 
 #include <CoCoA/BigInt.H>
 #include <CoCoA/QuotientRing.H>
-#include <CoCoA/SparsePolyOps-ideal.H>
 #include <CoCoA/RingZZ.H>
+#include <CoCoA/SparsePolyOps-ideal.H>
 #include <CoCoA/ring.H>
 
 #include <numeric>

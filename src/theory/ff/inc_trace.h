@@ -20,16 +20,16 @@
 #ifndef CVC5__THEORY__FF__INC_TRACE_H
 #define CVC5__THEORY__FF__INC_TRACE_H
 
-#include <CoCoA/ring.H>
 #include <CoCoA/TmpGPoly.H>
+#include <CoCoA/ring.H>
 
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
 
-#include "context/context.h"
-#include "context/cdlist.h"
 #include "context/cdhashmap.h"
+#include "context/cdlist.h"
+#include "context/context.h"
 #include "expr/node.h"
 
 namespace cvc5::internal {
@@ -55,7 +55,9 @@ class IncrementalTracer
   void pop();
 
  private:
-  void sPoly(const CoCoA::GPoly* p, const CoCoA::GPoly* q, const CoCoA::GPoly* s);
+  void sPoly(const CoCoA::GPoly* p,
+             const CoCoA::GPoly* q,
+             const CoCoA::GPoly* s);
   void reductionStart(const CoCoA::GPoly* p);
   void reductionStep(const CoCoA::GPoly* q);
   void reductionEnd(const CoCoA::GPoly* r);
@@ -70,7 +72,9 @@ class IncrementalTracer
   size_t d_nInputs{};
   std::vector<std::string> d_reductionSeq{};
 
-  std::function<void(const CoCoA::GPoly*, const CoCoA::GPoly*, const CoCoA::GPoly*)> d_sPoly{};
+  std::function<void(
+      const CoCoA::GPoly*, const CoCoA::GPoly*, const CoCoA::GPoly*)>
+      d_sPoly{};
   std::function<void(const CoCoA::GPoly*)> d_reductionStart{};
   std::function<void(const CoCoA::GPoly*)> d_reductionStep{};
   std::function<void(const CoCoA::GPoly*)> d_reductionEnd{};

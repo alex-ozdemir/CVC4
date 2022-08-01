@@ -156,7 +156,10 @@ struct FiniteFieldSize
   Integer d_size;
   FiniteFieldSize(Integer size) : d_size(size) {}
   operator Integer() const { return d_size; }
-  inline bool operator==(const FiniteFieldSize& y) const { return d_size == y.d_size; }
+  inline bool operator==(const FiniteFieldSize& y) const
+  {
+    return d_size == y.d_size;
+  }
 }; /* struct FiniteFieldSize */
 
 /*
@@ -172,7 +175,10 @@ struct FiniteFieldHashFunction
  */
 struct FiniteFieldSizeHashFunction
 {
-  inline size_t operator()(const FiniteFieldSize& size) const { return size.d_size.hash(); }
+  inline size_t operator()(const FiniteFieldSize& size) const
+  {
+    return size.d_size.hash();
+  }
 }; /* struct FiniteFieldHashFunction */
 
 /* -----------------------------------------------------------------------

@@ -66,7 +66,7 @@ namespace theory {
  *            Do not change this order.
  */
 
-#define CVC5_FOR_EACH_THEORY                                     \
+#define CVC5_FOR_EACH_THEORY                                               \
   CVC5_FOR_EACH_THEORY_STATEMENT(cvc5::internal::theory::THEORY_BUILTIN)   \
   CVC5_FOR_EACH_THEORY_STATEMENT(cvc5::internal::theory::THEORY_BOOL)      \
   CVC5_FOR_EACH_THEORY_STATEMENT(cvc5::internal::theory::THEORY_UF)        \

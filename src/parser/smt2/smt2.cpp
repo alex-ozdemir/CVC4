@@ -123,7 +123,8 @@ void Smt2::addBitvectorOperators() {
   addIndexedOperator(cvc5::BITVECTOR_ROTATE_RIGHT, "rotate_right");
 }
 
-void Smt2::addFiniteFieldOperators() {
+void Smt2::addFiniteFieldOperators()
+{
   addOperator(cvc5::FINITE_FIELD_ADD, "ffadd");
   addOperator(cvc5::FINITE_FIELD_MULT, "ffmul");
   addOperator(cvc5::FINITE_FIELD_NEG, "ffneg");
@@ -903,8 +904,7 @@ void Smt2::parseOpApplyTypeAscription(ParseOp& p, cvc5::Sort type)
       if (!type.isFiniteField())
       {
         std::stringstream ss;
-        ss << "expected finite field sort to ascribe "
-           << p.d_name
+        ss << "expected finite field sort to ascribe " << p.d_name
            << " but found sort: " << type;
         parseError(ss.str());
       }

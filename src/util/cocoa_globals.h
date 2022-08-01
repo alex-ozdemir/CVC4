@@ -20,7 +20,6 @@
 #ifndef CVC5__UTIL__COCOA_GLOBALS_H
 #define CVC5__UTIL__COCOA_GLOBALS_H
 
-
 #include <CoCoA/GlobalManager.H>
 
 namespace cvc5::internal {
@@ -37,4 +36,3 @@ void initCocoaGlobalManager();
 #endif /* CVC5__UTIL__COCOA_GLOBALS_H */
 
 #endif /* CVC5_USE_COCOA */
-

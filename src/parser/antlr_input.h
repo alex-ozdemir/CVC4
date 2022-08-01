@@ -254,7 +254,8 @@ inline unsigned AntlrInput::tokenToUnsigned(pANTLR3_COMMON_TOKEN token) {
   return stringToUnsigned(tokenText(token));
 }
 
-inline unsigned AntlrInput::stringToUnsigned(const std::string& str) {
+inline unsigned AntlrInput::stringToUnsigned(const std::string& str)
+{
   unsigned result;
   std::stringstream ss;
   ss << str;
