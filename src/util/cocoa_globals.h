@@ -25,12 +25,10 @@
 
 namespace cvc5::internal {
 
-static CoCoA::GlobalManager* s_cocoaGlobalManager = nullptr;
+extern CoCoA::GlobalManager* s_cocoaGlobalManager;
 
 /**
- * Intializes the CoCoA global manager if
- *    (a) CoCoA was enabled in this build and
- *    (b) it has not been intialized already
+ * Intializes the CoCoA global manager if it has not been intialized already
  */
 void initCocoaGlobalManager();
 

@@ -21,6 +21,8 @@
 
 namespace cvc5::internal {
 
+CoCoA::GlobalManager* s_cocoaGlobalManager = nullptr;
+
 void initCocoaGlobalManager()
 {
   if (s_cocoaGlobalManager == nullptr)
