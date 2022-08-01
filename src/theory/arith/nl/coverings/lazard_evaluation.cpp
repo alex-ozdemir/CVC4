@@ -21,6 +21,7 @@
 
 #include "base/check.h"
 #include "base/output.h"
+#include "util/statistics_registry.h"
 #include "util/statistics_stats.h"
 
 #ifdef CVC5_USE_COCOA
@@ -33,17 +34,14 @@
 
 namespace cvc5::internal::theory::arith::nl::coverings {
 
-struct LazardEvaluationStats
-{
-  IntStat d_directAssignments = statisticsRegistry().registerInt(
-      "theory::arith::coverings::lazard-direct");
-  IntStat d_ranAssignments =
-      statisticsRegistry().registerInt("theory::arith::coverings::lazard-rans");
-  IntStat d_evaluations = statisticsRegistry().registerInt(
-      "theory::arith::coverings::lazard-evals");
-  IntStat d_reductions = statisticsRegistry().registerInt(
-      "theory::arith::coverings::lazard-reduce");
-};
+LazardEvaluationStats::LazardEvaluationStats(StatisticsRegistry& reg)
+    : d_directAssignments(
+        reg.registerInt("theory::arith::coverings::lazard-direct")),
+      d_ranAssignments(
+          reg.registerInt("theory::arith::coverings::lazard-rans")),
+      d_evaluations(reg.registerInt("theory::arith::coverings::lazard-evals")),
+      d_reductions(
+          reg.registerInt("theory::arith::coverings::lazard-reduce")){};
 
 struct LazardEvaluationState;
 std::ostream& operator<<(std::ostream& os, const LazardEvaluationState& state);
@@ -239,7 +237,7 @@ struct LazardEvaluationState
   CoCoA::RingElem pushDownJ(const CoCoA::RingElem& p, size_t i) const
   {
     Trace("nl-cov::lazard") << "Push " << p << " from " << d_J[i] << " to "
-                         << d_J[i - 1] << std::endl;
+                            << d_J[i - 1] << std::endl;
     Assert(CoCoA::owner(p) == d_J[i]);
     CoCoA::RingElem res(d_J[i - 1]);
     for (CoCoA::SparsePolyIter it = CoCoA::BeginIter(p); !CoCoA::IsEnded(it);
@@ -282,8 +280,8 @@ struct LazardEvaluationState
     CoCoA::RingElem res = p;
     for (; i > 0; --i)
     {
-      Trace("nl-cov::lazard") << "Pushing " << p << " from J" << i << " to J"
-                           << i - 1 << std::endl;
+      Trace("nl-cov::lazard")
+          << "Pushing " << p << " from J" << i << " to J" << i - 1 << std::endl;
       res = pushDownJ(res, i);
     }
     return res;
@@ -309,8 +307,8 @@ struct LazardEvaluationState
     {
       d_R.emplace_back(CoCoA::NewPolyRing(d_K.back(), {CoCoA::NewSymbol()}));
     }
-    Trace("nl-cov::lazard") << "R" << d_R.size() - 1 << " = " << d_R.back()
-                         << std::endl;
+    Trace("nl-cov::lazard")
+        << "R" << d_R.size() - 1 << " = " << d_R.back() << std::endl;
     d_converter.addVar(std::make_pair(CoCoA::RingID(d_R.back()), 0), var);
   }
 
@@ -324,11 +322,11 @@ struct LazardEvaluationState
   {
     d_direct.emplace_back();
     d_p.emplace_back(p);
-    Trace("nl-cov::lazard") << "p" << d_p.size() - 1 << " = " << d_p.back()
-                         << std::endl;
+    Trace("nl-cov::lazard")
+        << "p" << d_p.size() - 1 << " = " << d_p.back() << std::endl;
     d_K.emplace_back(CoCoA::NewQuotientRing(d_R.back(), CoCoA::ideal(p)));
-    Trace("nl-cov::lazard") << "K" << d_K.size() - 1 << " = " << d_K.back()
-                         << std::endl;
+    Trace("nl-cov::lazard")
+        << "K" << d_K.size() - 1 << " = " << d_K.back() << std::endl;
   }
 
   /**
@@ -343,8 +341,8 @@ struct LazardEvaluationState
     d_p.emplace_back();
     Trace("nl-cov::lazard") << "x" << d_p.size() - 1 << " = " << r << std::endl;
     d_K.emplace_back(d_K.back());
-    Trace("nl-cov::lazard") << "K" << d_K.size() - 1 << " = " << d_K.back()
-                         << std::endl;
+    Trace("nl-cov::lazard")
+        << "K" << d_K.size() - 1 << " = " << d_K.back() << std::endl;
   }
 
   /**
@@ -369,24 +367,24 @@ struct LazardEvaluationState
     for (size_t i = 0; i < d_R.size(); ++i)
     {
       d_J.emplace_back(CoCoA::NewPolyRing(d_K[i], symbols, CoCoA::lex));
-      Trace("nl-cov::lazard") << "J" << d_J.size() - 1 << " = " << d_J.back()
-                           << std::endl;
+      Trace("nl-cov::lazard")
+          << "J" << d_J.size() - 1 << " = " << d_J.back() << std::endl;
       symbols.erase(symbols.begin());
       // R_i --> J_i
       d_phom.emplace_back(
           CoCoA::PolyAlgebraHom(d_R[i], d_J[i], {CoCoA::indet(d_J[i], 0)}));
-      Trace("nl-cov::lazard") << "R" << i << " --> J" << i << ": " << d_phom.back()
-                           << std::endl;
+      Trace("nl-cov::lazard")
+          << "R" << i << " --> J" << i << ": " << d_phom.back() << std::endl;
       if (i > 0)
       {
         Trace("nl-cov::lazard")
             << "Constructing J" << i - 1 << " --> J" << i << ": " << std::endl;
         Trace("nl-cov::lazard") << "Constructing " << d_J[i - 1] << " --> "
-                             << d_J[i] << ": " << std::endl;
+                                << d_J[i] << ": " << std::endl;
         if (d_direct[i - 1])
         {
           Trace("nl-cov::lazard") << "Using " << d_variables[i - 1] << " for "
-                               << CoCoA::indet(d_J[i - 1], 0) << std::endl;
+                                  << CoCoA::indet(d_J[i - 1], 0) << std::endl;
           Assert(CoCoA::CoeffRing(d_J[i]) == CoCoA::owner(*d_direct[i - 1]));
           std::vector<CoCoA::RingElem> indets = {
               CoCoA::RingElem(d_J[i], *d_direct[i - 1])};
@@ -425,7 +423,7 @@ struct LazardEvaluationState
               CoCoA::PolyRingHom(d_J[i - 1], d_J[i], R2K(K2R), indets));
         }
         Trace("nl-cov::lazard") << "J" << i - 1 << " --> J" << i << ": "
-                             << d_qhom.back() << std::endl;
+                                << d_qhom.back() << std::endl;
       }
     }
     for (size_t i = 0; i < d_variables.size(); ++i)
@@ -440,12 +438,12 @@ struct LazardEvaluationState
     {
       if (d_direct[i]) continue;
       Trace("nl-cov::lazard") << "Apply " << d_phom[i] << " to " << d_p[i]
-                           << " from " << CoCoA::owner(d_p[i]) << std::endl;
+                              << " from " << CoCoA::owner(d_p[i]) << std::endl;
       d_GBBaseIdeal.emplace_back(pushDownJ0(d_phom[i](d_p[i]), i));
     }
 
     Trace("nl-cov::lazard") << "Finished construction" << std::endl
-                         << *this << std::endl;
+                            << *this << std::endl;
   }
 
   /**
@@ -541,6 +539,8 @@ struct LazardEvaluationState
     }
     return res;
   }
+
+  LazardEvaluationState(StatisticsRegistry& reg) : d_stats(reg) {}
 };
 
 std::ostream& operator<<(std::ostream& os, const LazardEvaluationState& state)
@@ -563,8 +563,8 @@ std::ostream& operator<<(std::ostream& os, const LazardEvaluationState& state)
   return os;
 }
 
-LazardEvaluation::LazardEvaluation()
-    : d_state(std::make_unique<LazardEvaluationState>())
+LazardEvaluation::LazardEvaluation(StatisticsRegistry& reg)
+    : d_state(std::make_unique<LazardEvaluationState>(reg))
 {
 }
 
@@ -632,8 +632,8 @@ void LazardEvaluation::add(const poly::Variable& var, const poly::Value& val)
     }
     Trace("nl-cov::lazard") << "Got mipo " << polymipo << std::endl;
     auto mipo = d_state->convertMiPo(polymipo, var);
-    Trace("nl-cov::lazard") << "Factoring " << mipo << " from "
-                         << CoCoA::owner(mipo) << std::endl;
+    Trace("nl-cov::lazard")
+        << "Factoring " << mipo << " from " << CoCoA::owner(mipo) << std::endl;
     auto factorization = CoCoA::factor(mipo);
     Trace("nl-cov::lazard") << "-> " << factorization << std::endl;
     bool used_factor = false;
@@ -646,14 +646,15 @@ void LazardEvaluation::add(const poly::Variable& var, const poly::Value& val)
         if (CoCoA::deg(f) == 1)
         {
           auto rat = -CoCoA::ConstantCoeff(f) / CoCoA::LC(f);
-          Trace("nl-cov::lazard") << "Using linear factor " << f << " -> " << var
-                               << " = " << rat << std::endl;
+          Trace("nl-cov::lazard") << "Using linear factor " << f << " -> "
+                                  << var << " = " << rat << std::endl;
           d_state->addKRational(var, rat);
           d_state->d_stats.d_directAssignments++;
         }
         else
         {
-          Trace("nl-cov::lazard") << "Using nonlinear factor " << f << std::endl;
+          Trace("nl-cov::lazard")
+              << "Using nonlinear factor " << f << std::endl;
           d_state->addK(var, f);
           d_state->d_stats.d_ranAssignments++;
         }
@@ -819,8 +820,8 @@ std::vector<poly::Interval> LazardEvaluation::infeasibleRegions(
       continue;
     }
     // combine them into res[i+1], do not copy res[i] over to combined
-    Trace("nl-cov::lazard") << "Combine " << res[i] << " and " << res[i + 1]
-                         << std::endl;
+    Trace("nl-cov::lazard")
+        << "Combine " << res[i] << " and " << res[i + 1] << std::endl;
     Assert(poly::get_lower(res[i]) <= poly::get_lower(res[i + 1]));
     res[i + 1].set_lower(poly::get_lower(res[i]), poly::get_lower_open(res[i]));
   }
