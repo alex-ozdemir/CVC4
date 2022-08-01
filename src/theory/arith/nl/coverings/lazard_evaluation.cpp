@@ -852,8 +852,8 @@ struct LazardEvaluationState
 {
   poly::Assignment d_assignment;
 };
-LazardEvaluation::LazardEvaluation(StatisticsRegistry& reg)
-    : d_state(std::make_unique<LazardEvaluationState>(reg))
+LazardEvaluation::LazardEvaluation(StatisticsRegistry&)
+    : d_state(std::make_unique<LazardEvaluationState>())
 {
 }
 LazardEvaluation::~LazardEvaluation() {}
