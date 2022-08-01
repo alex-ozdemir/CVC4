@@ -50,7 +50,8 @@ IncrementalIdeal::IncrementalIdeal(Env& env, CoCoA::ring polyRing)
   {
     for (const auto& var : CoCoA::indets(polyRing))
     {
-      CoCoA::BigInt characteristic = CoCoA::characteristic(polyRing->myBaseRing());
+      CoCoA::BigInt characteristic =
+          CoCoA::characteristic(polyRing->myBaseRing());
       long power = CoCoA::LogCardinality(polyRing->myBaseRing());
       CoCoA::BigInt size = CoCoA::power(characteristic, power);
       d_gens.push_back(CoCoA::power(var, size) - var);
@@ -100,20 +101,37 @@ const std::vector<size_t>& IncrementalIdeal::trivialCoreIndices()
   Assert(idealIsTrivial());
   if (!d_hasCore.get())
   {
-    std::vector<size_t> indices = d_tracer.trace(d_basis.get().front());
-    if (options().ff.ffFieldPolys)
+    std::vector<size_t> indices;
+    if (options().ff.ffTraceGb)
     {
-      // we must shift out the field polynomial indices.
-      std::vector<size_t> indicesWithoutFieldPolys;
-      size_t numVars = CoCoA::NumIndets(d_polyRing);
-      for (size_t i : indices)
+      indices = d_tracer.trace(d_basis.get().front());
+      if (options().ff.ffFieldPolys)
       {
-        if (i >= numVars)
+        // we must shift out the field polynomial indices.
+        std::vector<size_t> indicesWithoutFieldPolys;
+        size_t numVars = CoCoA::NumIndets(d_polyRing);
+        for (size_t i : indices)
         {
-          indicesWithoutFieldPolys.push_back(i - numVars);
+          if (i >= numVars)
+          {
+            indicesWithoutFieldPolys.push_back(i - numVars);
+          }
         }
+        indices = indicesWithoutFieldPolys;
       }
-      indices = indicesWithoutFieldPolys;
+    }
+    else
+    {
+      indices.clear();
+      size_t numGens = d_gens.size();
+      if (options().ff.ffFieldPolys)
+      {
+        numGens -= CoCoA::NumIndets(d_polyRing);
+      }
+      for (size_t i = 0; i < numGens; ++i)
+      {
+        indices.push_back(i);
+      }
     }
     d_core = std::move(indices);
     d_hasCore.set(true);
