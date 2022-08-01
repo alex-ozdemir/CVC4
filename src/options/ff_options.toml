@@ -11,7 +11,7 @@ name   = "Finite Field Theory"
 
 [[option]]
   name       = "ffIncrementality"
-  category   = "regular"
+  category   = "expert"
   long       = "ff-incrementality=MODE"
   type       = "FfIncrementality"
   default    = "NONINCREMENTAL"
@@ -26,3 +26,11 @@ name   = "Finite Field Theory"
 [[option.mode.EAGER]]
   name = "eager"
   help = "Bases are computed at standard-effort, per-context bases are saved"
+
+[[option]]
+  name       = "ffFieldPolys"
+  category   = "expert"
+  long       = "ff-field-polys"
+  type       = "bool"
+  default    = "false"
+  help       = "include field polynomials in Groebner basis computation"

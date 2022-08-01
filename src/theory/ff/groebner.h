@@ -63,6 +63,7 @@ class IncrementalIdeal : EnvObj
 
   std::unique_ptr<context::Context> d_context;
 
+  CoCoA::ring d_polyRing;
   IncrementalTracer d_tracer{};
   context::CDList<CoCoA::RingElem> d_gens;
   context::CDO<std::vector<CoCoA::RingElem>> d_basis;
