@@ -55,7 +55,14 @@ IncrementalIdeal::IncrementalIdeal(Env& env, CoCoA::ring polyRing)
       long power = CoCoA::LogCardinality(polyRing->myBaseRing());
       CoCoA::BigInt size = CoCoA::power(characteristic, power);
       d_gens.push_back(CoCoA::power(var, size) - var);
+      d_tracer.addInput(d_gens.back());
     }
+    std::vector<CoCoA::RingElem> firstBasis;
+    for (const auto& fieldPoly : d_gens)
+    {
+      firstBasis.push_back(fieldPoly);
+    }
+    d_basis = std::move(firstBasis);
   }
 }
 
