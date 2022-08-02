@@ -5,5 +5,5 @@
 (set-logic QF_FF)
 ; all disjuncts should be false
 (define-sort F () (_ FiniteField 17))
-(assert (= (as ff0 F) (ff.add (as ff1 F) (as ff-1 F))))
+(assert (= (as ff0 F) (ff.add (as ff1 F) (ff.neg (as ff1 F)))))
 (check-sat)

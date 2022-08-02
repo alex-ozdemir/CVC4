@@ -12,7 +12,7 @@
 (declare-fun is_zero () F)
 (assert (not (=>
   (and (= (as ff0 F)
-          (ff.add (ff.mul m x) (as ff-1 F) is_zero))
+          (ff.add (ff.mul m x) (ff.neg (as ff1 F)) is_zero))
        (= (as ff0 F) (ff.mul is_zero x)))
   (and (or (= (as ff0 F) is_zero) (= (as ff1 F) is_zero))
        (= (= (as ff1 F) is_zero) (= x (as ff0 F))))
