@@ -41,15 +41,15 @@ IncrementalTracer::IncrementalTracer()
 {
   d_inputs.emplace_back();
   IncrementalTracer* t = this;
-  d_sPoly = std::function([=](const CoCoA::GPoly* p,
-                              const CoCoA::GPoly* q,
-                              const CoCoA::GPoly* s) { t->sPoly(p, q, s); });
+  d_sPoly = std::function([=](CoCoA::ConstRefRingElem  p,
+                              CoCoA::ConstRefRingElem  q,
+                              CoCoA::ConstRefRingElem  s) { t->sPoly(p, q, s); });
   d_reductionStart =
-      std::function([=](const CoCoA::GPoly* p) { t->reductionStart(p); });
+      std::function([=](CoCoA::ConstRefRingElem  p) { t->reductionStart(p); });
   d_reductionStep =
-      std::function([=](const CoCoA::GPoly* p) { t->reductionStep(p); });
+      std::function([=](CoCoA::ConstRefRingElem  p) { t->reductionStep(p); });
   d_reductionEnd =
-      std::function([=](const CoCoA::GPoly* p) { t->reductionEnd(p); });
+      std::function([=](CoCoA::ConstRefRingElem  p) { t->reductionEnd(p); });
 };
 
 void IncrementalTracer::setFunctionPointers()
@@ -113,10 +113,14 @@ std::vector<size_t> IncrementalTracer::trace(const CoCoA::RingElem& i) const
   return bs;
 }
 
-void IncrementalTracer::push() { d_inputs.emplace_back(); }
+void IncrementalTracer::push() {
+  Trace("ff::trace") << "push" << std::endl;
+  d_inputs.emplace_back();
+}
 
 void IncrementalTracer::pop()
 {
+  Trace("ff::trace") << "pop" << std::endl;
   Assert(d_inputs.size() > 1);
   std::vector<std::string> q;
   for (auto& i : d_inputs.back())
@@ -156,18 +160,18 @@ void IncrementalTracer::pop()
   }
 }
 
-void IncrementalTracer::sPoly(const CoCoA::GPoly* p,
-                              const CoCoA::GPoly* q,
-                              const CoCoA::GPoly* s)
+void IncrementalTracer::sPoly(CoCoA::ConstRefRingElem  p,
+                              CoCoA::ConstRefRingElem  q,
+                              CoCoA::ConstRefRingElem  s)
 {
-  std::string ss = ostring(poly(*s));
-  Trace("ff::trace") << "s: " << poly(*p) << ", " << poly(*q) << " -> "
-                     << poly(*s) << std::endl;
+  std::string ss = ostring(s);
+  Trace("ff::trace") << "s: " << p << ", " << q << " -> "
+                     << s << std::endl;
   if (d_parents.count(ss) == 0)
   {
     Trace("ff::trace") << " keep" << std::endl;
-    addDep(ostring(poly(*p)), ss);
-    addDep(ostring(poly(*q)), ss);
+    addDep(ostring(p), ss);
+    addDep(ostring(q), ss);
   }
   else
   {
@@ -175,25 +179,25 @@ void IncrementalTracer::sPoly(const CoCoA::GPoly* p,
   }
 }
 
-void IncrementalTracer::reductionStart(const CoCoA::GPoly* p)
+void IncrementalTracer::reductionStart(CoCoA::ConstRefRingElem  p)
 {
   Assert(d_reductionSeq.empty());
-  Trace("ff::trace") << "reduction start: " << poly(*p) << std::endl;
-  d_reductionSeq.push_back(ostring(poly(*p)));
+  Trace("ff::trace") << "reduction start: " << p << std::endl;
+  d_reductionSeq.push_back(ostring(p));
 }
 
-void IncrementalTracer::reductionStep(const CoCoA::GPoly* q)
+void IncrementalTracer::reductionStep(CoCoA::ConstRefRingElem  q)
 {
   Assert(!d_reductionSeq.empty());
-  Trace("ff::trace") << "reduction step: " << poly(*q) << std::endl;
-  d_reductionSeq.push_back(ostring(poly(*q)));
+  Trace("ff::trace") << "reduction step: " << q << std::endl;
+  d_reductionSeq.push_back(ostring(q));
 }
 
-void IncrementalTracer::reductionEnd(const CoCoA::GPoly* r)
+void IncrementalTracer::reductionEnd(CoCoA::ConstRefRingElem  r)
 {
   Assert(!d_reductionSeq.empty());
-  Trace("ff::trace") << "reduction end: " << poly(*r) << std::endl;
-  std::string rr = ostring(poly(*r));
+  Trace("ff::trace") << "reduction end: " << r << std::endl;
+  std::string rr = ostring(r);
   if (d_parents.count(rr) == 0 && rr != d_reductionSeq.front())
   {
     Trace("ff::trace") << " keep" << std::endl;

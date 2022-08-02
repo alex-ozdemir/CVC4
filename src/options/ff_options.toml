@@ -34,3 +34,11 @@ name   = "Finite Field Theory"
   type       = "bool"
   default    = "false"
   help       = "include field polynomials in Groebner basis computation"
+
+[[option]]
+  name       = "ffToyGb"
+  category   = "expert"
+  long       = "ff-toy-gb"
+  type       = "bool"
+  default    = "false"
+  help       = "use toy Groebner basis implementation"

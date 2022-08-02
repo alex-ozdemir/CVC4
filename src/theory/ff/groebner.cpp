@@ -29,6 +29,7 @@
 #include "expr/node_traversal.h"
 #include "options/ff_options.h"
 #include "theory/ff/model.h"
+#include "theory/ff/toy_gb.h"
 #include "util/finite_field.h"
 
 namespace cvc5::internal {
@@ -86,7 +87,14 @@ void IncrementalIdeal::pushGenerators(std::vector<CoCoA::RingElem>&& gens)
     }
   }
   CoCoA::ideal ideal = CoCoA::ideal(theseGens);
-  d_basis = CoCoA::GBasis(ideal);
+  if (options().ff.ffToyGb)
+  {
+    d_basis = toyGBasis(ideal);
+  }
+  else
+  {
+    d_basis = CoCoA::GBasis(ideal);
+  }
   if (TraceIsOn("ff::groebner::push"))
   {
     for (const auto& b : d_basis.get())
