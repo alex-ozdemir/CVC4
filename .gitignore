@@ -11,13 +11,5 @@ generated/
 *~
 \#*\#
 *.swp
+/debug/
 /deps/
-/debug*
-/build*
-compile_commands.json
-/test/regress/results_*
-__pycache__
-.ccls-cache
-log.script
-/cvc5-venv
-/Testing
