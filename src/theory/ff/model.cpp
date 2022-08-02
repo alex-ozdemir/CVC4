@@ -208,9 +208,11 @@ std::vector<CoCoA::RingElem> commonRoot(const CoCoA::ideal& initialIdeal)
 {
   CoCoA::ring polyRing = initialIdeal->myRing();
   // We maintain two stacks:
-  // * one of ideal
-  // * one of branch points
+  // * one of ideals
+  // * one of branchers
   //
+  // If brancher B has the same index as ideal I, then B represents possible
+  // expansions of ideal I (equivalently, restrictions of I's variety).
   std::vector<CoCoA::ideal> ideals{initialIdeal};
   std::vector<std::unique_ptr<AssignmentEnumerator>> branchers{};
   while (!ideals.empty())
@@ -222,7 +224,7 @@ std::vector<CoCoA::RingElem> commonRoot(const CoCoA::ideal& initialIdeal)
       ideals.pop_back();
     }
     // If the ideal has a linear polynomial in each variable, we've found a
-    // value.
+    // variety element (a model).
     else if (allVarsAssigned(ideal))
     {
       std::unordered_map<size_t, CoCoA::RingElem> varNumToValue{};
@@ -258,7 +260,7 @@ std::vector<CoCoA::RingElem> commonRoot(const CoCoA::ideal& initialIdeal)
         newGens.push_back(choicePoly.value());
         ideals.push_back(CoCoA::ideal(newGens));
       }
-      // or drop this ideal if we're out of branches.
+      // or drop this ideal & brancher if we're out of branches.
       else
       {
         branchers.pop_back();
