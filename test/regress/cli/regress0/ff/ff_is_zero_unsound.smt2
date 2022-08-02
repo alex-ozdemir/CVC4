@@ -11,8 +11,8 @@
 (declare-fun m () (_ FiniteField 17))
 (declare-fun is_zero () (_ FiniteField 17))
 (assert (not (=>
-  (and (= #f0m17 (ffadd (ffmul m x) #f16m17 is_zero))
-       (= #f0m17 (ffmul is_zero m)))
+  (and (= #f0m17 (ff.add (ff.mul m x) #f16m17 is_zero))
+       (= #f0m17 (ff.mul is_zero m)))
   (and (or (= #f0m17 is_zero) (= #f1m17 is_zero))
        (= (= #f1m17 is_zero) (= x #f0m17)))
 )))

@@ -125,9 +125,9 @@ void Smt2::addBitvectorOperators() {
 
 void Smt2::addFiniteFieldOperators()
 {
-  addOperator(cvc5::FINITE_FIELD_ADD, "ffadd");
-  addOperator(cvc5::FINITE_FIELD_MULT, "ffmul");
-  addOperator(cvc5::FINITE_FIELD_NEG, "ffneg");
+  addOperator(cvc5::FINITE_FIELD_ADD, "ff.add");
+  addOperator(cvc5::FINITE_FIELD_MULT, "ff.mul");
+  addOperator(cvc5::FINITE_FIELD_NEG, "ff.neg");
 }
 
 void Smt2::addDatatypesOperators()

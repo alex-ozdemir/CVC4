@@ -8,5 +8,5 @@
 (set-logic QF_FF)
 (define-sort F () (_ FiniteField 17))
 (declare-fun x () F)
-(assert (not (= (ffneg (ffneg x)) x)))
+(assert (not (= (ff.neg (ff.neg x)) x)))
 (check-sat)
