@@ -55,12 +55,12 @@ class IncrementalTracer
   void pop();
 
  private:
-  void sPoly(CoCoA::ConstRefRingElem  p,
-             CoCoA::ConstRefRingElem  q,
-             CoCoA::ConstRefRingElem  s);
-  void reductionStart(CoCoA::ConstRefRingElem  p);
-  void reductionStep(CoCoA::ConstRefRingElem  q);
-  void reductionEnd(CoCoA::ConstRefRingElem  r);
+  void sPoly(CoCoA::ConstRefRingElem p,
+             CoCoA::ConstRefRingElem q,
+             CoCoA::ConstRefRingElem s);
+  void reductionStart(CoCoA::ConstRefRingElem p);
+  void reductionStep(CoCoA::ConstRefRingElem q);
+  void reductionEnd(CoCoA::ConstRefRingElem r);
 
   void addItem(const std::string&& item);
   void addDep(const std::string& parent, const std::string& child);
@@ -72,12 +72,13 @@ class IncrementalTracer
   size_t d_nInputs{};
   std::vector<std::string> d_reductionSeq{};
 
-  std::function<void(
-      CoCoA::ConstRefRingElem , CoCoA::ConstRefRingElem , CoCoA::ConstRefRingElem )>
+  std::function<void(CoCoA::ConstRefRingElem,
+                     CoCoA::ConstRefRingElem,
+                     CoCoA::ConstRefRingElem)>
       d_sPoly{};
-  std::function<void(CoCoA::ConstRefRingElem )> d_reductionStart{};
-  std::function<void(CoCoA::ConstRefRingElem )> d_reductionStep{};
-  std::function<void(CoCoA::ConstRefRingElem )> d_reductionEnd{};
+  std::function<void(CoCoA::ConstRefRingElem)> d_reductionStart{};
+  std::function<void(CoCoA::ConstRefRingElem)> d_reductionStep{};
+  std::function<void(CoCoA::ConstRefRingElem)> d_reductionEnd{};
 };
 
 }  // namespace ff

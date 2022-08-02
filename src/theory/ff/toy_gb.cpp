@@ -39,7 +39,8 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-long FindReducer(CoCoA::ConstRefRingElem f, const std::vector<CoCoA::RingElem>& v)
+long FindReducer(CoCoA::ConstRefRingElem f,
+                 const std::vector<CoCoA::RingElem>& v)
 {
   if (IsZero(f)) return -1;
 
@@ -48,7 +49,8 @@ long FindReducer(CoCoA::ConstRefRingElem f, const std::vector<CoCoA::RingElem>& 
   return -1;
 }
 
-CoCoA::RingElem NRLM(CoCoA::ConstRefRingElem f, const std::vector<CoCoA::RingElem>& v)
+CoCoA::RingElem NRLM(CoCoA::ConstRefRingElem f,
+                     const std::vector<CoCoA::RingElem>& v)
 {
   const CoCoA::SparsePolyRing P = owner(f);
   CoCoA::RingElem m(P);
@@ -68,7 +70,8 @@ CoCoA::RingElem NRLM(CoCoA::ConstRefRingElem f, const std::vector<CoCoA::RingEle
   return r;
 }
 
-CoCoA::RingElem NormalRemainder(CoCoA::ConstRefRingElem f, const std::vector<CoCoA::RingElem>& v)
+CoCoA::RingElem NormalRemainder(CoCoA::ConstRefRingElem f,
+                                const std::vector<CoCoA::RingElem>& v)
 {
   if (IsZero(f)) return f;
   const CoCoA::SparsePolyRing P = owner(f);
@@ -92,9 +95,10 @@ CoCoA::RingElem NormalRemainder(CoCoA::ConstRefRingElem f, const std::vector<CoC
 CoCoA::RingElem SPoly(CoCoA::ConstRefRingElem g, CoCoA::ConstRefRingElem h)
 {
   const CoCoA::ring P = owner(g);
-  CoCoA::PPMonoidElem m = lcm(LPP(g), LPP(h));  // monoid: not implemented in CoCoA-5
+  CoCoA::PPMonoidElem m =
+      lcm(LPP(g), LPP(h));  // monoid: not implemented in CoCoA-5
   CoCoA::RingElem s = monomial(P, 1 / LC(g), m / LPP(g)) * g
-         - monomial(P, 1 / LC(h), m / LPP(h)) * h;
+                      - monomial(P, 1 / LC(h), m / LPP(h)) * h;
   // use CoCoA handlers, so that the toy GB doesn't need its own tracer
   if (CoCoA::handlersEnabled) CoCoA::sPolyHandler(g, h, s);
   return s;
@@ -133,7 +137,7 @@ std::vector<CoCoA::RingElem> toyGBasis(CoCoA::ideal I)
   CoCoA::VerboseLog VERBOSE("MyGBasis: ");
   //  -- INITIALIZATION -----------------------------
   std::vector<CoCoA::RingElem> GB;  // empty
-  std::list<GBPair> pairs;   // empty
+  std::list<GBPair> pairs;          // empty
   CoCoA::RingElem g;
   long index_g;
   for (const auto& f : gens(I))  // minor cleaning on gens(I):
@@ -146,7 +150,8 @@ std::vector<CoCoA::RingElem> toyGBasis(CoCoA::ideal I)
       for (long n = 0; n < index_g; ++n) pairs.push_back(GBPair(n, index_g));
     }
   }
-  // VERBOSE(8) << "start\n  GB = " << GB << "\n  pairs = " << pairs << std::endl;
+  // VERBOSE(8) << "start\n  GB = " << GB << "\n  pairs = " << pairs <<
+  // std::endl;
   //   -- MAIN LOOP -----------------------------
   GBPair p(123, 1000);  // not used
   while (!pairs.empty())
@@ -161,7 +166,8 @@ std::vector<CoCoA::RingElem> toyGBasis(CoCoA::ideal I)
       if (deg(g) == 0) break;
       index_g = len(GB) - 1;
       for (long n = 0; n < index_g; ++n) pairs.push_back(GBPair(n, index_g));
-      VERBOSE(5) << "new LPP --> len(pairs) = " << CoCoA::len(pairs) << std::endl;
+      VERBOSE(5) << "new LPP --> len(pairs) = " << CoCoA::len(pairs)
+                 << std::endl;
     }
   }
   // ensure that if the ideal is trivial, we're done.

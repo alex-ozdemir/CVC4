@@ -42,4 +42,3 @@ std::vector<CoCoA::RingElem> toyGBasis(CoCoA::ideal I);
 }  // namespace cvc5::internal
 
 #endif /* CVC5__THEORY__FF__TOY_GB_H */
-
