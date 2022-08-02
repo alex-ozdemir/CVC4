@@ -31,7 +31,7 @@
 #include "context/context.h"
 #include "expr/node.h"
 #include "smt/env_obj.h"
-#include "theory/ff/inc_trace.h"
+#include "theory/ff/core.h"
 
 namespace cvc5::internal {
 namespace theory {

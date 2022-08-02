@@ -695,8 +695,8 @@ libcvc5_add_sources(
   theory/ext_theory.h
   theory/ff/groebner.cpp
   theory/ff/groebner.h
-  theory/ff/inc_trace.cpp
-  theory/ff/inc_trace.h
+  theory/ff/core.cpp
+  theory/ff/core.h
   theory/ff/model.cpp
   theory/ff/model.h
   theory/ff/stats.cpp

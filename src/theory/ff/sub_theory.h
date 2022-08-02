@@ -35,7 +35,7 @@
 #include "options/ff_options.h"
 #include "smt/env_obj.h"
 #include "theory/ff/groebner.h"
-#include "theory/ff/inc_trace.h"
+#include "theory/ff/core.h"
 #include "theory/ff/stats.h"
 #include "theory/theory.h"
 #include "util/integer.h"

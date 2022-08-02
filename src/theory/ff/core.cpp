@@ -15,7 +15,7 @@
 
 #ifdef CVC5_USE_COCOA
 
-#include "theory/ff/inc_trace.h"
+#include "theory/ff/core.h"
 
 #include <CoCoA/TmpGPoly.H>
 
