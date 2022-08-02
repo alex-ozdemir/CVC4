@@ -160,7 +160,7 @@ Node TheoryFiniteFields::getModelValue(TNode node)
 void TheoryFiniteFields::preRegisterTerm(TNode node)
 {
 #ifdef CVC5_USE_COCOA
-  Trace("ff::preRegisterTerm") << "ff::preRegisterTerm : " << node << std::endl;
+  Trace("ff::register") << "ff::preRegisterTerm : " << node << std::endl;
   TypeNode ty = node.getType();
   TypeNode fieldTy = ty;
   if (!ty.isFiniteField())

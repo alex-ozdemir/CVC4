@@ -117,7 +117,7 @@ void SubTheory::ensureInitPolyRing()
     for (const auto& a : d_atoms)
     {
       d_atomInverses.insert({a, CoCoA::indet(d_polyRing.value(), i)});
-      Trace("ff::inverses") << "inverse for " << a << std::endl;
+      Trace("ff::trans") << "inverse for " << a << std::endl;
       ++i;
     }
     Assert(!d_incrementalIdeal.has_value());
@@ -180,12 +180,9 @@ const std::unordered_map<Node, Node>& SubTheory::model() const
 
 void SubTheory::contextNotifyPop()
 {
-  Trace("ff::context") << "pop" << std::endl;
   while (d_updateIndices.back() > d_facts.size())
   {
     d_updateIndices.pop_back();
-    Trace("ff::context") << "pop to " << d_updateIndices.back() << " facts"
-                         << std::endl;
     d_incrementalIdeal.value().pop();
     d_conflict.clear();
   }
@@ -206,7 +203,6 @@ void SubTheory::computeBasis(size_t factIndex)
   }
   {
     CodeTimer reductionTimer(d_stats->d_reductionTime);
-    Trace("ff::gb") << " > " << newGens.size() << " gens" << std::endl;
     ideal.pushGenerators(std::move(newGens));
     d_stats->d_numReductions += 1;
   }
@@ -232,11 +228,11 @@ void SubTheory::extractModel()
 {
   CodeTimer modelTimer(d_stats->d_rootConstructionTime);
   IncrementalIdeal& ideal = d_incrementalIdeal.value();
-  Trace("ff::check::model") << "constructing model" << std::endl;
+  Trace("ff::model") << "constructing model" << std::endl;
   d_model.clear();
   if (ideal.hasSolution())
   {
-    Trace("ff::check::model") << "found model" << std::endl;
+    Trace("ff::model") << "found model" << std::endl;
     const auto& values = ideal.solution();
     NodeManager* nm = NodeManager::currentNM();
     for (size_t i = 0, numVars = d_vars.size(); i < numVars; ++i)
@@ -250,7 +246,7 @@ void SubTheory::extractModel()
       FiniteField literal(integer, d_modulus);
       Node value = nm->mkConst(literal);
 
-      Trace("ff::check::model") << var << ": " << value << std::endl;
+      Trace("ff::model") << var << ": " << value << std::endl;
       d_model.emplace(var, value);
     }
   }
@@ -311,7 +307,7 @@ void SubTheory::translate(TNode t)
         default:
           Unreachable() << "Invalid finite field kind: " << node.getKind();
       }
-      Trace("ff::check::trans")
+      Trace("ff::trans")
           << "Translated " << node << "\t-> " << poly << std::endl;
       cache.insert(std::make_pair(node, poly));
     }
