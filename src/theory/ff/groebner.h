@@ -47,13 +47,13 @@ class IncrementalIdeal : EnvObj
   void pushGenerators(std::vector<CoCoA::RingElem>&& gens);
   // Is the ideal the whole ring?
   bool idealIsTrivial();
-  // For a trivial ideal, return a (sub)list of generators that generate it.
+  // For a trivial ideal, return a (sub)list of generator indices that generate it.
   const std::vector<size_t>& trivialCoreIndices();
   // For a trivial ideal, return a (sub)list of generators that generate it.
   std::vector<CoCoA::RingElem> trivialCore();
-  // For a non-trivial idea, check whether there is a base-field solution.
+  // For a non-trivial idea, check whether there is a base-field variety member.
   bool hasSolution();
-  // For a non-trivial idea with a base-field solution, get it.
+  // For a non-trivial idea with a base-field variety member, get it.
   const std::vector<CoCoA::RingElem>& solution();
   // Remove the last batch of generators
   void pop();
