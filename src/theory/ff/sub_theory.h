@@ -85,6 +85,9 @@ class SubTheory : EnvObj, context::ContextNotifyObj
   // Initialize the polynomial ring, set up post-registration data structures.
   void ensureInitPolyRing();
 
+  // Uninitialize the polynomial ring, clear post-registration data structures.
+  void clearPolyRing();
+
   // Translate t to CoCoA, and cache the result.
   void translate(TNode t);
 
@@ -105,12 +108,10 @@ class SubTheory : EnvObj, context::ContextNotifyObj
   context::CDList<Node> d_facts;
 
   // The length of that fact list at each check.
-  //
-  // Uses SAT context.
-  context::CDList<size_t> d_checkIndices;
+  std::vector<size_t> d_checkIndices{};
 
-  // The length of that fact list at each ideal update point.
-  std::vector<size_t> d_updateIndices;
+  // The length of that fact list at each point where we updated the ideal.
+  std::vector<size_t> d_updateIndices{};
 
   // Non-empty if we're in a conflict.
   std::vector<Node> d_conflict{};
@@ -123,13 +124,13 @@ class SubTheory : EnvObj, context::ContextNotifyObj
   std::unordered_map<Node, Node> d_model{};
 
   // Variables
-  std::unordered_set<Node> d_vars{};
+  context::CDList<Node> d_vars;
 
   // Variables
   std::unordered_map<size_t, Node> d_symbolIdxVars{};
 
   // Atoms
-  std::unordered_set<Node> d_atoms{};
+  context::CDList<Node> d_atoms;
 
   FfStatistics* d_stats;
   CoCoA::ring d_baseRing;

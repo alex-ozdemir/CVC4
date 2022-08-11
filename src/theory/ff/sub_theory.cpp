@@ -39,7 +39,8 @@ SubTheory::SubTheory(Env& env, FfStatistics* stats, Integer modulus)
     : EnvObj(env),
       context::ContextNotifyObj(context()),
       d_facts(context()),
-      d_checkIndices(context()),
+      d_vars(userContext()),
+      d_atoms(userContext()),
       d_stats(stats),
       d_baseRing(CoCoA::NewZZmod(CoCoA::BigIntFromString(modulus.toString()))),
       d_modulus(modulus)
@@ -51,14 +52,14 @@ SubTheory::SubTheory(Env& env, FfStatistics* stats, Integer modulus)
 
 void SubTheory::preRegisterTerm(TNode n)
 {
-  Assert(!d_polyRing.has_value());
   if (n.isVar())
   {
-    d_vars.insert(n);
+    clearPolyRing();
+    d_vars.push_back(n);
   }
   else if (n.getKind() == Kind::EQUAL)
   {
-    d_atoms.insert(n);
+    d_atoms.push_back(n);
   }
 }
 
@@ -108,12 +109,15 @@ void SubTheory::ensureInitPolyRing()
     }
     d_polyRing = CoCoA::NewPolyRing(d_baseRing, symbols);
     size_t i = 0;
+    Assert(d_translationCache.empty());
+    Assert(d_symbolIdxVars.empty());
     for (const auto& v : d_vars)
     {
       d_translationCache.insert({v, CoCoA::indet(d_polyRing.value(), i)});
       d_symbolIdxVars.insert({i, v});
       ++i;
     }
+    Assert(d_atomInverses.empty());
     for (const auto& a : d_atoms)
     {
       d_atomInverses.insert({a, CoCoA::indet(d_polyRing.value(), i)});
@@ -121,9 +125,21 @@ void SubTheory::ensureInitPolyRing()
       ++i;
     }
     Assert(!d_incrementalIdeal.has_value());
+    Assert(d_updateIndices.empty());
     d_incrementalIdeal.emplace(d_env, d_polyRing.value());
     d_updateIndices.push_back(0);
   }
+}
+
+void SubTheory::clearPolyRing()
+{
+  d_polyRing.reset();
+  d_checkIndices.clear();
+  d_atomInverses.clear();
+  d_translationCache.clear();
+  d_incrementalIdeal.reset();
+  d_symbolIdxVars.clear();
+  d_updateIndices.clear();
 }
 
 void SubTheory::notifyFact(TNode fact)
@@ -180,11 +196,16 @@ const std::unordered_map<Node, Node>& SubTheory::model() const
 
 void SubTheory::contextNotifyPop()
 {
+  Trace("ff::context") << "Pop " << context()->getLevel() << std::endl;
   while (d_updateIndices.back() > d_facts.size())
   {
     d_updateIndices.pop_back();
     d_incrementalIdeal.value().pop();
     d_conflict.clear();
+  }
+  while (d_checkIndices.size() > 0 && d_checkIndices.back() > d_facts.size())
+  {
+    d_checkIndices.pop_back();
   }
 }
 
