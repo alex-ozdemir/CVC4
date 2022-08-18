@@ -245,6 +245,8 @@ void TheoryArith::postCheck(Effort level)
   {
     d_arithModelCache.clear();
     d_arithModelCacheIllTyped.clear();
+    d_arithModelCacheVars.clear();
+    d_arithModelCacheSubs.clear();
     d_arithModelCacheSet = false;
     std::set<Node> termSet;
     if (d_nonlinearExtension != nullptr)
@@ -266,6 +268,9 @@ void TheoryArith::postCheck(Effort level)
       updateModelCache(termSet);
     }
     sanityCheckIntegerModel();
+    // Now, finalize the model cache, which constructs a substitution to be
+    // used for getEqualityStatus.
+    finalizeModelCache();
   }
 }
 
@@ -331,7 +336,7 @@ bool TheoryArith::collectModelValues(TheoryModel* m,
     }
   }
 
-  updateModelCache(termSet);
+  updateModelCacheInternal(termSet);
 
   // We are now ready to assert the model.
   for (const std::pair<const Node, Node>& p : d_arithModelCache)
@@ -387,7 +392,8 @@ EqualityStatus TheoryArith::getEqualityStatus(TNode a, TNode b) {
     return d_internal->getEqualityStatus(a,b);
   }
   Node diff = NodeManager::currentNM()->mkNode(Kind::SUB, a, b);
-  std::optional<bool> isZero = isExpressionZero(d_env, diff, d_arithModelCache);
+  std::optional<bool> isZero = isExpressionZero(
+      d_env, diff, d_arithModelCacheVars, d_arithModelCacheSubs);
   if (isZero)
   {
     return *isZero ? EQUALITY_TRUE_IN_MODEL : EQUALITY_FALSE_IN_MODEL;
@@ -419,13 +425,11 @@ void TheoryArith::updateModelCache(std::set<Node>& termSet)
 {
   if (!d_arithModelCacheSet)
   {
-    d_arithModelCacheSet = true;
     collectAssertedTerms(termSet);
-    d_internal->collectModelValues(
-        termSet, d_arithModelCache, d_arithModelCacheIllTyped);
+    updateModelCacheInternal(termSet);
   }
 }
-void TheoryArith::updateModelCache(const std::set<Node>& termSet)
+void TheoryArith::updateModelCacheInternal(const std::set<Node>& termSet)
 {
   if (!d_arithModelCacheSet)
   {
@@ -434,6 +438,21 @@ void TheoryArith::updateModelCache(const std::set<Node>& termSet)
         termSet, d_arithModelCache, d_arithModelCacheIllTyped);
   }
 }
+
+void TheoryArith::finalizeModelCache()
+{
+  // make into substitution
+  for (const auto& [node, repl] : d_arithModelCache)
+  {
+    Assert(repl.getType().isRealOrInt());
+    if (Theory::isLeafOf(repl, TheoryId::THEORY_ARITH))
+    {
+      d_arithModelCacheVars.emplace_back(node);
+      d_arithModelCacheSubs.emplace_back(repl);
+    }
+  }
+}
+
 bool TheoryArith::sanityCheckIntegerModel()
 {
   // Double check that the model from the linear solver respects integer types,

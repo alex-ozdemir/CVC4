@@ -16,6 +16,7 @@
 #include <cln/input.h>
 #include <cln/integer_io.h>
 #include <cln/modinteger.h>
+#include <cln/numtheory.h>
 
 #include <iostream>
 #include <sstream>
