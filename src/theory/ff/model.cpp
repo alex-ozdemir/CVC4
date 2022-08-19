@@ -22,14 +22,13 @@
 #include <CoCoA/SparsePolyOps-MinPoly.H>
 #include <CoCoA/SparsePolyOps-RingElem.H>
 #include <CoCoA/SparsePolyOps-ideal.H>
-#include <CoCoA/factor.H>
-#include <CoCoA/factorization.H>
 
 #include <algorithm>
 #include <memory>
 #include <sstream>
 
 #include "smt/assertions.h"
+#include "theory/ff/roots.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -61,18 +60,17 @@ std::optional<CoCoA::RingElem> ListEnumerator::next()
 
 std::unique_ptr<ListEnumerator> factorEnumerator(CoCoA::RingElem univariatePoly)
 {
-  Assert(CoCoA::UnivariateIndetIndex(univariatePoly) >= 0);
-  const auto factors = CoCoA::factor(univariatePoly);
-  std::vector<CoCoA::RingElem> options{};
-  for (const auto& factor : factors.myFactors())
+  int varIdx = CoCoA::UnivariateIndetIndex(univariatePoly);
+  Assert(varIdx >= 0);
+  Trace("ff::model::factor") << "roots for: " << univariatePoly << std::endl;
+  std::vector<CoCoA::RingElem> theRoots = roots(univariatePoly);
+  std::vector<CoCoA::RingElem> linears{};
+  CoCoA::RingElem var = CoCoA::indet(CoCoA::owner(univariatePoly), varIdx);
+  for (const auto& r : theRoots)
   {
-    if (CoCoA::deg(factor) == 1)
-    {
-      Assert(CoCoA::IsOne(CoCoA::LC(factor)));
-      options.push_back(factor);
-    }
+    linears.push_back(var - r);
   }
-  return std::make_unique<ListEnumerator>(std::move(options));
+  return std::make_unique<ListEnumerator>(std::move(linears));
 }
 
 RoundRobinEnumerator::RoundRobinEnumerator(
