@@ -38,6 +38,7 @@
 #include <vector>
 
 #include "smt/assertions.h"
+#include "base/output.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -55,8 +56,11 @@ CoCoA::RingElem powerMod(CoCoA::RingElem b, CoCoA::BigInt e, CoCoA::RingElem m)
   CoCoA::RingElem bPower = b;
   while (!CoCoA::IsZero(e))
   {
-    acc *= bPower;
-    acc = redMod(acc, m);
+    if (CoCoA::IsOdd(e))
+    {
+      acc *= bPower;
+      acc = redMod(acc, m);
+    }
     bPower *= bPower;
     bPower = redMod(bPower, m);
     e /= 2;
@@ -158,6 +162,7 @@ std::vector<CoCoA::RingElem> roots(CoCoA::RingElem f)
       // Grab a product of linears to factor
       CoCoA::RingElem p = toFactor.back();
       toFactor.pop_back();
+      Trace("ff::roots") << "toFactor " << p << std::endl;
       if (CoCoA::deg(p) == 0)
       {
         // It's dead

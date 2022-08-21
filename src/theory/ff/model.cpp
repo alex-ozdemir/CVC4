@@ -58,6 +58,8 @@ std::optional<CoCoA::RingElem> ListEnumerator::next()
   }
 }
 
+std::string ListEnumerator::name() { return "list"; }
+
 std::unique_ptr<ListEnumerator> factorEnumerator(CoCoA::RingElem univariatePoly)
 {
   int varIdx = CoCoA::UnivariateIndetIndex(univariatePoly);
@@ -100,6 +102,8 @@ std::optional<CoCoA::RingElem> RoundRobinEnumerator::next()
   }
   return ret;
 }
+
+std::string RoundRobinEnumerator::name() { return "round-robin"; }
 
 bool isUnsat(const CoCoA::ideal& ideal)
 {
@@ -212,6 +216,14 @@ std::vector<CoCoA::RingElem> commonRoot(const CoCoA::ideal& initialIdeal)
   // If brancher B has the same index as ideal I, then B represents possible
   // expansions of ideal I (equivalently, restrictions of I's variety).
   std::vector<CoCoA::ideal> ideals{initialIdeal};
+  if (TraceIsOn("ff::model::branch"))
+  {
+    Trace("ff::model::branch") << "init polys: " << std::endl;
+    for (const auto& p : CoCoA::gens(initialIdeal))
+    {
+      Trace("ff::model::branch") << " * " << p << std::endl;
+    }
+  }
   std::vector<std::unique_ptr<AssignmentEnumerator>> branchers{};
   while (!ideals.empty())
   {
@@ -245,6 +257,16 @@ std::vector<CoCoA::RingElem> commonRoot(const CoCoA::ideal& initialIdeal)
     {
       Assert(ideals.size() == branchers.size() + 1);
       branchers.push_back(brancher(ideal));
+      Trace("ff::model::branch")
+          << "brancher: " << branchers.back()->name() << std::endl;
+  if (TraceIsOn("ff::model::branch"))
+  {
+    Trace("ff::model::branch") << "ideal polys: " << std::endl;
+    for (const auto& p : CoCoA::gens(ideal))
+    {
+      Trace("ff::model::branch") << " * " << p << std::endl;
+    }
+  }
     }
     // Otherwise, this ideal should have a brancher; get the next branch
     else
@@ -254,6 +276,10 @@ std::vector<CoCoA::RingElem> commonRoot(const CoCoA::ideal& initialIdeal)
       // construct a new ideal from the branch
       if (choicePoly.has_value())
       {
+        Trace("ff::model::branch")
+            << "level: " << branchers.size()
+            << ", brancher: " << branchers.back()->name()
+            << ", branch: " << choicePoly.value() << std::endl;
         std::vector<CoCoA::RingElem> newGens = CoCoA::GBasis(ideal);
         newGens.push_back(choicePoly.value());
         ideals.push_back(CoCoA::ideal(newGens));

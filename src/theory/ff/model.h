@@ -45,6 +45,8 @@ class AssignmentEnumerator
   virtual ~AssignmentEnumerator();
   // Return the next assignment, or an empty option.
   virtual std::optional<CoCoA::RingElem> next() = 0;
+  // get the name of this enumerator
+  virtual std::string name() = 0;
 };
 
 // Guess a prescribed set of values for a variable.
@@ -54,6 +56,7 @@ class ListEnumerator : public AssignmentEnumerator
   ListEnumerator(const std::vector<CoCoA::RingElem>&& options);
   ~ListEnumerator() override;
   std::optional<CoCoA::RingElem> next() override;
+  std::string name() override;
 
  private:
   std::vector<CoCoA::RingElem> d_remainingOptions;
@@ -87,6 +90,7 @@ class RoundRobinEnumerator : public AssignmentEnumerator
                        const CoCoA::ring& ring);
   ~RoundRobinEnumerator() override;
   std::optional<CoCoA::RingElem> next() override;
+  std::string name() override;
 
  private:
   const std::vector<CoCoA::RingElem> d_vars;
