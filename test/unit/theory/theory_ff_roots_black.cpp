@@ -103,7 +103,7 @@ TEST_F(TestTheoryFfRootsBlack, DistinctRootsPoly)
     }
 
     {
-      CoCoA::RingElem f = x * x * x * (x - 1) * (x * x + 1);
+      CoCoA::RingElem f = x * x * x * (x - 1) * (x * x + 2);
       CoCoA::RingElem ex = x * (x - 1);
       EXPECT_EQ(ff::distinctRootsPoly(f), ex);
     }
@@ -158,7 +158,7 @@ TEST_F(TestTheoryFfRootsBlack, RootsZero)
     }
 
     {
-      CoCoA::RingElem f = x * (x * x + 1);
+      CoCoA::RingElem f = x * (x * x + 2);
       std::vector<CoCoA::RingElem> roots = {z + 0};
       EXPECT_EQ(ff::roots(f), roots);
     }
@@ -198,6 +198,12 @@ TEST_F(TestTheoryFfRootsBlack, RootsFull)
       std::vector<CoCoA::RingElem> roots = {};
       EXPECT_EQ(ff::roots(f), roots);
     }
+
+    {
+      CoCoA::RingElem f = x * x - x + 1;
+      std::vector<CoCoA::RingElem> roots = {z - 2, z + 3};
+      EXPECT_EQ(ff::roots(f), roots);
+    }
   }
 
   {
@@ -221,14 +227,27 @@ TEST_F(TestTheoryFfRootsBlack, RootsFull)
     }
 
     {
-      CoCoA::RingElem f = x * (x - 1) * x * (x - 1) * (x * x + 1) * (x * x + 1);
+      CoCoA::RingElem f = x * (x - 1) * x * (x - 1) * (x * x + 2) * (x * x + 2);
       std::vector<CoCoA::RingElem> roots = {z + 0, z + 1};
       EXPECT_EQ(ff::roots(f), roots);
     }
 
     {
-      CoCoA::RingElem f = (x * x + 1) * (x * x + 1);
+      CoCoA::RingElem f = (x * x + 2) * (x * x + 2);
       std::vector<CoCoA::RingElem> roots = {};
+      EXPECT_EQ(ff::roots(f), roots);
+    }
+
+    {
+      CoCoA::RingElem f = x * x - x + 1;
+      std::vector<CoCoA::RingElem> roots = {
+          CoCoA::RingElem(ring,
+                          "-253802764370791375970922363645711810106321778329314"
+                          "68165172742469126098314552"),
+          CoCoA::RingElem(ring,
+                          "2538027643707913759709223636457118101063217783293146"
+                          "8165172742469126098314553"),
+      };
       EXPECT_EQ(ff::roots(f), roots);
     }
   }
