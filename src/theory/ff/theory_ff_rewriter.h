@@ -23,7 +23,7 @@
 
 #include "expr/node.h"
 #include "theory/rewriter.h"
-#include "util/finite_field.h"
+#include "util/ff_val.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -87,7 +87,7 @@ Node postRewriteFfEq(TNode t);
 Node postRewriteFfNotEq(TNode t);
 
 /** Parse as a product with a constant scalar */
-std::optional<std::pair<Node, FiniteField>> parseScalar(TNode t);
+std::optional<std::pair<Node, FfVal>> parseScalar(TNode t);
 
 /** Make an n-ary operator of length is more than 1 */
 Node mkNary(Kind k, std::vector<Node>&& children);

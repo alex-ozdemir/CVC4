@@ -18,7 +18,7 @@
 #include "expr/algorithm/flatten.h"
 #include "expr/attribute.h"
 #include "expr/node_manager.h"
-#include "util/finite_field.h"
+#include "util/ff_val.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -88,7 +88,7 @@ Node preRewriteFfNeg(TNode t)
 {
   Assert(t.getKind() == Kind::FINITE_FIELD_NEG);
   NodeManager* const nm = NodeManager::currentNM();
-  const Node negOne = nm->mkConstFiniteFieldElem(Integer(-1), t.getType());
+  const Node negOne = nm->mkConst(FfVal(Integer(-1), t.getType().getFfSize()));
   return nm->mkNode(kind::FINITE_FIELD_MULT, negOne, t[0]);
 }
 
@@ -105,10 +105,10 @@ Node postRewriteFfAdd(TNode t)
   const TypeNode field = t.getType();
   Assert(field.isFiniteField());
 
-  FiniteField one = FiniteField::mkOne(field.getFiniteFieldSize());
+  FfVal one = FfVal::mkOne(field.getFfSize());
 
-  FiniteField constantTerm = FiniteField::mkZero(field.getFiniteFieldSize());
-  std::map<Node, FiniteField> scalarTerms;
+  FfVal constantTerm = FfVal::mkZero(field.getFfSize());
+  std::map<Node, FfVal> scalarTerms;
 
   std::vector<TNode> children;
   expr::algorithm::flatten(t, children);
@@ -117,12 +117,12 @@ Node postRewriteFfAdd(TNode t)
   {
     if (child.isConst())
     {
-      constantTerm = constantTerm + child.getConst<FiniteField>();
+      constantTerm = constantTerm + child.getConst<FfVal>();
     }
     else
     {
-      std::optional<std::pair<Node, FiniteField>> parsed = parseScalar(child);
-      std::pair<Node, FiniteField> pair =
+      std::optional<std::pair<Node, FfVal>> parsed = parseScalar(child);
+      std::pair<Node, FfVal> pair =
           parsed.value_or(std::make_pair(child, one));
       const auto entry = scalarTerms.find(pair.first);
       if (entry == scalarTerms.end())
@@ -160,7 +160,7 @@ Node postRewriteFfAdd(TNode t)
   }
   if (summands.size() == 0)
   {
-    return nm->mkConst(FiniteField::mkZero(field.getFiniteFieldSize()));
+    return nm->mkConst(FfVal::mkZero(field.getFfSize()));
   }
   return mkNary(Kind::FINITE_FIELD_ADD, std::move(summands));
 }
@@ -178,9 +178,9 @@ Node postRewriteFfMult(TNode t)
   const TypeNode field = t.getType();
   Assert(field.isFiniteField());
 
-  FiniteField one = FiniteField::mkOne(field.getFiniteFieldSize());
+  FfVal one = FfVal::mkOne(field.getFfSize());
 
-  FiniteField constantTerm = FiniteField::mkOne(field.getFiniteFieldSize());
+  FfVal constantTerm = FfVal::mkOne(field.getFfSize());
   std::vector<Node> summands;
 
   std::vector<TNode> children;
@@ -190,7 +190,7 @@ Node postRewriteFfMult(TNode t)
   {
     if (child.isConst())
     {
-      constantTerm = constantTerm * child.getConst<FiniteField>();
+      constantTerm = constantTerm * child.getConst<FfVal>();
     }
     else
     {
@@ -215,8 +215,8 @@ Node postRewriteFfEq(TNode t)
   Assert(t.getKind() == Kind::EQUAL);
   if (t[0].isConst() && t[1].isConst())
   {
-    FiniteField l = t[0].getConst<FiniteField>();
-    FiniteField r = t[1].getConst<FiniteField>();
+    FfVal l = t[0].getConst<FfVal>();
+    FfVal r = t[1].getConst<FfVal>();
     return NodeManager::currentNM()->mkConst<bool>(l == r);
   }
   else if (t[0] == t[1])
@@ -236,8 +236,8 @@ Node postRewriteFfNotEq(TNode t)
   Assert(t[0].getKind() == Kind::EQUAL);
   if (t[0][0].isConst() && t[0][1].isConst())
   {
-    FiniteField l = t[0][0].getConst<FiniteField>();
-    FiniteField r = t[0][1].getConst<FiniteField>();
+    FfVal l = t[0][0].getConst<FfVal>();
+    FfVal r = t[0][1].getConst<FfVal>();
     return NodeManager::currentNM()->mkConst<bool>(l != r);
   }
   else if (t[0] == t[1])
@@ -251,13 +251,13 @@ Node postRewriteFfNotEq(TNode t)
 }
 
 /** Parse as a product with a constant scalar */
-std::optional<std::pair<Node, FiniteField>> parseScalar(TNode t)
+std::optional<std::pair<Node, FfVal>> parseScalar(TNode t)
 {
   if (t.getKind() == Kind::FINITE_FIELD_MULT && t[0].isConst())
   {
     std::vector<Node> restChildren(std::next(t.begin()), t.end());
     const Node rest = mkNary(Kind::FINITE_FIELD_MULT, std::move(restChildren));
-    return {{rest, t[0].getConst<FiniteField>()}};
+    return {{rest, t[0].getConst<FfVal>()}};
   }
   else
   {

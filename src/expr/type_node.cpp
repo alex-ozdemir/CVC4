@@ -24,7 +24,7 @@
 #include "theory/type_enumerator.h"
 #include "util/bitvector.h"
 #include "util/cardinality.h"
-#include "util/finite_field.h"
+#include "util/ff_val.h"
 
 using namespace std;
 
@@ -553,10 +553,10 @@ uint32_t TypeNode::getBitVectorSize() const
   return getConst<BitVectorSize>();
 }
 
-Integer TypeNode::getFiniteFieldSize() const
+Integer TypeNode::getFfSize() const
 {
   Assert(getKind() == kind::FINITE_FIELD_TYPE);
-  return getConst<FiniteFieldSize>();
+  return getConst<FfSize>();
 }
 
 TypeNode TypeNode::getRangeType() const

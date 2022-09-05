@@ -67,10 +67,6 @@ bool TheoryFiniteFields::needsEqualityEngine(EeSetupInfo& esi)
 {
   esi.d_notify = &d_eqNotify;
   esi.d_name = "theory::ff::ee";
-  // TODO: not needed, I think
-  // esi.d_notifyNewClass = true;
-  // esi.d_notifyMerge = true;
-  // esi.d_notifyDisequal = true;
   return true;
 }
 
@@ -171,7 +167,7 @@ void TheoryFiniteFields::preRegisterTerm(TNode node)
   if (d_subTheories.count(fieldTy) == 0)
   {
     d_subTheories.try_emplace(
-        fieldTy, d_env, d_stats.get(), ty.getFiniteFieldSize());
+        fieldTy, d_env, d_stats.get(), ty.getFfSize());
   }
   d_subTheories.at(fieldTy).preRegisterTerm(node);
 #else  /* CVC5_USE_COCOA */

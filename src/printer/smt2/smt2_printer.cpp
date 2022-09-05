@@ -47,7 +47,7 @@
 #include "theory/uf/function_const.h"
 #include "util/bitvector.h"
 #include "util/divisible.h"
-#include "util/finite_field.h"
+#include "util/ff_val.h"
 #include "util/floatingpoint.h"
 #include "util/iand.h"
 #include "util/indexed_root_predicate.h"
@@ -203,7 +203,7 @@ void Smt2Printer::toStream(std::ostream& out,
       out << "(_ BitVec " << n.getConst<BitVectorSize>().d_size << ")";
       break;
     case kind::FINITE_FIELD_TYPE:
-      out << "(_ FiniteField " << n.getConst<FiniteFieldSize>().d_size << ")";
+      out << "(_ FiniteField " << n.getConst<FfSize>().d_size << ")";
       break;
     case kind::FLOATINGPOINT_TYPE:
       out << "(_ FloatingPoint "
@@ -221,6 +221,12 @@ void Smt2Printer::toStream(std::ostream& out,
       {
         out << "#b" << bv.toString();
       }
+      break;
+    }
+    case kind::CONST_FINITE_FIELD:
+    {
+      const FfVal& ff = n.getConst<FfVal>();
+      out << "#f" << ff.getValue() << "m" << ff.getFieldSize();
       break;
     }
     case kind::CONST_FLOATINGPOINT:
@@ -667,6 +673,15 @@ void Smt2Printer::toStream(std::ostream& out,
   {
     out << n.getOperator() << ' ';
     stillNeedToPrintParams = false;
+    break;
+  }
+
+    // ff theory
+  case kind::FINITE_FIELD_ADD:
+  case kind::FINITE_FIELD_MULT:
+  case kind::FINITE_FIELD_NEG:
+  {
+    out << smtKindString(k) << " ";
     break;
   }
 
@@ -1142,6 +1157,11 @@ std::string Smt2Printer::smtKindString(Kind k)
   case kind::PARTIAL_SELECT_1: return "partial_select_1";
   case kind::EQ_RANGE:
     return "eqrange";
+
+    // ff theory
+  case kind::FINITE_FIELD_ADD: return "ff.add";
+  case kind::FINITE_FIELD_MULT: return "ff.mul";
+  case kind::FINITE_FIELD_NEG: return "ff.neg";
 
     // bv theory
   case kind::BITVECTOR_CONCAT: return "concat";

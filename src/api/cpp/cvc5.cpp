@@ -74,7 +74,7 @@
 #include "theory/theory_model.h"
 #include "util/bitvector.h"
 #include "util/divisible.h"
-#include "util/finite_field.h"
+#include "util/ff_val.h"
 #include "util/floatingpoint.h"
 #include "util/iand.h"
 #include "util/random.h"
@@ -1797,7 +1797,7 @@ std::string Sort::getFiniteFieldSize() const
   CVC5_API_CHECK_NOT_NULL;
   CVC5_API_CHECK(isFiniteField()) << "Not a finite field sort.";
   //////// all checks before this line
-  return d_type->getFiniteFieldSize().toString();
+  return d_type->getFfSize().toString();
   ////////
   CVC5_API_TRY_CATCH_END;
 }
@@ -3109,7 +3109,7 @@ std::string Term::getFiniteFieldValue() const
       d_node->getKind() == internal::Kind::CONST_FINITE_FIELD, *d_node)
       << "Term to be a finite field value when calling getFiniteFieldValue()";
   //////// all checks before this line
-  return d_node->getConst<internal::FiniteField>().toSignedInteger().toString();
+  return d_node->getConst<internal::FfVal>().toSignedInteger().toString();
   ////////
   CVC5_API_TRY_CATCH_END;
 }
@@ -3619,7 +3619,27 @@ DatatypeDecl::~DatatypeDecl()
 
 bool DatatypeDecl::isResolved() const
 {
-  return d_dtype == nullptr || d_dtype->isResolved();
+  if (d_dtype == nullptr)
+  {
+    return true;
+  }
+  // We are resolved if a constructor is resolved. Note that since
+  // internal::DType objects are copied in Solver::mkDatatypeSorts, the
+  // constructors of d_dtype are passed to NodeManager but not d_type itself.
+  // Thus, we must check whether our constructors are resolved.
+  // This is a workaround; a clearer implementation would avoid the
+  // copying of DType in Solver::mkDatatypeSorts.
+  const std::vector<std::shared_ptr<internal::DTypeConstructor>>& cons =
+      d_dtype->getConstructors();
+  for (const std::shared_ptr<internal::DTypeConstructor>& c : cons)
+  {
+    if (c->isResolved())
+    {
+      return true;
+    }
+  }
+  Assert(!d_dtype->isResolved());
+  return false;
 }
 
 void DatatypeDecl::addConstructor(const DatatypeConstructorDecl& ctor)
@@ -5510,7 +5530,11 @@ Sort Solver::mkDatatypeSort(const DatatypeDecl& dtypedecl) const
   CVC5_API_TRY_CATCH_BEGIN;
   CVC5_API_SOLVER_CHECK_DTDECL(dtypedecl);
   //////// all checks before this line
-  return Sort(d_nm, d_nm->mkDatatypeType(*dtypedecl.d_dtype));
+  Sort res = Sort(d_nm, d_nm->mkDatatypeType(*dtypedecl.d_dtype));
+  const Datatype& dt = res.getDatatype();
+  CVC5_API_CHECK(dt.d_dtype->isCodatatype() || dt.d_dtype->isWellFounded())
+      << "Datatype sort " << dt.d_dtype->getName() + " is not well-founded";
+  return res;
   ////////
   CVC5_API_TRY_CATCH_END;
 }
@@ -5529,6 +5553,12 @@ std::vector<Sort> Solver::mkDatatypeSorts(
   std::vector<internal::TypeNode> dtypes =
       d_nm->mkMutualDatatypeTypes(datatypes);
   std::vector<Sort> retTypes = Sort::typeNodeVectorToSorts(d_nm, dtypes);
+  for (size_t i = 0, ndts = datatypes.size(); i < ndts; ++i)
+  {
+    const Datatype& dt = retTypes[i].getDatatype();
+    CVC5_API_CHECK(dt.d_dtype->isCodatatype() || dt.d_dtype->isWellFounded())
+        << "Datatype sort " << dt.d_dtype->getName() + " is not well-founded";
+  }
   return retTypes;
   ////////
   CVC5_API_TRY_CATCH_END;
@@ -5925,9 +5955,9 @@ Term Solver::mkFiniteFieldElem(const std::string& value, const Sort& sort) const
       << "a finite field sort";
   //////// all checks before this line
   internal::Integer v(value, 10);
-  internal::FiniteField f(v, sort.d_type->getFiniteFieldSize());
+  internal::FfVal f(v, sort.d_type->getFfSize());
 
-  return mkValHelper<internal::FiniteField>(d_nm, f);
+  return mkValHelper<internal::FfVal>(d_nm, f);
   ////////
   CVC5_API_TRY_CATCH_END;
 }
@@ -5940,8 +5970,9 @@ Term Solver::mkConstArray(const Sort& sort, const Term& val) const
   CVC5_API_ARG_CHECK_EXPECTED(sort.isArray(), sort) << "an array sort";
   CVC5_API_CHECK(val.getSort() == sort.getArrayElementSort())
       << "Value does not match element sort";
-  //////// all checks before this line
   internal::Node n = *val.d_node;
+  CVC5_API_ARG_CHECK_EXPECTED(n.isConst(), val) << "a value";
+  //////// all checks before this line
   Term res = mkValHelper(d_nm, internal::ArrayStoreAll(*sort.d_type, n));
   return res;
   ////////
@@ -7759,6 +7790,13 @@ std::ostream& Solver::getOutput(const std::string& tag) const
   {
     throw CVC5ApiException("Invalid output tag " + tag);
   }
+}
+
+std::string Solver::getVersion() const
+{
+  CVC5_API_TRY_CATCH_BEGIN;
+  return internal::Configuration::getVersionString();
+  CVC5_API_TRY_CATCH_END;
 }
 
 }  // namespace cvc5

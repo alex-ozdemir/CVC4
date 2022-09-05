@@ -30,7 +30,6 @@
 #include "options/ff_options.h"
 #include "theory/ff/model.h"
 #include "theory/ff/toy_gb.h"
-#include "util/finite_field.h"
 
 namespace cvc5::internal {
 namespace theory {

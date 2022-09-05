@@ -666,13 +666,6 @@ class NodeManager
   Node mkConstInt(const Rational& r);
 
   /**
-   * Make a contant finite field element.
-   *
-   * Given the integer value of the element and its type.
-   */
-  Node mkConstFiniteFieldElem(const Integer& v, const TypeNode& type);
-
-  /**
    * Make constant real or int, which calls one of the above methods based
    * on whether r is integral.
    */
@@ -1038,19 +1031,18 @@ class NodeManager
 }; /* class NodeManager */
 
 inline TypeNode NodeManager::mkArrayType(TypeNode indexType,
-                                         TypeNode constituentType) {
-  CheckArgument(!indexType.isNull(), indexType,
-                "unexpected NULL index type");
-  CheckArgument(!constituentType.isNull(), constituentType,
-                "unexpected NULL constituent type");
+                                         TypeNode constituentType)
+{
+  Assert(!indexType.isNull()) << "unexpected NULL index type";
+  Assert(!constituentType.isNull()) << "unexpected NULL constituent type";
   Trace("arrays") << "making array type " << indexType << " "
                   << constituentType << std::endl;
   return mkTypeNode(kind::ARRAY_TYPE, indexType, constituentType);
 }
 
-inline TypeNode NodeManager::mkSetType(TypeNode elementType) {
-  CheckArgument(!elementType.isNull(), elementType,
-                "unexpected NULL element type");
+inline TypeNode NodeManager::mkSetType(TypeNode elementType)
+{
+  Assert(!elementType.isNull()) << "unexpected NULL element type";
   Trace("sets") << "making sets type " << elementType << std::endl;
   return mkTypeNode(kind::SET_TYPE, elementType);
 }

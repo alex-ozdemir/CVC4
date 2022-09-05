@@ -5056,6 +5056,12 @@ class CVC5_EXPORT Solver
    */
   std::ostream& getOutput(const std::string& tag) const;
 
+  /**
+   * Get a string representation of the version of this solver.
+   * @return The version string.
+   */
+  std::string getVersion() const;
+
  private:
   /**
    * Helper for mk-functions that call d_nm->mkConst().
