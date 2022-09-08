@@ -52,6 +52,14 @@ class TheoryFiniteFieldsRewriter : public TheoryRewriter
    * Even if this function returns REWRITE_DONE, if the returned
    * expression belongs to a different theory, it will be fully
    * rewritten by that theory's rewriter.
+   *
+   * Ensures:
+   *  - addition and multiplication results are flat
+   *  - addition and multiplication terms have at most one constant, in the
+   *    final position
+   *  - addition terms do not have the 0 constant
+   *  - multiplication terms do not have a 0 or 1 constant
+   *
    */
   RewriteResponse postRewrite(TNode node) override;
 
@@ -66,28 +74,6 @@ class TheoryFiniteFieldsRewriter : public TheoryRewriter
    */
   RewriteResponse preRewrite(TNode node) override;
 }; /* class TheoryFiniteFieldsRewriter */
-
-/** preRewrite negation */
-Node preRewriteFfNeg(TNode t);
-
-/** preRewrite addition */
-Node preRewriteFfAdd(TNode t);
-/** postRewrite addition */
-Node postRewriteFfAdd(TNode t);
-
-/** preRewrite multiplication */
-Node preRewriteFfMult(TNode t);
-/** postRewrite multiplication */
-Node postRewriteFfMult(TNode t);
-
-/** postRewrite equality */
-Node postRewriteFfEq(TNode t);
-
-/** Parse as a product with a constant scalar */
-std::optional<std::pair<Node, FfVal>> parseScalar(TNode t);
-
-/** Make an n-ary operator of length is more than 1 */
-Node mkNary(Kind k, std::vector<Node>&& children);
 
 }  // namespace ff
 }  // namespace theory

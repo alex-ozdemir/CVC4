@@ -24,37 +24,38 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-// static
-RewriteResponse TheoryFiniteFieldsRewriter::postRewrite(TNode t)
+namespace {
+
+Node mkNary(Kind k, std::vector<Node>&& children)
 {
-  Trace("ff::rw::post") << "ff::postRewrite: " << t << std::endl;
-  switch (t.getKind())
+  Assert(children.size() > 0);
+  if (children.size() == 1)
   {
-    case kind::FINITE_FIELD_NEG: return RewriteResponse(REWRITE_DONE, t);
-    case kind::FINITE_FIELD_ADD:
-      return RewriteResponse(REWRITE_DONE, postRewriteFfAdd(t));
-    case kind::FINITE_FIELD_MULT:
-      return RewriteResponse(REWRITE_DONE, postRewriteFfMult(t));
-    case kind::EQUAL: return RewriteResponse(REWRITE_DONE, postRewriteFfEq(t));
-    default: return RewriteResponse(REWRITE_DONE, t);
+    return children[0];
+  }
+  else
+  {
+    return NodeManager::currentNM()->mkNode(k, std::move(children));
   }
 }
 
-// static
-RewriteResponse TheoryFiniteFieldsRewriter::preRewrite(TNode t)
+/** Parse as a product with a constant scalar
+ *
+ *  If there is no constant scalar, returns a 1.
+ */
+std::pair<Node, FfVal> parseScalar(TNode t)
 {
-  Trace("ff::rw::pre") << "ff::preRewrite: " << t << std::endl;
-  switch (t.getKind())
+  const TypeNode field = t.getType();
+  Assert(field.isFiniteField());
+  FfVal scalar = FfVal::mkOne(field.getFfSize());
+  Node node = t;
+  if (t.getKind() == Kind::FINITE_FIELD_MULT && t[0].isConst())
   {
-    case kind::FINITE_FIELD_NEG:
-      return RewriteResponse(REWRITE_DONE, preRewriteFfNeg(t));
-    case kind::FINITE_FIELD_ADD:
-      return RewriteResponse(REWRITE_DONE, preRewriteFfAdd(t));
-    case kind::FINITE_FIELD_MULT:
-      return RewriteResponse(REWRITE_DONE, preRewriteFfMult(t));
-    case kind::EQUAL: return RewriteResponse(REWRITE_DONE, t);
-    default: return RewriteResponse(REWRITE_DONE, t);
+    std::vector<Node> restChildren(std::next(t.begin()), t.end());
+    node = mkNary(Kind::FINITE_FIELD_MULT, std::move(restChildren));
+    scalar = t[0].getConst<FfVal>();
   }
+  return {node, scalar};
 }
 
 /** preRewrite negation */
@@ -95,12 +96,11 @@ Node postRewriteFfAdd(TNode t)
     }
     else
     {
-      std::optional<std::pair<Node, FfVal>> parsed = parseScalar(child);
-      std::pair<Node, FfVal> pair = parsed.value_or(std::make_pair(child, one));
-      const auto entry = scalarTerms.find(pair.first);
+      std::pair<Node, FfVal> pair = parseScalar(child);
+      auto entry = scalarTerms.find(pair.first);
       if (entry == scalarTerms.end())
       {
-        scalarTerms.insert(pair);
+        entry = scalarTerms.insert(entry, pair);
       }
       else
       {
@@ -119,6 +119,11 @@ Node postRewriteFfAdd(TNode t)
     if (summand.second.getValue().isZero())
     {
       // drop this term
+      //
+      // While (* x 0) will never be found as an original summand,
+      // x might get mapped to zero through cancellation.
+      //
+      // consider: (+ (+ x y) (+ (* -1 x) z)).
     }
     else if (summand.second.getValue().isOne())
     {
@@ -133,6 +138,7 @@ Node postRewriteFfAdd(TNode t)
   }
   if (summands.size() == 0)
   {
+    // again, this is possible through cancellation.
     return nm->mkConst(FfVal::mkZero(field.getFfSize()));
   }
   return mkNary(Kind::FINITE_FIELD_ADD, std::move(summands));
@@ -154,7 +160,7 @@ Node postRewriteFfMult(TNode t)
   FfVal one = FfVal::mkOne(field.getFfSize());
 
   FfVal constantTerm = FfVal::mkOne(field.getFfSize());
-  std::vector<Node> summands;
+  std::vector<Node> factors;
 
   std::vector<TNode> children;
   expr::algorithm::flatten(t, children);
@@ -167,19 +173,19 @@ Node postRewriteFfMult(TNode t)
     }
     else
     {
-      summands.push_back(child);
+      factors.push_back(child);
     }
   }
   NodeManager* const nm = NodeManager::currentNM();
   if (constantTerm.getValue().isZero())
   {
-    summands.clear();
+    factors.clear();
   }
-  if (!constantTerm.getValue().isOne() || summands.empty())
+  if (!constantTerm.getValue().isOne() || factors.empty())
   {
-    summands.insert(summands.begin(), nm->mkConst(constantTerm));
+    factors.insert(factors.begin(), nm->mkConst(constantTerm));
   }
-  return mkNary(Kind::FINITE_FIELD_MULT, std::move(summands));
+  return mkNary(Kind::FINITE_FIELD_MULT, std::move(factors));
 }
 
 /** postRewrite equality */
@@ -196,37 +202,46 @@ Node postRewriteFfEq(TNode t)
   {
     return NodeManager::currentNM()->mkConst<bool>(true);
   }
+  else if (t[0] > t[1])
+  {
+    return NodeManager::currentNM()->mkNode(kind::EQUAL, t[1], t[0]);
+  }
   else
   {
     return t;
   }
 }
 
-/** Parse as a product with a constant scalar */
-std::optional<std::pair<Node, FfVal>> parseScalar(TNode t)
+}  // namespace
+
+RewriteResponse TheoryFiniteFieldsRewriter::postRewrite(TNode t)
 {
-  if (t.getKind() == Kind::FINITE_FIELD_MULT && t[0].isConst())
+  Trace("ff::rw::post") << "ff::postRewrite: " << t << std::endl;
+  switch (t.getKind())
   {
-    std::vector<Node> restChildren(std::next(t.begin()), t.end());
-    const Node rest = mkNary(Kind::FINITE_FIELD_MULT, std::move(restChildren));
-    return {{rest, t[0].getConst<FfVal>()}};
-  }
-  else
-  {
-    return {};
+    case kind::FINITE_FIELD_NEG: return RewriteResponse(REWRITE_DONE, t);
+    case kind::FINITE_FIELD_ADD:
+      return RewriteResponse(REWRITE_DONE, postRewriteFfAdd(t));
+    case kind::FINITE_FIELD_MULT:
+      return RewriteResponse(REWRITE_DONE, postRewriteFfMult(t));
+    case kind::EQUAL: return RewriteResponse(REWRITE_DONE, postRewriteFfEq(t));
+    default: return RewriteResponse(REWRITE_DONE, t);
   }
 }
 
-Node mkNary(Kind k, std::vector<Node>&& children)
+RewriteResponse TheoryFiniteFieldsRewriter::preRewrite(TNode t)
 {
-  Assert(children.size() > 0);
-  if (children.size() == 1)
+  Trace("ff::rw::pre") << "ff::preRewrite: " << t << std::endl;
+  switch (t.getKind())
   {
-    return children[0];
-  }
-  else
-  {
-    return NodeManager::currentNM()->mkNode(k, std::move(children));
+    case kind::FINITE_FIELD_NEG:
+      return RewriteResponse(REWRITE_DONE, preRewriteFfNeg(t));
+    case kind::FINITE_FIELD_ADD:
+      return RewriteResponse(REWRITE_DONE, preRewriteFfAdd(t));
+    case kind::FINITE_FIELD_MULT:
+      return RewriteResponse(REWRITE_DONE, preRewriteFfMult(t));
+    case kind::EQUAL: return RewriteResponse(REWRITE_DONE, t);
+    default: return RewriteResponse(REWRITE_DONE, t);
   }
 }
 
