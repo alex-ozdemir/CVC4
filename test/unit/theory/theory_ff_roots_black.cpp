@@ -13,6 +13,7 @@
  * Black box testing of ff root finding.
  */
 
+#ifdef CVC5_USE_COCOA
 #include <CoCoA/BigInt.H>
 #include <CoCoA/QuotientRing.H>
 #include <CoCoA/RingZZ.H>
@@ -20,12 +21,14 @@
 #include <CoCoA/SparsePolyRing.H>
 #include <CoCoA/ring.H>
 #include <CoCoA/symbol.H>
+#endif  // CVC5_USE_COCOA
 
 #include <memory>
 #include <utility>
 
 #include "test_smt.h"
 #include "theory/ff/roots.h"
+#include "util/cocoa_globals.h"
 
 namespace cvc5::internal {
 
@@ -35,8 +38,15 @@ using namespace theory;
 
 namespace test {
 
+#ifdef CVC5_USE_COCOA
+
 class TestTheoryFfRootsBlack : public TestSmt
 {
+  void SetUp() override
+  {
+    TestSmt::SetUp();
+    initCocoaGlobalManager();
+  }
 };
 
 #define TINY_MODULUS "7"
@@ -252,6 +262,8 @@ TEST_F(TestTheoryFfRootsBlack, RootsFull)
     }
   }
 }
+
+#endif  // CVC5_USE_COCOA
 
 }  // namespace test
 }  // namespace cvc5::internal
