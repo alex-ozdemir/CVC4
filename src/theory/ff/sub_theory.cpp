@@ -247,7 +247,7 @@ void SubTheory::computeBasis(size_t factIndex)
 
 void SubTheory::extractModel()
 {
-  CodeTimer modelTimer(d_stats->d_rootConstructionTime);
+  CodeTimer modelTimer(d_stats->d_modelConstructionTime);
   IncrementalIdeal& ideal = d_incrementalIdeal.value();
   Trace("ff::model") << "constructing model" << std::endl;
   d_model.clear();

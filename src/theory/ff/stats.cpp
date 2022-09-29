@@ -28,8 +28,8 @@ FfStatistics::FfStatistics(StatisticsRegistry& registry,
                            const std::string& prefix)
     : d_numReductions(registry.registerInt(prefix + "num_reductions")),
       d_reductionTime(registry.registerTimer(prefix + "reduction_time")),
-      d_rootConstructionTime(
-          registry.registerTimer(prefix + "root_construction_time")),
+      d_modelConstructionTime(
+          registry.registerTimer(prefix + "model_construction_time")),
       d_numConstructionErrors(
           registry.registerInt(prefix + "num_construction_errors"))
 {

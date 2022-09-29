@@ -32,8 +32,8 @@ struct FfStatistics
   IntStat d_numReductions;
   // Time spent in groebner-basis reductions
   TimerStat d_reductionTime;
-  // Time spent in root construction
-  TimerStat d_rootConstructionTime;
+  // Time spent in model construction
+  TimerStat d_modelConstructionTime;
   // Number of times that model construction gave an error
   IntStat d_numConstructionErrors;
 
