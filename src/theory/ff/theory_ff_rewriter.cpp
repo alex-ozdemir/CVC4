@@ -63,7 +63,8 @@ Node preRewriteFfNeg(TNode t)
 {
   Assert(t.getKind() == Kind::FINITE_FIELD_NEG);
   NodeManager* const nm = NodeManager::currentNM();
-  const Node negOne = nm->mkConst(FiniteFieldValue(Integer(-1), t.getType().getFfSize()));
+  const Node negOne =
+      nm->mkConst(FiniteFieldValue(Integer(-1), t.getType().getFfSize()));
   return nm->mkNode(kind::FINITE_FIELD_MULT, negOne, t[0]);
 }
 
@@ -75,7 +76,7 @@ Node preRewriteFfAdd(TNode t)
 }
 
 /** postRewrite addition */
-Node postRewriteFfAdd(TNode t)
+RewriteResponse postRewriteFfAdd(TNode t)
 {
   const TypeNode field = t.getType();
   Assert(field.isFiniteField());
@@ -109,6 +110,7 @@ Node postRewriteFfAdd(TNode t)
     }
   }
   NodeManager* const nm = NodeManager::currentNM();
+  bool rewriteAgain = false;
   std::vector<Node> summands;
   if (scalarTerms.empty() || !constantTerm.getValue().isZero())
   {
@@ -127,6 +129,11 @@ Node postRewriteFfAdd(TNode t)
     }
     else if (summand.second.getValue().isOne())
     {
+      // If we just lifted an addition into this addition, we need to re-flatten.
+      if (summand.first.getKind() == Kind::FINITE_FIELD_ADD)
+      {
+        rewriteAgain = true;
+      }
       summands.push_back(summand.first);
     }
     else
@@ -139,9 +146,12 @@ Node postRewriteFfAdd(TNode t)
   if (summands.size() == 0)
   {
     // again, this is possible through cancellation.
-    return nm->mkConst(FiniteFieldValue::mkZero(field.getFfSize()));
+    return RewriteResponse(
+        REWRITE_DONE, nm->mkConst(FiniteFieldValue::mkZero(field.getFfSize())));
   }
-  return mkNary(Kind::FINITE_FIELD_ADD, std::move(summands));
+  const auto status = rewriteAgain ? REWRITE_AGAIN : REWRITE_DONE;
+  return RewriteResponse(status,
+                         mkNary(Kind::FINITE_FIELD_ADD, std::move(summands)));
 }
 
 /** preRewrite multiplication */
@@ -220,8 +230,7 @@ RewriteResponse TheoryFiniteFieldsRewriter::postRewrite(TNode t)
   switch (t.getKind())
   {
     case kind::FINITE_FIELD_NEG: return RewriteResponse(REWRITE_DONE, t);
-    case kind::FINITE_FIELD_ADD:
-      return RewriteResponse(REWRITE_DONE, postRewriteFfAdd(t));
+    case kind::FINITE_FIELD_ADD: return postRewriteFfAdd(t);
     case kind::FINITE_FIELD_MULT:
       return RewriteResponse(REWRITE_DONE, postRewriteFfMult(t));
     case kind::EQUAL: return RewriteResponse(REWRITE_DONE, postRewriteFfEq(t));

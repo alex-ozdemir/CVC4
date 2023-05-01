@@ -108,7 +108,7 @@ std::string RoundRobinEnumerator::name() { return "round-robin"; }
 bool isUnsat(const CoCoA::ideal& ideal)
 {
   const auto& gens = CoCoA::GBasis(ideal);
-  return !(gens.size() > 1 || CoCoA::deg(gens[0]) > 0);
+  return !(gens.size() != 1 || CoCoA::deg(gens[0]) > 0);
 }
 
 template <typename T>
