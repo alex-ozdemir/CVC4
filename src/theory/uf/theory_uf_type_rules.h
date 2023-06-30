@@ -174,6 +174,29 @@ class BitVectorConversionTypeRule
                               std::ostream* errOut);
 };
 
+/** Returns builtin type */
+class IntToFiniteFieldOpTypeRule
+{
+ public:
+  static TypeNode computeType(NodeManager* nodeManager,
+                              TNode n,
+                              bool check,
+                              std::ostream* errOut);
+};
+
+/**
+ * Expects n's kind to be FINITEFIELD_TO_NAT, expects finite-field argument, returns
+ * integer type.
+ */
+class FiniteFieldConversionTypeRule
+{
+ public:
+  static TypeNode computeType(NodeManager* nodeManager,
+                              TNode n,
+                              bool check,
+                              std::ostream* errOut);
+};
+
 }  // namespace uf
 }  // namespace theory
 }  // namespace cvc5::internal

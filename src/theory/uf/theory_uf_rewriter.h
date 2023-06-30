@@ -68,6 +68,8 @@ class TheoryUfRewriter : public TheoryRewriter
   static Node rewriteLambda(Node node);
   /** rewrite bv2nat */
   static RewriteResponse rewriteBVToNat(TNode node);
+  /** rewrite ff2nat */
+  static RewriteResponse rewriteFfToNat(TNode node);
   /** rewrite int2bv */
   static RewriteResponse rewriteIntToBV(TNode node);
 }; /* class TheoryUfRewriter */

@@ -142,6 +142,14 @@ struct FfSize
 }; /* struct FfSize */
 
 /*
+ * Hash function for the FfSize constants.
+ */
+struct FfSizeHashFunction
+{
+  size_t operator()(const FfSize& to) const { return to.d_size.hash(); }
+}; /* struct FfSizeHashFunction */
+
+/*
  * Hash function for the FiniteFieldValue.
  */
 struct FiniteFieldValueHashFunction
@@ -149,13 +157,26 @@ struct FiniteFieldValueHashFunction
   size_t operator()(const FiniteFieldValue& ff) const { return ff.hash(); }
 }; /* struct FiniteFieldValueHashFunction */
 
-/*
- * Hash function for the FfSize constants.
- */
-struct FfSizeHashFunction
+struct IntToFiniteField
 {
-  size_t operator()(const FfSize& size) const { return size.d_size.hash(); }
-}; /* struct FiniteFieldValueHashFunction */
+  IntToFiniteField(Integer size) : d_size(size)
+  {
+    // we only support prime fields right now
+    Assert(size.isProbablePrime());
+  }
+  operator const Integer&() const { return d_size; }
+  bool operator==(const IntToFiniteField& y) const { return d_size == y.d_size; }
+
+  Integer d_size;
+}; /* struct IntToFiniteField */
+
+/*
+ * Hash function for the IntToFiniteField constants.
+ */
+struct IntToFiniteFieldHashFunction
+{
+  size_t operator()(const IntToFiniteField& to) const { return to.d_size.hash(); }
+}; /* struct IntToFiniteFieldHashFunction */
 
 /* -----------------------------------------------------------------------
  ** Operators
@@ -209,6 +230,12 @@ FiniteFieldValue operator/(const FiniteFieldValue& x,
  * ----------------------------------------------------------------------- */
 
 std::ostream& operator<<(std::ostream& os, const FiniteFieldValue& ff);
+
+inline std::ostream& operator<<(std::ostream& os, const IntToFiniteField& bv);
+inline std::ostream& operator<<(std::ostream& os, const IntToFiniteField& bv)
+{
+  return os << "[" << bv.d_size << "]";
+}
 
 }  // namespace cvc5::internal
 

@@ -24,6 +24,7 @@
 #include "theory/substitutions.h"
 #include "theory/uf/function_const.h"
 #include "util/bitvector.h"
+#include "util/finite_field_value.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -114,6 +115,10 @@ RewriteResponse TheoryUfRewriter::postRewrite(TNode node)
   else if (k == kind::BITVECTOR_TO_NAT)
   {
     return rewriteBVToNat(node);
+  }
+  else if (k == kind::FINITEFIELD_TO_NAT)
+  {
+    return rewriteFfToNat(node);
   }
   else if (k == kind::INT_TO_BITVECTOR)
   {
@@ -239,6 +244,18 @@ RewriteResponse TheoryUfRewriter::rewriteBVToNat(TNode node)
         node[0].getOperator().getConst<IntToBitVector>().d_size;
     Node sn = nm->mkConstInt(Rational(Integer(2).pow(size)));
     Node resultNode = nm->mkNode(kind::INTS_MODULUS_TOTAL, node[0][0], sn);
+    return RewriteResponse(REWRITE_AGAIN_FULL, resultNode);
+  }
+  return RewriteResponse(REWRITE_DONE, node);
+}
+
+RewriteResponse TheoryUfRewriter::rewriteFfToNat(TNode node)
+{
+  Assert(node.getKind() == kind::FINITEFIELD_TO_NAT);
+  NodeManager* nm = NodeManager::currentNM();
+  if (node[0].isConst())
+  {
+    Node resultNode = nm->mkConstInt(node[0].getConst<FiniteFieldValue>().toInteger());
     return RewriteResponse(REWRITE_AGAIN_FULL, resultNode);
   }
   return RewriteResponse(REWRITE_DONE, node);

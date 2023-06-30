@@ -225,6 +225,9 @@ void Smt2Printer::toStream(std::ostream& out,
     case kind::FINITE_FIELD_TYPE:
       out << "(_ FiniteField " << n.getConst<FfSize>().d_size << ")";
       break;
+    case kind::INT_TO_FINITEFIELD_OP:
+      out << "(_ int2ff " << n.getConst<IntToFiniteField>().d_size << ")";
+      break;
     case kind::FLOATINGPOINT_TYPE:
       out << "(_ FloatingPoint "
           << n.getConst<FloatingPointSize>().exponentWidth() << " "
@@ -1122,9 +1125,11 @@ std::string Smt2Printer::smtKindString(Kind k)
     case kind::EQ_RANGE: return "eqrange";
 
     // ff theory
-  case kind::FINITE_FIELD_ADD: return "ff.add";
-  case kind::FINITE_FIELD_MULT: return "ff.mul";
-  case kind::FINITE_FIELD_NEG: return "ff.neg";
+    case kind::FINITE_FIELD_ADD: return "ff.add";
+    case kind::FINITE_FIELD_MULT: return "ff.mul";
+    case kind::FINITE_FIELD_NEG: return "ff.neg";
+    case kind::INT_TO_FINITEFIELD: return "int2ff";
+    case kind::FINITEFIELD_TO_NAT: return "ff2nat";
 
     // bv theory
     case kind::BITVECTOR_CONCAT: return "concat";

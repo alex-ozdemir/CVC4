@@ -79,9 +79,23 @@ constant INT_TO_BITVECTOR_OP \
   "operator for the integer conversion to bit-vector; payload is an instance of the cvc5::internal::IntToBitVector class"
 parameterized INT_TO_BITVECTOR INT_TO_BITVECTOR_OP 1 "integer conversion to bit-vector; first parameter is an INT_TO_BITVECTOR_OP, second is an integer term"
 
+operator FINITEFIELD_TO_NAT 1 "finite-field conversion to (nonnegative) integer; parameter is a finite-field element"
+
+constant INT_TO_FINITEFIELD_OP \
+  struct \
+  IntToFiniteField \
+  "::cvc5::internal::IntToFiniteFieldHashFunction" \
+  "util/finite_field_value.h" \
+  "operator for the integer conversion to field-field element; payload is an instance of the cvc5::internal::IntToFiniteField class"
+parameterized INT_TO_FINITEFIELD INT_TO_FINITEFIELD_OP 1 "integer conversion to field-field element; first parameter is an INT_TO_FINITEFIELD_OP, second is an integer term"
+
 ## conversion kinds
 typerule BITVECTOR_TO_NAT ::cvc5::internal::theory::uf::BitVectorConversionTypeRule
 typerule INT_TO_BITVECTOR_OP ::cvc5::internal::theory::uf::IntToBitVectorOpTypeRule
 typerule INT_TO_BITVECTOR ::cvc5::internal::theory::uf::BitVectorConversionTypeRule
+
+typerule FINITEFIELD_TO_NAT ::cvc5::internal::theory::uf::FiniteFieldConversionTypeRule
+typerule INT_TO_FINITEFIELD_OP ::cvc5::internal::theory::uf::IntToFiniteFieldOpTypeRule
+typerule INT_TO_FINITEFIELD ::cvc5::internal::theory::uf::FiniteFieldConversionTypeRule
 
 endtheory

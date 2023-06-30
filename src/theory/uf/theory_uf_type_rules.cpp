@@ -23,6 +23,7 @@
 #include "theory/uf/function_const.h"
 #include "util/bitvector.h"
 #include "util/cardinality.h"
+#include "util/finite_field_value.h"
 #include "util/rational.h"
 
 namespace cvc5::internal {
@@ -269,6 +270,40 @@ TypeNode BitVectorConversionTypeRule::computeType(NodeManager* nodeManager,
     throw TypeCheckingExceptionPrivate(n, "expecting integer term");
   }
   return nodeManager->mkBitVectorType(bvSize);
+}
+
+TypeNode IntToFiniteFieldOpTypeRule::computeType(NodeManager* nodeManager,
+                                               TNode n,
+                                               bool check,
+                                               std::ostream* errOut)
+{
+  Assert(n.getKind() == kind::INT_TO_FINITEFIELD_OP);
+  const FfSize& ffSize = n.getConst<FfSize>();
+  return nodeManager->mkFunctionType(nodeManager->integerType(),
+                                     nodeManager->mkFiniteFieldType(ffSize));
+}
+
+
+TypeNode FiniteFieldConversionTypeRule::computeType(NodeManager* nodeManager,
+                                                    TNode n,
+                                                    bool check,
+                                                    std::ostream* errOut)
+{
+  if (n.getKind() == kind::FINITEFIELD_TO_NAT)
+  {
+    if (check && !n[0].getType(check).isFiniteField())
+    {
+      throw TypeCheckingExceptionPrivate(n, "expecting finite-field term");
+    }
+    return nodeManager->integerType();
+  }
+  Assert(n.getKind() == kind::INT_TO_FINITEFIELD);
+  const Integer& ffSize = n.getOperator().getConst<FfSize>();
+  if (check && !n[0].getType(check).isInteger())
+  {
+    throw TypeCheckingExceptionPrivate(n, "expecting integer term");
+  }
+  return nodeManager->mkFiniteFieldType(ffSize);
 }
 
 }  // namespace uf

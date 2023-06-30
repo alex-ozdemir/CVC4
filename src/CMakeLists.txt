@@ -77,6 +77,8 @@ libcvc5_add_sources(
   preprocessing/passes/bv_to_int.h
   preprocessing/passes/extended_rewriter_pass.cpp
   preprocessing/passes/extended_rewriter_pass.h
+  preprocessing/passes/ff_to_int.cpp
+  preprocessing/passes/ff_to_int.h
   preprocessing/passes/foreign_theory_rewrite.cpp
   preprocessing/passes/foreign_theory_rewrite.h
   preprocessing/passes/fun_def_fmf.cpp
@@ -706,6 +708,8 @@ libcvc5_add_sources(
   theory/ff/theory_ff_rewriter.h
   theory/ff/theory_ff_type_rules.cpp
   theory/ff/theory_ff_type_rules.h
+  theory/ff/to_int.cpp
+  theory/ff/to_int.h
   theory/ff/uni_roots.cpp
   theory/ff/uni_roots.h
   theory/fp/fp_word_blaster.cpp
