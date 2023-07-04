@@ -74,6 +74,38 @@ class ToInt : protected EnvObj
                            std::vector<Node>& lemmas,
                            std::map<Node, Node>& skolems);
 
+  /**
+   * Reconstructs a node whose main operator cannot be
+   * translated to integers.
+   * Reconstruction is done by casting to integers/finite-field elements
+   * as needed.
+   * For example, if node is (select A x) where A
+   * is a field array, we do not change A to be
+   * an integer array, even though x was translated
+   * to integers.
+   * In this case we cast x to (ff2nat x) during
+   * the reconstruction.
+   *
+   * @param originalNode the node that we are reconstructing
+   * @param resultType the desired type for the reconstruction
+   * @param translated_children the children of originalNode
+   *        after their translation to integers.
+   * @return A node with originalNode's operator that has type resultType.
+   */
+  Node reconstructNode(Node originalNode,
+                       TypeNode resultType,
+                       const std::vector<Node>& translated_children);
+
+  /**
+   * A useful utility function.
+   * if n is an integer and tn is finite-field,
+   * applies the IntToFiniteField operator on n.
+   * if n is a finite-field and tn is integer,
+   * applies FINITEFIELD_TO_NAT operator.
+   * Otherwise, keeps n intact.
+   */
+  Node castToType(Node n, TypeNode tn);
+
   /** Translation cache */
   CDNodeMap d_cache;
 

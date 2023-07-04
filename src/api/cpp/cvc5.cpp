@@ -234,6 +234,8 @@ const static std::unordered_map<Kind, std::pair<internal::Kind, std::string>>
         KIND_ENUM(FINITE_FIELD_MULT, internal::Kind::FINITE_FIELD_MULT),
         KIND_ENUM(FINITE_FIELD_ADD, internal::Kind::FINITE_FIELD_ADD),
         KIND_ENUM(FINITE_FIELD_NEG, internal::Kind::FINITE_FIELD_NEG),
+        KIND_ENUM(INT_TO_FINITEFIELD, internal::Kind::INT_TO_FINITEFIELD),
+        KIND_ENUM(FINITEFIELD_TO_NAT, internal::Kind::FINITEFIELD_TO_NAT),
         /* FP --------------------------------------------------------------- */
         KIND_ENUM(CONST_FLOATINGPOINT, internal::Kind::CONST_FLOATINGPOINT),
         KIND_ENUM(CONST_ROUNDINGMODE, internal::Kind::CONST_ROUNDINGMODE),
@@ -598,6 +600,9 @@ const static std::unordered_map<internal::Kind,
         {internal::Kind::FINITE_FIELD_MULT, FINITE_FIELD_MULT},
         {internal::Kind::FINITE_FIELD_ADD, FINITE_FIELD_ADD},
         {internal::Kind::FINITE_FIELD_NEG, FINITE_FIELD_NEG},
+        {internal::Kind::INT_TO_FINITEFIELD_OP, INT_TO_FINITEFIELD},
+        {internal::Kind::INT_TO_FINITEFIELD, INT_TO_FINITEFIELD},
+        {internal::Kind::FINITEFIELD_TO_NAT, FINITEFIELD_TO_NAT},
         /* FP -------------------------------------------------------------- */
         {internal::Kind::CONST_FLOATINGPOINT, CONST_FLOATINGPOINT},
         {internal::Kind::CONST_ROUNDINGMODE, CONST_ROUNDINGMODE},
@@ -828,6 +833,7 @@ const static std::unordered_set<Kind> s_indexed_kinds(
      BITVECTOR_ROTATE_LEFT,
      BITVECTOR_ROTATE_RIGHT,
      INT_TO_BITVECTOR,
+     INT_TO_FINITEFIELD,
      FLOATINGPOINT_TO_UBV,
      FLOATINGPOINT_TO_SBV,
      BITVECTOR_EXTRACT,
@@ -862,6 +868,7 @@ const static std::unordered_map<Kind, internal::Kind> s_op_kinds{
      internal::Kind::FLOATINGPOINT_TO_FP_FROM_UBV_OP},
     {IAND, internal::Kind::IAND_OP},
     {INT_TO_BITVECTOR, internal::Kind::INT_TO_BITVECTOR_OP},
+    {INT_TO_FINITEFIELD, internal::Kind::INT_TO_FINITEFIELD_OP},
     {REGEXP_REPEAT, internal::Kind::REGEXP_REPEAT_OP},
     {REGEXP_LOOP, internal::Kind::REGEXP_LOOP_OP},
     {TUPLE_PROJECT, internal::Kind::TUPLE_PROJECT_OP},
@@ -2150,6 +2157,7 @@ size_t Op::getNumIndicesHelper() const
     case BITVECTOR_ROTATE_LEFT: size = 1; break;
     case BITVECTOR_ROTATE_RIGHT: size = 1; break;
     case INT_TO_BITVECTOR: size = 1; break;
+    case INT_TO_FINITEFIELD: size = 1; break;
     case IAND: size = 1; break;
     case FLOATINGPOINT_TO_UBV: size = 1; break;
     case FLOATINGPOINT_TO_SBV: size = 1; break;
@@ -2247,6 +2255,12 @@ Term Op::getIndexHelper(size_t index) const
     {
       t = Solver::mkRationalValHelper(
           d_nm, d_node->getConst<internal::IntToBitVector>().d_size, true);
+      break;
+    }
+    case INT_TO_FINITEFIELD:
+    {
+      t = Solver::mkRationalValHelper(
+          d_nm, d_node->getConst<internal::IntToFiniteField>().d_size, true);
       break;
     }
     case IAND:
@@ -6275,6 +6289,10 @@ Op Solver::mkOp(Kind kind, const std::vector<uint32_t>& args) const
     case INT_TO_BITVECTOR:
       CVC5_API_OP_CHECK_ARITY(nargs, 1, kind);
       res = mkOpHelper(kind, internal::IntToBitVector(args[0]));
+      break;
+    case INT_TO_FINITEFIELD:
+      CVC5_API_OP_CHECK_ARITY(nargs, 1, kind);
+      res = mkOpHelper(kind, internal::IntToFiniteField(args[0]));
       break;
     case REGEXP_REPEAT:
       CVC5_API_OP_CHECK_ARITY(nargs, 1, kind);

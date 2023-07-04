@@ -2002,6 +2002,43 @@ enum Kind : int32_t
    *   - Solver::mkOp(Kind, const std::vector<uint32_t>&) const
    */
   FINITE_FIELD_MULT,
+  /**
+   * Conversion from Int to finite-field element.
+   *
+   * - Arity: ``1``
+   *
+   *   - ``1:`` Term of Sort Int
+   *
+   * - Indices: ``1``
+   *
+   *   - ``1:`` The size of the finite-field to convert to.
+   *
+   * - Create Term of this Kind with:
+   *
+   *   - Solver::mkTerm(const Op&, const std::vector<Term>&) const
+   *
+   * - Create Op of this kind with:
+   *
+   *   - Solver::mkOp(Kind, const std::vector<uint32_t>&) const
+   */
+  INT_TO_FINITEFIELD,
+  /**
+   * Finite-field element conversion to (non-negative) integer.
+   *
+   * - Arity: ``1``
+   *
+   *   - ``1:`` Term of finite-field Sort
+   *
+   * - Create Term of this Kind with:
+   *
+   *   - Solver::mkTerm(Kind, const std::vector<Term>&) const
+   *   - Solver::mkTerm(const Op&, const std::vector<Term>&) const
+   *
+   * - Create Op of this kind with:
+   *
+   *   - Solver::mkOp(Kind, const std::vector<uint32_t>&) const
+   */
+  FINITEFIELD_TO_NAT,
 
   /* FP -------------------------------------------------------------------- */
 

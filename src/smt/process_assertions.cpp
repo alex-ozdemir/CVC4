@@ -198,6 +198,12 @@ bool ProcessAssertions::apply(AssertionPipeline& ap)
     applyPass("foreign-theory-rewrite", ap);
   }
 
+  // ff
+  if (options().smt.preprocessFfToInt)
+  {
+    applyPass("ff-to-int", ap);
+  }
+
   // Assertions MUST BE guaranteed to be rewritten by this point
   applyPass("rewrite", ap);
 

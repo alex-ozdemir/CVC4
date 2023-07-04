@@ -373,6 +373,14 @@ name   = "SMT Layer"
   help = "Introduce a UF operator for bvand, and eagerly add bitwise lemmas"
 
 [[option]]
+  name       = "preprocessFfToInt"
+  category   = "expert"
+  long       = "pp-ff-to-int"
+  type       = "bool"
+  default    = "false"
+  help       = "Convert finite-field elements to integers in preprocessing"
+
+[[option]]
   name       = "bvToIntUsePow2"
   category   = "undocumented"
   long       = "bv-to-int-use-pow2"

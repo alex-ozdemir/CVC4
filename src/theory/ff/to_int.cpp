@@ -45,6 +45,7 @@ Node ToInt::toInt(Node n,
        }))
   {
     Node translation;
+    Assert(!d_cache.count(current));
     if (current.getNumChildren() == 0)
     {
       translation = translateNoChildren(current, lemmas, skolems);
@@ -55,9 +56,11 @@ Node ToInt::toInt(Node n,
       for (TNode c : current)
       {
         translatedChildren.push_back(d_cache[c]);
+        Assert(!translatedChildren.back().isNull());
       }
       translation = translateWithChildren(current, translatedChildren, lemmas);
     }
+    d_cache[current] = translation;
   }
   return d_cache[n].get();
 }
@@ -66,6 +69,16 @@ Node ToInt::translateWithChildren(Node original,
                                   const std::vector<Node>& translatedChildren,
                                   std::vector<Node>& lemmas)
 {
+  Trace("ff::to-int") << "translating non-leaf: " << original
+                      << "; of type: " << original.getType() << std::endl;
+  if (TraceIsOn("ff::to-int"))
+  {
+    Trace("ff::to-int") << "translated children:" << std::endl;
+    for (const auto& c : translatedChildren)
+    {
+      Trace("ff::to-int") << "  " << c << std::endl;
+    }
+  }
   // Store the translated node
   Node translation;
 
@@ -106,9 +119,28 @@ Node ToInt::translateWithChildren(Node original,
       }
       break;
     }
+    case kind::ITE:
+    {
+      translation = d_nm->mkNode(kind::ITE, translatedChildren);
+      break;
+    }
     default:
     {
-      translation = original;
+      // In the default case, we have reached an operator that we do not
+      // translate directly to integers. The children whose types have
+      // changed from ff to int should be adjusted back to ff and then
+      // this term is reconstructed.
+      TypeNode resultingType;
+      if (original.getType().isFiniteField())
+      {
+        resultingType = d_nm->integerType();
+      }
+      else
+      {
+        resultingType = original.getType();
+      }
+      translation =
+          reconstructNode(original, resultingType, translatedChildren);
     }
   }
   return translation;
@@ -127,7 +159,8 @@ Node ToInt::translateNoChildren(Node original,
   // constants (values)
   if (original.isVar())
   {
-    if (original.getType().isFiniteField())
+    TypeNode ty = original.getType();
+    if (ty.isFiniteField())
     {
       // For bit-vector variables, we create fresh integer variables.
       if (original.getKind() == kind::BOUND_VARIABLE)
@@ -136,20 +169,21 @@ Node ToInt::translateNoChildren(Node original,
       }
       else
       {
-        Node intCast = d_nm->mkNode(kind::FINITEFIELD_TO_NAT, original);
-        // we introduce a fresh variable, add range constraints, and save the
-        // connection between original and the new variable via intCast
+        Node intCast = castToType(original, d_nm->integerType());
+        // we introduce a fresh variable; defined in terms of the old
         translation = d_nm->getSkolemManager()->mkPurifySkolem(intCast);
+        // add range constraints
         Node zero = d_nm->mkConstInt(0);
         Node p = d_nm->mkConstInt(original.getType().getFfSize());
         Node lower = d_nm->mkNode(kind::LEQ, zero, translation);
         Node upper = d_nm->mkNode(kind::LT, translation, p);
         Node range = d_nm->mkNode(kind::AND, lower, upper);
         range = rewrite(range);
-        lemmas.push_back(translation);
-        // add bvCast to skolems if it is not already there.
+        lemmas.push_back(range);
+        // express the old variable in terms of the new one
         Assert(!skolems.count(original));
-        skolems[original] = intCast;
+        Node backCast = castToType(translation, ty);
+        skolems[original] = backCast;
       }
     }
     else if (original.getType().isFunction())
@@ -178,6 +212,58 @@ Node ToInt::translateNoChildren(Node original,
     }
   }
   return translation;
+}
+
+Node ToInt::reconstructNode(Node originalNode,
+                                 TypeNode resultType,
+                                 const std::vector<Node>& translated_children)
+{
+  // first, we adjust the children of the node as needed.
+  // re-construct the term with the adjusted children.
+  kind::Kind_t oldKind = originalNode.getKind();
+  NodeBuilder builder(oldKind);
+  if (originalNode.getMetaKind() == kind::metakind::PARAMETERIZED)
+  {
+    builder << originalNode.getOperator();
+  }
+  for (uint32_t i = 0; i < originalNode.getNumChildren(); i++)
+  {
+    Node originalChild = originalNode[i];
+    Node translatedChild = translated_children[i];
+    Node adjustedChild = castToType(translatedChild, originalChild.getType());
+    builder << adjustedChild;
+  }
+  Node reconstruction = builder.constructNode();
+  // cast to tn in case the reconstruction is a field elem.
+  reconstruction = castToType(reconstruction, resultType);
+  return reconstruction;
+}
+
+Node ToInt::castToType(Node n, TypeNode tn)
+{
+  // If there is no reason to cast, return the
+  // original node.
+  if (n.getType() == tn)
+  {
+    return n;
+  }
+  // We only case int to ff or vice verse.
+  Assert((n.getType().isFiniteField() && tn.isInteger())
+         || (n.getType().isInteger() && tn.isFiniteField()));
+  Trace("ff::to-int") << "castToType from " << n.getType() << " to " << tn
+                       << std::endl;
+
+  // casting integers to finite-fieldk
+  if (n.getType().isInteger())
+  {
+    Assert(tn.isFiniteField());
+    Node intToFfOp = d_nm->mkConst<IntToFiniteField>(IntToFiniteField(tn.getFfSize()));
+    return d_nm->mkNode(intToFfOp, n);
+  }
+  // casting finite-field to ingers
+  Assert(n.getType().isFiniteField());
+  Assert(tn.isInteger());
+  return d_nm->mkNode(kind::FINITEFIELD_TO_NAT, n);
 }
 
 }  // namespace ff
