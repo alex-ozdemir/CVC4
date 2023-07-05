@@ -115,7 +115,7 @@ Node ToInt::translateWithChildren(Node original,
       else
       {
         // Other equalities are untouched.
-        translation = original;
+        translation = d_nm->mkNode(kind::EQUAL, translatedChildren);
       }
       break;
     }
@@ -143,6 +143,7 @@ Node ToInt::translateWithChildren(Node original,
           reconstructNode(original, resultingType, translatedChildren);
     }
   }
+  Trace("ff::to-int") << " result " << translation << std::endl;
   return translation;
 }
 
@@ -211,6 +212,7 @@ Node ToInt::translateNoChildren(Node original,
       translation = original;
     }
   }
+  Trace("ff::to-int") << " result " << translation << std::endl;
   return translation;
 }
 

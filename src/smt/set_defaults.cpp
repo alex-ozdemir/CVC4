@@ -276,6 +276,15 @@ void SetDefaults::finalizeLogic(LogicInfo& logic, Options& opts) const
     }
   }
 
+  if (opts.smt.preprocessFfToInt)
+  {
+    logic = logic.getUnlockedCopy();
+    logic.enableTheory(THEORY_ARITH);
+    logic.arithNonLinear();
+    logic.enableQuantifiers();
+    logic.lock();
+  }
+
   // set options about ackermannization
   if (opts.smt.ackermann && opts.smt.produceModels
       && (logic.isTheoryEnabled(THEORY_ARRAYS)
