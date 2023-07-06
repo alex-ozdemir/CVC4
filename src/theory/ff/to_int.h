@@ -18,6 +18,8 @@
 #ifndef CVC5__THEORY__FF__TO_INT_H
 #define CVC5__THEORY__FF__TO_INT_H
 
+#include <optional>
+
 #include "context/cdhashmap.h"
 #include "smt/env_obj.h"
 
@@ -112,6 +114,32 @@ class ToInt : protected EnvObj
   /** Node manager that is used throughout the pass */
   NodeManager* d_nm;
 };
+
+/**
+ * Detect whether this node is a squared variable
+ * @param t a potential FF square
+ * @return the variable (unsquared), if this is a square.
+ */
+std::optional<Node> parseSquare(const Node& t);
+/**
+ * Detect whether this node has form (x - 1)
+ * @param t a node
+ * @return the variable x, if t matches the pattern
+ */
+std::optional<Node> parseXMinusOne(const Node& t);
+/**
+ * Detect whether this node has form (ff.mul x (x - 1)) (or equivalent)
+ * @param t a node
+ * @return the variable x if t matches the pattern
+ */
+std::optional<Node> parseXXMinusOne(const Node& t);
+/**
+ * Detect whether this node is a bit-constraint.
+ * @param fact a node asserted to FF
+ * @return a variable that is bit-constrained by this fact, if this fact is a
+ *         bit constraint.
+ */
+std::optional<Node> parseBitConstraint(const Node& fact);
 
 }  // namespace ff
 }  // namespace theory

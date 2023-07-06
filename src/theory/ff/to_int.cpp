@@ -39,6 +39,22 @@ Node ToInt::toInt(Node n,
   // make sure the node is re-written
   n = rewrite(n);
 
+  // if it's a bit-constraint, do a range.
+  std::optional<Node> bitConstrainedVar = parseBitConstraint(n);
+  if (bitConstrainedVar.has_value())
+  {
+    Node var = toInt(bitConstrainedVar.value(), lemmas, skolems);
+    Node zero = d_nm->mkConstInt(0);
+    Node one = d_nm->mkConstInt(1);
+    Node lower = d_nm->mkNode(kind::LEQ, zero, var);
+    Node upper = d_nm->mkNode(kind::LEQ, var, one);
+    Node range = d_nm->mkNode(kind::AND, lower, upper);
+    Trace("ff::to-int") << "node: " << n << std::endl
+                        << "; translated to a bit constraint: " << range
+                        << std::endl;
+    return rewrite(range);
+  }
+
   for (TNode current :
        NodeDfsIterable(n, VisitOrder::POSTORDER, [this](TNode nn) {
          return d_cache.count(nn);
@@ -217,8 +233,8 @@ Node ToInt::translateNoChildren(Node original,
 }
 
 Node ToInt::reconstructNode(Node originalNode,
-                                 TypeNode resultType,
-                                 const std::vector<Node>& translated_children)
+                            TypeNode resultType,
+                            const std::vector<Node>& translated_children)
 {
   // first, we adjust the children of the node as needed.
   // re-construct the term with the adjusted children.
@@ -253,19 +269,115 @@ Node ToInt::castToType(Node n, TypeNode tn)
   Assert((n.getType().isFiniteField() && tn.isInteger())
          || (n.getType().isInteger() && tn.isFiniteField()));
   Trace("ff::to-int") << "castToType from " << n.getType() << " to " << tn
-                       << std::endl;
+                      << std::endl;
 
   // casting integers to finite-fieldk
   if (n.getType().isInteger())
   {
     Assert(tn.isFiniteField());
-    Node intToFfOp = d_nm->mkConst<IntToFiniteField>(IntToFiniteField(tn.getFfSize()));
+    Node intToFfOp =
+        d_nm->mkConst<IntToFiniteField>(IntToFiniteField(tn.getFfSize()));
     return d_nm->mkNode(intToFfOp, n);
   }
   // casting finite-field to ingers
   Assert(n.getType().isFiniteField());
   Assert(tn.isInteger());
   return d_nm->mkNode(kind::FINITEFIELD_TO_NAT, n);
+}
+
+std::optional<Node> parseSquare(const Node& t)
+{
+  if (t.getKind() == kind::FINITE_FIELD_MULT && t[0].isVar() && t[0] == t[1])
+  {
+    return t[0];
+  }
+  return {};
+}
+
+std::optional<Node> parseXMinusOne(const Node& t)
+{
+  if (t.getKind() == kind::FINITE_FIELD_ADD && t.getNumChildren() == 2)
+  {
+    if (t[0].isVar() && t[1].isConst()
+        && t[1].getConst<FiniteFieldValue>().toSignedInteger() == -1)
+    {
+      return t[0];
+    }
+    if (t[1].isVar() && t[0].isConst()
+        && t[0].getConst<FiniteFieldValue>().toSignedInteger() == -1)
+    {
+      return t[1];
+    }
+  }
+  return {};
+}
+
+std::optional<Node> parseXXMinusOne(const Node& t)
+{
+  if (t.getKind() == kind::FINITE_FIELD_MULT && t.getNumChildren() == 2)
+  {
+    if (t[0].isVar())
+    {
+      std::optional<Node> rightX = parseXMinusOne(t[1]);
+      if (rightX.has_value() && t[0] == rightX.value())
+      {
+        return t[0];
+      }
+    }
+    else if (t[1].isVar())
+    {
+      std::optional<Node> leftX = parseXMinusOne(t[0]);
+      if (leftX.has_value() && t[1] == leftX.value())
+      {
+        return t[1];
+      }
+    }
+  }
+  return {};
+}
+
+std::optional<Node> parseBitConstraint(const Node& fact)
+{
+  if (fact.getKind() == kind::EQUAL && fact[0].getType().isFiniteField())
+  {
+    if (fact[0].isVar())
+    {
+      if (fact[0] == parseSquare(fact[1]))
+      {
+        // (= x (ff.mul x x))
+        return fact[0];
+      }
+    }
+    if (fact[1].isVar())
+    {
+      if (fact[1] == parseSquare(fact[0]))
+      {
+        // (= (ff.mul x x) x)
+        return fact[1];
+      }
+    }
+    if (fact[0].isConst()
+        && fact[0].getConst<FiniteFieldValue>().toInteger() == 0)
+    {
+      std::optional<Node> opt = parseXXMinusOne(fact[1]);
+      if (opt.has_value())
+      {
+        // (= 0 (ff.mul x (ff.add x -1)))
+        return opt;
+      }
+    }
+    if (fact[1].isConst()
+        && fact[1].getConst<FiniteFieldValue>().toInteger() == 0)
+    {
+      std::optional<Node> opt = parseXXMinusOne(fact[0]);
+      if (opt.has_value())
+      {
+        // (= (ff.mul x (ff.add x -1)) 0)
+        return opt;
+      }
+    }
+  }
+  return {};
 }
 
 }  // namespace ff
