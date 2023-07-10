@@ -16,3 +16,11 @@ name   = "Finite Field Theory"
   type       = "bool"
   default    = "false"
   help       = "include field polynomials in Groebner basis computation; don't do this"
+
+[[option]]
+  name       = "ffRangeSolver"
+  category   = "expert"
+  long       = "ff-range-solver"
+  type       = "bool"
+  default    = "false"
+  help       = "use the range solver"

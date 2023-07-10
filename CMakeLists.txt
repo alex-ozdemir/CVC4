@@ -473,6 +473,10 @@ if(USE_COCOA)
   add_definitions(-DCVC5_USE_COCOA)
 endif()
 
+link_libraries(z3)
+include_directories(z3)
+add_definitions(-DCVC5_USE_Z3)
+
 if(USE_EDITLINE)
   find_package(Editline REQUIRED)
   set(HAVE_LIBEDITLINE 1)

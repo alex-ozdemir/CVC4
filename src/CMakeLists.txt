@@ -698,6 +698,8 @@ libcvc5_add_sources(
   theory/ff/core.h
   theory/ff/multi_roots.cpp
   theory/ff/multi_roots.h
+  theory/ff/range.cpp
+  theory/ff/range.h
   theory/ff/stats.cpp
   theory/ff/stats.h
   theory/ff/sub_theory.cpp
