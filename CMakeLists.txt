@@ -473,8 +473,11 @@ if(USE_COCOA)
   add_definitions(-DCVC5_USE_COCOA)
 endif()
 
-link_libraries(z3)
-include_directories(z3)
+#set(CMAKE_PREFIX_PATH "/home/aozdemir/repos/z3/build/install/:${CMAKE_PREFIX_PATH}")
+#link_libraries(z3)
+#include_directories(z3)
+find_package(Z3 REQUIRED)
+set(USE_Z3 TRUE)
 add_definitions(-DCVC5_USE_Z3)
 
 if(USE_EDITLINE)
