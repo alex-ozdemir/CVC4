@@ -380,6 +380,24 @@ std::optional<Node> parseBitConstraint(const Node& fact)
   return {};
 }
 
+std::optional<std::pair<Node, FiniteFieldValue>> parseVarNeValue(
+    const Node& fact)
+{
+  if (fact.getKind() == kind::NOT && fact[0].getKind() == kind::EQUAL
+      && fact[0][0].getType().isFiniteField())
+  {
+    if (fact[0][0].isVar() && fact[0][1].isConst())
+    {
+      return {{fact[0][0], fact[0][1].getConst<FiniteFieldValue>()}};
+    }
+    else if (fact[0][1].isVar() && fact[0][0].isConst())
+    {
+      return {{fact[0][1], fact[0][0].getConst<FiniteFieldValue>()}};
+    }
+  }
+  return {};
+}
+
 }  // namespace ff
 }  // namespace theory
 }  // namespace cvc5::internal

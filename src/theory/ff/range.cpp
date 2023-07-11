@@ -51,12 +51,36 @@ void RangeSolver::assertFact(TNode fact)
     }
     d_assertedRanges.insert({var, r});
     Trace("ff::range") << "range " << var << ": " << r << std::endl;
+    return;
   }
-  else
+  if (options().ff.ffRangeNe)
   {
-    d_facts.emplace_back(fact);
-    Trace("ff::range") << "fact " << fact << std::endl;
+    std::optional<std::pair<Node, FiniteFieldValue>> varNeValue =
+        parseVarNeValue(fact);
+    if (varNeValue.has_value())
+    {
+      auto it = d_assertedRanges.find(varNeValue->first);
+      if (it != d_assertedRanges.end())
+      {
+        if (it->second.d_lo == varNeValue->second.toInteger())
+        {
+          it->second.d_lo += 1;
+          Trace("ff::range") << "tighten to range " << varNeValue->first << ": "
+                             << it->second << std::endl;
+          return;
+        }
+        if (it->second.d_hi == varNeValue->second.toInteger())
+        {
+          it->second.d_hi -= 1;
+          Trace("ff::range") << "tighten to range " << varNeValue->first << ": "
+                             << it->second << std::endl;
+          return;
+        }
+      }
+    }
   }
+  d_facts.emplace_back(fact);
+  Trace("ff::range") << "fact " << fact << std::endl;
 }
 
 std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()

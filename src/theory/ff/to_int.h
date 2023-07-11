@@ -140,6 +140,11 @@ std::optional<Node> parseXXMinusOne(const Node& t);
  *         bit constraint.
  */
 std::optional<Node> parseBitConstraint(const Node& fact);
+/** Detect whether this node says that a variable is not equal to a constant.
+ * @param fact a node asserted to FF
+ * @return a variable that is not equal to this value.
+ */
+std::optional<std::pair<Node, FiniteFieldValue>> parseVarNeValue(const Node& fact);
 
 }  // namespace ff
 }  // namespace theory

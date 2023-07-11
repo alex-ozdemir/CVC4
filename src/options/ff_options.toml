@@ -32,3 +32,11 @@ name   = "Finite Field Theory"
   type       = "bool"
   default    = "true"
   help       = "bound quotient ranges in the range solver"
+
+[[option]]
+  name       = "ffRangeNe"
+  category   = "expert"
+  long       = "ff-range-ne"
+  type       = "bool"
+  default    = "true"
+  help       = "use disequalities (ne) to tighten ranges"
