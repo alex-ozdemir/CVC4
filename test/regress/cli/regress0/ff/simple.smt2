@@ -1,6 +1,7 @@
 ; REQUIRES: cocoa
 ; EXPECT: unsat
 ; Tests the ff rewriter
+; COMMAND-LINE: --ff-range-solver
 (set-info :smt-lib-version 2.6)
 (set-info :category "crafted")
 (set-logic QF_FF)

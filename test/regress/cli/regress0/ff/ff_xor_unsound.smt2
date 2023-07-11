@@ -1,6 +1,7 @@
 ; REQUIRES: cocoa
 ; EXPECT: sat
 ; COMMAND-LINE: --no-debug-check-models
+; COMMAND-LINE: --ff-range-solver
 ; XOR compilation strategy (unsound because even though the XOR sum can not
 ; overflow, the bit decomposition sum can.
 (set-info :smt-lib-version 2.6)

@@ -1,7 +1,8 @@
 ; REQUIRES: cocoa
 ; EXPECT: sat
-; COMMAND-LINE: --pp-ff-to-int
-; COMMAND-LINE:
+; quiet because of model-checking warnings
+; COMMAND-LINE: --pp-ff-to-int -q
+; COMMAND-LINE: --ff-range-solver
 (set-info :smt-lib-version 2.6)
 (set-info :category "crafted")
 (set-logic QF_FF)
@@ -40,4 +41,3 @@
       )))
 (assert (= x (as ff111 F)))
 (check-sat)
-(get-model)
