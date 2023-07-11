@@ -68,7 +68,8 @@ if(GLPK_DIR)
 endif()
 
 # By default the contrib/get-* scripts install dependencies to deps/install.
-list(APPEND CMAKE_PREFIX_PATH "${PROJECT_SOURCE_DIR}/deps/install")
+# list(APPEND CMAKE_PREFIX_PATH "${PROJECT_SOURCE_DIR}/deps/install")
+list(APPEND CMAKE_PREFIX_PATH "${PROJECT_BINARY_DIR}/deps")
 
 #-----------------------------------------------------------------------------#
 
