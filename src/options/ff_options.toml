@@ -24,3 +24,11 @@ name   = "Finite Field Theory"
   type       = "bool"
   default    = "false"
   help       = "use the range solver"
+
+[[option]]
+  name       = "ffQuotientRanges"
+  category   = "expert"
+  long       = "ff-quotient-ranges"
+  type       = "bool"
+  default    = "true"
+  help       = "bound quotient ranges in the range solver"

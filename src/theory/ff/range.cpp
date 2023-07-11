@@ -26,6 +26,7 @@
 // internal includes
 #include "context/cdhashmap.h"
 #include "expr/node_traversal.h"
+#include "options/ff_options.h"
 #include "smt/env.h"
 #include "smt/env_obj.h"
 #include "util/finite_field_value.h"
@@ -137,14 +138,17 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
         qI++;
         assertions.push_back((ints.at(f[0]) - ints.at(f[1])) == q * p);
 
-        // use range analysis to bound q tightly.
-        auto diffRange = getRange(f[0]) - getRange(f[1]);
-        Trace("ff::range") << "range " << f << ": " << diffRange << std::endl;
-        auto lo = ctx.int_val(
-            diffRange.d_lo.ceilingDivideQuotient(d_p).toString().c_str());
-        auto hi = ctx.int_val(
-            diffRange.d_hi.ceilingDivideQuotient(d_p).toString().c_str());
-        assertions.push_back((q >= lo) && (q <= hi));
+        if (options().ff.ffQuotientRanges)
+        {
+          // use range analysis to bound q tightly.
+          auto diffRange = getRange(f[0]) - getRange(f[1]);
+          Trace("ff::range") << "range " << f << ": " << diffRange << std::endl;
+          auto lo = ctx.int_val(
+              diffRange.d_lo.ceilingDivideQuotient(d_p).toString().c_str());
+          auto hi = ctx.int_val(
+              diffRange.d_hi.ceilingDivideQuotient(d_p).toString().c_str());
+          assertions.push_back((q >= lo) && (q <= hi));
+        }
       }
       else
       {
@@ -167,7 +171,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
   for (const auto& a : assertions)
   {
     Trace("ff::range::assert") << "to z3: " << a << std::endl;
-    //s.add(a);
+    // s.add(a);
   }
   z3::check_result r = s.check(assertions.size(), &assertions[0]);
   switch (r)
