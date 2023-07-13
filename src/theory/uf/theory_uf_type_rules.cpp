@@ -296,6 +296,10 @@ TypeNode BitVectorConversionTypeRule::computeType(NodeManager* nodeManager,
   return nodeManager->mkBitVectorType(bvSize);
 }
 
+TypeNode IntToFiniteFieldOpTypeRule::preComputeType(NodeManager* nm, TNode n)
+{
+  return TypeNode::null();
+}
 TypeNode IntToFiniteFieldOpTypeRule::computeType(NodeManager* nodeManager,
                                                TNode n,
                                                bool check,
@@ -308,6 +312,10 @@ TypeNode IntToFiniteFieldOpTypeRule::computeType(NodeManager* nodeManager,
 }
 
 
+TypeNode FiniteFieldConversionTypeRule::preComputeType(NodeManager* nm, TNode n)
+{
+  return TypeNode::null();
+}
 TypeNode FiniteFieldConversionTypeRule::computeType(NodeManager* nodeManager,
                                                     TNode n,
                                                     bool check,

@@ -170,6 +170,8 @@ class BitVectorConversionTypeRule
 class IntToFiniteFieldOpTypeRule
 {
  public:
+  static TypeNode preComputeType(NodeManager* nm, TNode n);
+
   static TypeNode computeType(NodeManager* nodeManager,
                               TNode n,
                               bool check,
@@ -183,6 +185,8 @@ class IntToFiniteFieldOpTypeRule
 class FiniteFieldConversionTypeRule
 {
  public:
+  static TypeNode preComputeType(NodeManager* nm, TNode n);
+
   static TypeNode computeType(NodeManager* nodeManager,
                               TNode n,
                               bool check,
