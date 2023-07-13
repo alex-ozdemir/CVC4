@@ -29,6 +29,7 @@
 #include "options/ff_options.h"
 #include "smt/env.h"
 #include "smt/env_obj.h"
+#include "theory/ff/parse.h"
 #include "util/finite_field_value.h"
 
 namespace cvc5::internal {
@@ -39,7 +40,7 @@ RangeSolver::RangeSolver(Env& env, const Integer& p) : EnvObj(env), d_p(p){};
 
 void RangeSolver::assertFact(TNode fact)
 {
-  std::optional<Node> range = parseBitConstraint(fact);
+  std::optional<Node> range = parse::bitConstraint(fact);
   if (range.has_value())
   {
     const Node& var = range.value();
@@ -56,7 +57,7 @@ void RangeSolver::assertFact(TNode fact)
   if (options().ff.ffRangeNe)
   {
     std::optional<std::pair<Node, FiniteFieldValue>> varNeValue =
-        parseVarNeValue(fact);
+        parse::varNeValue(fact);
     if (varNeValue.has_value())
     {
       auto it = d_assertedRanges.find(varNeValue->first);

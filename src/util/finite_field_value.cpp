@@ -42,6 +42,11 @@ size_t FiniteFieldValue::hash() const
   return h(std::make_pair(d_value.hash(), d_size.hash()));
 }
 
+void FiniteFieldValue::normalize()
+{
+  d_value = d_value.floorDivideRemainder(d_size);
+}
+
 /* -----------------------------------------------------------------------
  * Operators
  * ----------------------------------------------------------------------- */
@@ -123,6 +128,45 @@ FiniteFieldValue FiniteFieldValue::recip() const
   return {d_value.modInverse(d_size), d_size};
 }
 
+/* In-Place Arithmetic --------------------------------------------------- */
+
+FiniteFieldValue& FiniteFieldValue::operator+=(const FiniteFieldValue& y)
+{
+  Assert(d_size == y.d_size)
+      << "Size mismatch: " << d_size << " != " << y.d_size;
+  d_value += y.d_value;
+  normalize();
+  return *this;
+}
+
+FiniteFieldValue& FiniteFieldValue::operator-=(const FiniteFieldValue& y)
+{
+  Assert(d_size == y.d_size)
+      << "Size mismatch: " << d_size << " != " << y.d_size;
+  d_value -= y.d_value;
+  normalize();
+  return *this;
+}
+
+FiniteFieldValue& FiniteFieldValue::operator*=(const FiniteFieldValue& y)
+{
+  Assert(d_size == y.d_size)
+      << "Size mismatch: " << d_size << " != " << y.d_size;
+  d_value *= y.d_value;
+  normalize();
+  return *this;
+}
+
+FiniteFieldValue& FiniteFieldValue::operator/=(const FiniteFieldValue& y)
+{
+  Assert(d_size == y.d_size)
+      << "Size mismatch: " << d_size << " != " << y.d_size;
+  d_value *= y.d_value.modInverse(d_size);
+  normalize();
+  return *this;
+}
+
+
 /* -----------------------------------------------------------------------
  * Output stream
  * ----------------------------------------------------------------------- */
@@ -136,8 +180,14 @@ std::ostream& operator<<(std::ostream& os, const FiniteFieldValue& ff)
  * Static helpers.
  * ----------------------------------------------------------------------- */
 
-FiniteFieldValue FiniteFieldValue::mkZero(const Integer& size) { return {0, size}; }
+FiniteFieldValue FiniteFieldValue::mkZero(const Integer& size)
+{
+  return {0, size};
+}
 
-FiniteFieldValue FiniteFieldValue::mkOne(const Integer& size) { return {1, size}; }
+FiniteFieldValue FiniteFieldValue::mkOne(const Integer& size)
+{
+  return {1, size};
+}
 
 }  // namespace cvc5::internal

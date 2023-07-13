@@ -103,6 +103,11 @@ class FiniteFieldValue
   friend FiniteFieldValue operator/(const FiniteFieldValue&,
                                     const FiniteFieldValue&);
 
+  FiniteFieldValue& operator+=(const FiniteFieldValue&);
+  FiniteFieldValue& operator-=(const FiniteFieldValue&);
+  FiniteFieldValue& operator*=(const FiniteFieldValue&);
+  FiniteFieldValue& operator/=(const FiniteFieldValue&);
+
   /* Reciprocal. Crashes on 0. */
   FiniteFieldValue recip() const;
 
@@ -117,6 +122,10 @@ class FiniteFieldValue
   static FiniteFieldValue mkOne(const Integer& modulus);
 
  private:
+
+  /** bring d_value back into the range below */
+  void normalize();
+
   /**
    * Class invariants:
    *  - no overflows: d_value < d_modulus

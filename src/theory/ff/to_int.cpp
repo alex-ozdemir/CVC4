@@ -17,6 +17,7 @@
 
 #include "expr/node_traversal.h"
 #include "expr/skolem_manager.h"
+#include "theory/ff/parse.h"
 #include "util/finite_field_value.h"
 #include "util/rational.h"
 
@@ -40,7 +41,7 @@ Node ToInt::toInt(Node n,
   n = rewrite(n);
 
   // if it's a bit-constraint, do a range.
-  std::optional<Node> bitConstrainedVar = parseBitConstraint(n);
+  std::optional<Node> bitConstrainedVar = parse::bitConstraint(n);
   if (bitConstrainedVar.has_value())
   {
     Node var = toInt(bitConstrainedVar.value(), lemmas, skolems);
@@ -285,118 +286,6 @@ Node ToInt::castToType(Node n, TypeNode tn)
   return d_nm->mkNode(kind::FINITEFIELD_TO_NAT, n);
 }
 
-std::optional<Node> parseSquare(const Node& t)
-{
-  if (t.getKind() == kind::FINITE_FIELD_MULT && t[0].isVar() && t[0] == t[1])
-  {
-    return t[0];
-  }
-  return {};
-}
-
-std::optional<Node> parseXMinusOne(const Node& t)
-{
-  if (t.getKind() == kind::FINITE_FIELD_ADD && t.getNumChildren() == 2)
-  {
-    if (t[0].isVar() && t[1].isConst()
-        && t[1].getConst<FiniteFieldValue>().toSignedInteger() == -1)
-    {
-      return t[0];
-    }
-    if (t[1].isVar() && t[0].isConst()
-        && t[0].getConst<FiniteFieldValue>().toSignedInteger() == -1)
-    {
-      return t[1];
-    }
-  }
-  return {};
-}
-
-std::optional<Node> parseXXMinusOne(const Node& t)
-{
-  if (t.getKind() == kind::FINITE_FIELD_MULT && t.getNumChildren() == 2)
-  {
-    if (t[0].isVar())
-    {
-      std::optional<Node> rightX = parseXMinusOne(t[1]);
-      if (rightX.has_value() && t[0] == rightX.value())
-      {
-        return t[0];
-      }
-    }
-    else if (t[1].isVar())
-    {
-      std::optional<Node> leftX = parseXMinusOne(t[0]);
-      if (leftX.has_value() && t[1] == leftX.value())
-      {
-        return t[1];
-      }
-    }
-  }
-  return {};
-}
-
-std::optional<Node> parseBitConstraint(const Node& fact)
-{
-  if (fact.getKind() == kind::EQUAL && fact[0].getType().isFiniteField())
-  {
-    if (fact[0].isVar())
-    {
-      if (fact[0] == parseSquare(fact[1]))
-      {
-        // (= x (ff.mul x x))
-        return fact[0];
-      }
-    }
-    if (fact[1].isVar())
-    {
-      if (fact[1] == parseSquare(fact[0]))
-      {
-        // (= (ff.mul x x) x)
-        return fact[1];
-      }
-    }
-    if (fact[0].isConst()
-        && fact[0].getConst<FiniteFieldValue>().toInteger() == 0)
-    {
-      std::optional<Node> opt = parseXXMinusOne(fact[1]);
-      if (opt.has_value())
-      {
-        // (= 0 (ff.mul x (ff.add x -1)))
-        return opt;
-      }
-    }
-    if (fact[1].isConst()
-        && fact[1].getConst<FiniteFieldValue>().toInteger() == 0)
-    {
-      std::optional<Node> opt = parseXXMinusOne(fact[0]);
-      if (opt.has_value())
-      {
-        // (= (ff.mul x (ff.add x -1)) 0)
-        return opt;
-      }
-    }
-  }
-  return {};
-}
-
-std::optional<std::pair<Node, FiniteFieldValue>> parseVarNeValue(
-    const Node& fact)
-{
-  if (fact.getKind() == kind::NOT && fact[0].getKind() == kind::EQUAL
-      && fact[0][0].getType().isFiniteField())
-  {
-    if (fact[0][0].isVar() && fact[0][1].isConst())
-    {
-      return {{fact[0][0], fact[0][1].getConst<FiniteFieldValue>()}};
-    }
-    else if (fact[0][1].isVar() && fact[0][0].isConst())
-    {
-      return {{fact[0][1], fact[0][0].getConst<FiniteFieldValue>()}};
-    }
-  }
-  return {};
-}
 
 }  // namespace ff
 }  // namespace theory
