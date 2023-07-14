@@ -115,10 +115,104 @@ void normalizeLinearEq(std::unordered_map<Node, FiniteFieldValue>& linearEq);
  *   -> -x0 + -2 * x1 + -4 * x2 + ... -2^N * xN + y = 0
  *   -> -1 * x0 + -2 * x1 + -4 * x2 + ... -2^N * xN = - y
  *
+ * Only parses if the variables are all distinct.
+ *
  * @param t a potential bit-sum
  * @return the sum, followed by the bits (LSB at index 0)
  */
-std::optional<std::pair<Node, std::vector<Node>>> bitsConstraint(const Node& fact);
+std::optional<std::pair<Node, std::vector<Node>>> bitsConstraint(
+    const Node& fact);
+
+/**
+ * Detect whether this node is an affine sum
+ *
+ * @param t a potential affine sum
+ * @return the linear monomials
+ *         everything else in the sum
+ */
+std::optional<
+    std::pair<std::unordered_map<Node, FiniteFieldValue>, std::vector<Node>>>
+affineSum(const Node& t);
+
+/**
+ * Given a sum s1 + ... + sN, extract sub-sums of form k * (x0 + 2*x1 + 4*x2 +
+ * ... 2^I*xI), where each xJ passes the predicate isBit.
+ *
+ * @param t a potential bitsum
+ * @return the bitsums (k, {xJ})
+ *         everything else in the sum
+ */
+template <class IsBit>
+std::optional<
+    std::pair<std::vector<std::pair<FiniteFieldValue, std::vector<Node>>>,
+              std::vector<Node>>>
+bitSums(const Node& t, IsBit isBit)
+{
+  auto nm = NodeManager::currentNM();
+  auto res = affineSum(t);
+  if (!res.has_value())
+  {
+    return {};
+  }
+  TypeNode ty = t.getType();
+  const Integer& size = ty.getFfSize();
+  auto& [monomials, rest] = res.value();
+
+  std::unordered_map<FiniteFieldValue, Node, FiniteFieldValueHashFunction>
+      bitMonomials{};
+  for (const auto& [var, coeff] : monomials)
+  {
+    bool inBitMonomialMap = false;
+    if (isBit(var))
+    {
+      inBitMonomialMap = bitMonomials.insert({coeff, var}).second;
+    }
+    if (!inBitMonomialMap)
+    {
+      rest.push_back(
+          nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
+    }
+  }
+
+  std::vector<std::pair<FiniteFieldValue, std::vector<Node>>> bitSums{};
+  // TODO: consider other starting constants. Especially to handle gaps...
+  std::vector<FiniteFieldValue> startConsts = {{1, size}, {-1, size}};
+  FiniteFieldValue two(2, size);
+  // look for runs k*x, 2k*y, 4k*z, ...
+  for (const auto& k : startConsts)
+  {
+    FiniteFieldValue acc = k;
+    std::vector<Node> bits{};
+    std::vector<Node> erasedSummands{};
+    while (bitMonomials.count(acc))
+    {
+      auto var = bitMonomials.at(acc);
+      bits.push_back(var);
+      erasedSummands.push_back(
+          nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(acc), var));
+      bitMonomials.erase(acc);
+      acc *= two;
+    }
+    if (bits.size() > 1)
+    {
+      bitSums.emplace_back(k, std::move(bits));
+    }
+    else
+    {
+      for (auto& summand : erasedSummands)
+      {
+        rest.push_back(std::move(summand));
+      }
+    }
+  }
+
+  for (const auto& [coeff, var] : bitMonomials)
+  {
+    rest.push_back(
+        nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
+  }
+  return {{std::move(bitSums), std::move(rest)}};
+}
 
 }  // namespace parse
 

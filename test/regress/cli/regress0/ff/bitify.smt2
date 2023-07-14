@@ -27,8 +27,9 @@
 (assert (= (ff.mul b7 b7) b7))
 (assert (= (ff.mul b8 b8) b8))
 (assert
-  (= x
+  (= (as ff0 F)
      (ff.add
+       (ff.neg x)
        (ff.mul (as ff1 F) b0)
        (ff.mul (as ff2 F) b1)
        (ff.mul (as ff4 F) b2)

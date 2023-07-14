@@ -22,13 +22,14 @@
 
 // std includes
 #include <unordered_map>
+#include <unordered_set>
 
 // internal includes
 #include "expr/node.h"
 #include "smt/env_obj.h"
 #include "theory/ff/to_int.h"
-#include "util/integer.h"
 #include "util/finite_field_value.h"
+#include "util/integer.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -43,11 +44,13 @@ struct Range
   Range operator*(const Range& other) const;
   Range operator-() const;
   Range operator-(const Range& other) const;
+  bool operator==(const Range& other) const;
+  bool operator!=(const Range& other) const;
   Range intersect(const Range& other) const;
+  bool contains(const Range& other) const;
 
   Integer d_lo, d_hi;
 };
-
 
 class RangeSolver : EnvObj
 {
@@ -60,12 +63,17 @@ class RangeSolver : EnvObj
   void clear();
 
  private:
+  void savePlainFact(const Node& fact);
   /** Ranges detected. */
   std::unordered_map<Node, Range> d_assertedRanges{};
   /** Ranges computed. */
   std::unordered_map<Node, Range> d_ranges{};
-  /** Non-range facts. */
+  /** Bit-sums detected: (sum, bits, fact). */
+  std::vector<std::tuple<Node, std::vector<Node>, Node>> d_bitsums{};
+  /** Non-range, non-bitsum facts. */
   std::vector<Node> d_facts{};
+  /** The number of parents each node has in the forest of trees with roots in d_facts. */
+  std::unordered_map<Node, size_t> d_parentsInFacts{};
   /** The prime modulus for this field. */
   Integer d_p;
 };

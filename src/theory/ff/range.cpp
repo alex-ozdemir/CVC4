@@ -40,6 +40,7 @@ RangeSolver::RangeSolver(Env& env, const Integer& p) : EnvObj(env), d_p(p){};
 
 void RangeSolver::assertFact(TNode fact)
 {
+  // is this a bit-constraint?
   std::optional<Node> range = parse::bitConstraint(fact);
   if (range.has_value())
   {
@@ -54,6 +55,8 @@ void RangeSolver::assertFact(TNode fact)
     Trace("ff::range") << "range " << var << ": " << r << std::endl;
     return;
   }
+
+  // is this a range-shrinking disequality?
   if (options().ff.ffRangeNe)
   {
     std::optional<std::pair<Node, FiniteFieldValue>> varNeValue =
@@ -80,118 +83,181 @@ void RangeSolver::assertFact(TNode fact)
       }
     }
   }
-  d_facts.emplace_back(fact);
+
+  // is this a bit sum?
+  std::optional<std::pair<Node, std::vector<Node>>> bitsum =
+      parse::bitsConstraint(fact);
+  if (bitsum.has_value())
+  {
+    Trace("ff::range") << "bitsum " << fact << std::endl;
+    d_bitsums.emplace_back(std::move(bitsum.value().first),
+                           std::move(bitsum.value().second),
+                           fact);
+    return;
+  }
+
+  savePlainFact(fact);
   Trace("ff::range") << "fact " << fact << std::endl;
 }
 
 std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
 {
+  Range bitRange = Range(0, 1);
   z3::context ctx;
   z3::expr zero = ctx.int_val(0);
   z3::expr one = ctx.int_val(1);
   z3::expr p = ctx.int_val(d_p.toString().c_str());
   size_t qI = 0;
+  size_t accI = 0;
   std::unordered_map<Node, z3::expr> ints{};
   std::vector<z3::expr> assertions{};
-  {
-    for (const auto& i : d_assertedRanges)
-    {
-      z3::expr var = ctx.int_const(i.first.getName().c_str());
-      ints.insert({i.first, var});
-      z3::expr lo = ctx.int_val(i.second.d_lo.toString().c_str());
-      z3::expr hi = ctx.int_val(i.second.d_hi.toString().c_str());
-      assertions.push_back((var >= lo) & (var <= hi));
-    }
-    for (const auto& f : d_facts)
-    {
-      for (TNode current :
-           NodeDfsIterable(f, VisitOrder::POSTORDER, [&ints](TNode nn) {
-             bool ffFact =
-                 nn.getKind() == kind::NOT || nn.getKind() == kind::EQUAL;
-             bool ffTerm = nn.getType().isFiniteField();
-             return ints.count(nn) || !(ffFact || ffTerm);
-           }))
-      {
-        Assert(!ints.count(current));
-        z3::expr e = zero;
-        if (current.isVar())
-        {
-          e = ctx.int_const(current.getName().c_str());
-          assertions.push_back((e >= 0) & (e < p));
-        }
-        else if (current.isConst())
-        {
-          e = ctx.int_val(current.getConst<FiniteFieldValue>()
-                              .toInteger()
-                              .toString()
-                              .c_str());
-        }
-        else if (current.getKind() == kind::FINITE_FIELD_ADD)
-        {
-          e = std::accumulate(current.begin(),
-                              current.end(),
-                              zero,
-                              [&ints](z3::expr acc, TNode child) {
-                                return acc + ints.at(child);
-                              });
-        }
-        else if (current.getKind() == kind::FINITE_FIELD_MULT)
-        {
-          e = std::accumulate(current.begin(),
-                              current.end(),
-                              one,
-                              [&ints](z3::expr acc, TNode child) {
-                                return acc * ints.at(child);
-                              });
-        }
-        else if (current.getKind() == kind::EQUAL
-                 || current.getKind() == kind::NOT)
-        {
-          // pass
-        }
-        else
-        {
-          Unimplemented() << "Unsupported kind: " << current.getKind();
-        }
-        ints.insert({current, e});
-      }
-      if (f.getKind() == kind::EQUAL)
-      {
-        // equality: left - right = q * p
-        z3::expr q =
-            ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
-        qI++;
-        assertions.push_back((ints.at(f[0]) - ints.at(f[1])) == q * p);
 
-        if (options().ff.ffQuotientRanges)
+  // ranges
+  for (const auto& i : d_assertedRanges)
+  {
+    z3::expr var = ctx.int_const(i.first.getName().c_str());
+    // maybe redudant
+    ints.insert({i.first, var});
+    z3::expr lo = ctx.int_val(i.second.d_lo.toString().c_str());
+    z3::expr hi = ctx.int_val(i.second.d_hi.toString().c_str());
+    assertions.push_back((var >= lo) & (var <= hi));
+  }
+
+  // map: cvc5 var -> (z3 expr, bit number)
+  std::unordered_map<Node, std::pair<z3::expr, size_t>> varsToBits{};
+
+  // facts
+  for (const auto& f : d_facts)
+  {
+    for (TNode current :
+         NodeDfsIterable(f, VisitOrder::POSTORDER, [&ints](TNode nn) {
+           bool ffFact =
+               nn.getKind() == kind::NOT || nn.getKind() == kind::EQUAL;
+           bool ffTerm = nn.getType().isFiniteField();
+           return ints.count(nn) || !(ffFact || ffTerm);
+         }))
+    {
+      Assert(!ints.count(current));
+      z3::expr e = zero;
+      if (current.isVar())
+      {
+        e = ctx.int_const(current.getName().c_str());
+        assertions.push_back((e >= 0) & (e < p));
+      }
+      else if (current.isConst())
+      {
+        e = ctx.int_val(current.getConst<FiniteFieldValue>()
+                            .toInteger()
+                            .toString()
+                            .c_str());
+      }
+      else if (current.getKind() == kind::FINITE_FIELD_ADD)
+      {
+        bool stdAdd = true;
+        if (options().ff.ffElimBits)
         {
-          // use range analysis to bound q tightly.
-          auto diffRange = getRange(f[0]) - getRange(f[1]);
-          Trace("ff::range") << "range " << f << ": " << diffRange << std::endl;
-          auto lo = ctx.int_val(
-              diffRange.d_lo.ceilingDivideQuotient(d_p).toString().c_str());
-          auto hi = ctx.int_val(
-              diffRange.d_hi.ceilingDivideQuotient(d_p).toString().c_str());
-          assertions.push_back((q >= lo) && (q <= hi));
+          // look for bit-sums in the addition; replace them with ranges.
+          auto res = parse::bitSums(current, [this, &bitRange](const Node& x) {
+            bool isBit = d_parentsInFacts.at(x) == 1 && bitRange == getRange(x);
+            Trace("ff::range::bitsum::isBit") << " isBit " << x << " : " << isBit << std::endl;
+            return isBit;
+          });
+          if (res.has_value() && !res.value().first.empty())
+          {
+            auto& [bitSums, rest] = res.value();
+            e = zero;
+            for (const auto& r : rest)
+            {
+              // rw because the parser mangles
+              e = e + ints.at(rewrite(r));
+            }
+            for (const auto& [coeff, bits] : bitSums)
+            {
+              z3::expr acc = ctx.int_const(
+                  (std::string("__acc") + std::to_string(accI)).c_str());
+              accI++;
+              z3::expr k = ctx.int_val(coeff.toInteger().toString().c_str());
+              e = e + acc * k;
+              Trace("ff::range::bitsum") << "bitsum as " << acc << ": " << std::endl;
+              Trace("ff::range::bitsum") << "  k:" << coeff << std::endl;
+              for (size_t i = 0; i < bits.size(); ++i)
+              {
+                Trace("ff::range::bitsum") << " b" << i << ": " << bits[i] << std::endl;
+                varsToBits.insert({bits[i], {acc, i}});
+              }
+              z3::expr upper =
+                  ctx.int_val(Integer(2).pow(bits.size()).toString().c_str());
+              assertions.push_back((acc >= 0) && (acc < upper));
+            }
+            stdAdd = false;
+          }
         }
+
+        if (stdAdd)
+        {
+          Trace("ff::range::bitsum") << "sum with no bits: " << current << std::endl;
+          e = zero;
+          for (const auto& child : current)
+          {
+            e = e + ints.at(child);
+          }
+        }
+      }
+      else if (current.getKind() == kind::FINITE_FIELD_MULT)
+      {
+        e = one;
+        for (const auto& child : current)
+        {
+          e = e * ints.at(child);
+        }
+      }
+      else if (current.getKind() == kind::EQUAL
+               || current.getKind() == kind::NOT)
+      {
+        // pass
       }
       else
       {
-        // inequality: (left - right) * inv = 1 + q * p
-        Assert(f.getKind() == kind::NOT && f[0].getKind() == kind::EQUAL);
-        Node e = f[0];
-        z3::expr q =
-            ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
-        z3::expr i =
-            ctx.int_const((std::string("__i") + std::to_string(qI)).c_str());
-        qI++;
-        assertions.push_back((ints.at(e[0]) - ints.at(e[1])) * i
-                             == one + q * p);
+        Unimplemented() << "Unsupported kind: " << current.getKind();
+      }
+      ints.insert({current, e});
+    }
+    if (f.getKind() == kind::EQUAL)
+    {
+      // equality: left - right = q * p
+      z3::expr q =
+          ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
+      qI++;
+      assertions.push_back((ints.at(f[0]) - ints.at(f[1])) == q * p);
 
-        assertions.push_back((i >= zero) && (i < p));
+      if (options().ff.ffQuotientRanges)
+      {
+        // use range analysis to bound q tightly.
+        auto diffRange = getRange(f[0]) - getRange(f[1]);
+        Trace("ff::range") << "range " << f << ": " << diffRange << std::endl;
+        auto lo = ctx.int_val(
+            diffRange.d_lo.ceilingDivideQuotient(d_p).toString().c_str());
+        auto hi = ctx.int_val(
+            diffRange.d_hi.ceilingDivideQuotient(d_p).toString().c_str());
+        assertions.push_back((q >= lo) && (q <= hi));
       }
     }
+    else
+    {
+      // inequality: (left - right) * inv = 1 + q * p
+      Assert(f.getKind() == kind::NOT && f[0].getKind() == kind::EQUAL);
+      Node e = f[0];
+      z3::expr q =
+          ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
+      z3::expr i =
+          ctx.int_const((std::string("__i") + std::to_string(qI)).c_str());
+      qI++;
+      assertions.push_back((ints.at(e[0]) - ints.at(e[1])) * i == one + q * p);
+
+      assertions.push_back((i >= zero) && (i < p));
+    }
   }
+
   z3::solver s{ctx};
   for (const auto& a : assertions)
   {
@@ -206,16 +272,28 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       std::unordered_map<Node, FiniteFieldValue> model{};
       for (const auto& it : ints)
       {
-        if (it.first.isVar())
+        if (it.first.isVar() && !varsToBits.count(it.first))
         {
           // Not sure what to do with the argument to get_decimal_string.
           auto val = FiniteFieldValue(
               Integer(
                   s.get_model().eval(ints.at(it.first)).get_decimal_string(0)),
               d_p);
+          Trace("ff::range::model") << "model " << it.first << ": " << val.toSignedInteger() << std::endl;
           model.insert({it.first, val});
         }
       }
+      for (const auto& [var, entry] : varsToBits)
+      {
+        const auto& [z3var, bitI] = entry;
+        Integer z3val =
+            Integer(s.get_model().eval(z3var).get_decimal_string(0));
+        auto val = FiniteFieldValue(z3val.isBitSet(bitI), d_p);
+        Trace("ff::range::model") << "model " << var << ": " << val.toSignedInteger() << std::endl;
+        Assert(!model.count(var));
+        model.insert({var, val});
+      }
+
       return model;
     }
     case z3::check_result::unsat:
@@ -298,6 +376,26 @@ void RangeSolver::clear()
   d_facts.clear();
 }
 
+void RangeSolver::savePlainFact(const Node& fact)
+{
+  // it's a plain fact; update parent counts
+  // enumerate (parent, child) pairs
+  for (TNode parent :
+       NodeDfsIterable(fact, VisitOrder::POSTORDER, [this](TNode n) {
+         // skip N as a parent if N has already been a child
+         return d_parentsInFacts.count(n);
+       }))
+  {
+    for (const Node& child : parent)
+    {
+      ++d_parentsInFacts.at(child);
+    }
+    d_parentsInFacts.insert({parent, 0});
+  }
+
+  d_facts.emplace_back(fact);
+}
+
 Range::Range(const Integer& singleton) : d_lo(singleton), d_hi(singleton){};
 
 Range::Range(const Integer& lo, const Integer& hi) : d_lo(lo), d_hi(hi){};
@@ -324,9 +422,24 @@ Range Range::operator-(const Range& other) const
   return Range(d_lo - other.d_hi, d_hi - other.d_lo);
 }
 
+bool Range::operator==(const Range& other) const
+{
+  return d_lo == other.d_lo && d_hi == other.d_hi;
+}
+
+bool Range::operator!=(const Range& other) const
+{
+  return d_lo != other.d_lo || d_hi != other.d_hi;
+}
+
 Range Range::intersect(const Range& other) const
 {
   return Range(std::max(d_lo, other.d_lo), std::min(d_hi, other.d_hi));
+}
+
+bool Range::contains(const Range& other) const
+{
+  return d_lo <= other.d_lo && d_hi >= other.d_hi;
 }
 
 std::ostream& operator<<(std::ostream& o, const Range& r)

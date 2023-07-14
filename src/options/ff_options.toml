@@ -40,3 +40,11 @@ name   = "Finite Field Theory"
   type       = "bool"
   default    = "true"
   help       = "use disequalities (ne) to tighten ranges"
+
+[[option]]
+  name       = "ffElimBits"
+  category   = "expert"
+  long       = "ff-elim-bits"
+  type       = "bool"
+  default    = "true"
+  help       = "eliminate bits if they're only used in a bit-sum"

@@ -20,6 +20,7 @@
 // std includes
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 
 // internal includes
 
@@ -353,12 +354,18 @@ std::optional<std::pair<Node, std::vector<Node>>> bitsConstraint(
   FiniteFieldValue negOne =
       FiniteFieldValue(-1, inv.begin()->first.getFieldSize());
   std::vector<Node> bits{};
+  std::unordered_set<Node> seen{};
   auto it = inv.find(twoToTheI);
   while (it != inv.end())
   {
     if (twoToTheI == negOne)
     {
       // -1 aliased with 2^i; fail.
+      return {};
+    }
+    if (!seen.insert(it->second).second)
+    {
+      // duplicate variable; fail.
       return {};
     }
     bits.push_back(it->second);
@@ -371,6 +378,7 @@ std::optional<std::pair<Node, std::vector<Node>>> bitsConstraint(
   {
     return {};
   }
+  Node negOneVar = inv.at(negOne);
 
   // if those are everything, this is a bit-sum
   if (bits.size() + 1 != inv.size())
@@ -378,7 +386,45 @@ std::optional<std::pair<Node, std::vector<Node>>> bitsConstraint(
     return {};
   }
 
-  return {{inv.at(negOne), std::move(bits)}};
+  if (!seen.insert(negOneVar).second)
+  {
+    // duplicate variable; fail.
+    return {};
+  }
+
+  return {{negOneVar, std::move(bits)}};
+}
+
+std::optional<
+    std::pair<std::unordered_map<Node, FiniteFieldValue>, std::vector<Node>>>
+affineSum(const Node& t)
+{
+  TypeNode ty = t.getType();
+  if (!ty.isFiniteField())
+  {
+    return {};
+  }
+  if (t.getKind() != kind::FINITE_FIELD_ADD)
+  {
+    return {};
+  }
+  std::unordered_map<Node, FiniteFieldValue> monomials{};
+  std::vector<Node> otherSummands{};
+
+  for (const Node& summand : t)
+  {
+    auto monomial = linearMonomial(summand);
+    if (monomial.has_value())
+    {
+      monomials.insert(std::move(monomial.value()));
+    }
+    else
+    {
+      otherSummands.push_back(summand);
+    }
+  }
+
+  return {{std::move(monomials), std::move(otherSummands)}};
 }
 
 }  // namespace parse
