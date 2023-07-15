@@ -178,11 +178,11 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
               accI++;
               z3::expr k = ctx.int_val(coeff.toInteger().toString().c_str());
               e = e + acc * k;
-              Trace("ff::range::bitsum") << "bitsum as " << acc << ": " << std::endl;
-              Trace("ff::range::bitsum") << "  k:" << coeff << std::endl;
+              Trace("ff::range") << "bitsum as " << acc << ": " << std::endl;
+              Trace("ff::range") << "  k:" << coeff << std::endl;
               for (size_t i = 0; i < bits.size(); ++i)
               {
-                Trace("ff::range::bitsum") << " b" << i << ": " << bits[i] << std::endl;
+                Trace("ff::range") << " b" << i << ": " << bits[i] << std::endl;
                 varsToBits.insert({bits[i], {acc, i}});
               }
               z3::expr upper =

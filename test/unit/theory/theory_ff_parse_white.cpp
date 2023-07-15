@@ -340,6 +340,27 @@ TEST_F(TestFfNodeParser, bitSums)
       EXPECT_EQ(bitSums[1].second[1], b1);
       EXPECT_EQ(others.size(), 3);
     }
+    {
+      // two bitsums with a gap
+      std::unordered_set<Node> bits = {b0, b1, b2, b3};
+      const auto res = parse::bitSums(
+          parseNode("(ff.add (ff.mul x y) y (ff.mul (as ff1 F) b0) (ff.mul (as "
+                    "ff2 F) b1) (ff.mul (as ff4 F) x) (ff.mul (as ff8 F) b2) "
+                    "(ff.mul (as ff16 F) b3))"),
+          [&bits](const Node& b) { return bits.count(b); });
+      EXPECT_TRUE(res.has_value());
+      const auto& [bitSums, others] = res.value();
+      EXPECT_EQ(bitSums.size(), 2);
+      EXPECT_EQ(bitSums[0].first.toSignedInteger(), 1);
+      EXPECT_EQ(bitSums[0].second.size(), 2);
+      EXPECT_EQ(bitSums[0].second[0], b0);
+      EXPECT_EQ(bitSums[0].second[1], b1);
+      EXPECT_EQ(bitSums[1].first.toSignedInteger(), 8);
+      EXPECT_EQ(bitSums[1].second.size(), 2);
+      EXPECT_EQ(bitSums[1].second[0], b2);
+      EXPECT_EQ(bitSums[1].second[1], b3);
+      EXPECT_EQ(others.size(), 3);
+    }
   }
 }
 

@@ -160,8 +160,11 @@ bitSums(const Node& t, IsBit isBit)
 
   std::unordered_map<FiniteFieldValue, Node, FiniteFieldValueHashFunction>
       bitMonomials{};
+  std::unordered_set<FiniteFieldValue, FiniteFieldValueHashFunction>
+      monomialCoeffs{};
   for (const auto& [var, coeff] : monomials)
   {
+    monomialCoeffs.insert(coeff);
     bool inBitMonomialMap = false;
     if (isBit(var))
     {
@@ -179,8 +182,9 @@ bitSums(const Node& t, IsBit isBit)
   std::vector<FiniteFieldValue> startConsts = {{1, size}, {-1, size}};
   FiniteFieldValue two(2, size);
   // look for runs k*x, 2k*y, 4k*z, ...
-  for (const auto& k : startConsts)
+  for (size_t i = 0; i < startConsts.size(); ++i)
   {
+    FiniteFieldValue k = startConsts[i];
     FiniteFieldValue acc = k;
     std::vector<Node> bits{};
     std::vector<Node> erasedSummands{};
@@ -192,6 +196,11 @@ bitSums(const Node& t, IsBit isBit)
           nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(acc), var));
       bitMonomials.erase(acc);
       acc *= two;
+    }
+    if (monomialCoeffs.count(acc))
+    {
+      monomialCoeffs.erase(acc);
+      startConsts.push_back(two * acc);
     }
     if (bits.size() > 1)
     {
