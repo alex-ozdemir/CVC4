@@ -52,7 +52,7 @@ void RangeSolver::assertFact(TNode fact)
       r = it->second.intersect(r);
     }
     d_assertedRanges.insert({var, r});
-    Trace("ff::range") << "range " << var << ": " << r << std::endl;
+    Trace("ff::range::bounds") << "range " << var << ": " << r << std::endl;
     return;
   }
 
@@ -69,31 +69,19 @@ void RangeSolver::assertFact(TNode fact)
         if (it->second.d_lo == varNeValue->second.toInteger())
         {
           it->second.d_lo += 1;
-          Trace("ff::range") << "tighten to range " << varNeValue->first << ": "
-                             << it->second << std::endl;
+          Trace("ff::range::bounds") << "tighten to range " << varNeValue->first
+                                     << ": " << it->second << std::endl;
           return;
         }
         if (it->second.d_hi == varNeValue->second.toInteger())
         {
           it->second.d_hi -= 1;
-          Trace("ff::range") << "tighten to range " << varNeValue->first << ": "
-                             << it->second << std::endl;
+          Trace("ff::range::bounds") << "tighten to range " << varNeValue->first
+                                     << ": " << it->second << std::endl;
           return;
         }
       }
     }
-  }
-
-  // is this a bit sum?
-  std::optional<std::pair<Node, std::vector<Node>>> bitsum =
-      parse::bitsConstraint(fact);
-  if (bitsum.has_value())
-  {
-    Trace("ff::range") << "bitsum " << fact << std::endl;
-    d_bitsums.emplace_back(std::move(bitsum.value().first),
-                           std::move(bitsum.value().second),
-                           fact);
-    return;
   }
 
   savePlainFact(fact);
@@ -159,7 +147,8 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
           // look for bit-sums in the addition; replace them with ranges.
           auto res = parse::bitSums(current, [this, &bitRange](const Node& x) {
             bool isBit = d_parentsInFacts.at(x) == 1 && bitRange == getRange(x);
-            Trace("ff::range::bitsum::isBit") << " isBit " << x << " : " << isBit << std::endl;
+            Trace("ff::range::isBit")
+                << " isBit " << x << " : " << isBit << std::endl;
             return isBit;
           });
           if (res.has_value() && !res.value().first.empty())
@@ -178,11 +167,17 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
               accI++;
               z3::expr k = ctx.int_val(coeff.toInteger().toString().c_str());
               e = e + acc * k;
-              Trace("ff::range") << "bitsum as " << acc << ": " << std::endl;
-              Trace("ff::range") << "  k:" << coeff << std::endl;
+              if (TraceIsOn("ff::range"))
+              {
+                Trace("ff::range") << "bitsum: " << coeff << " * bitsum(";
+                for (const auto& b : bits)
+                {
+                  Trace("ff::range") << b << ",";
+                }
+                Trace("ff::range") << ")" << std::endl;
+              }
               for (size_t i = 0; i < bits.size(); ++i)
               {
-                Trace("ff::range") << " b" << i << ": " << bits[i] << std::endl;
                 varsToBits.insert({bits[i], {acc, i}});
               }
               z3::expr upper =
@@ -195,7 +190,8 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
 
         if (stdAdd)
         {
-          Trace("ff::range::bitsum") << "sum with no bits: " << current << std::endl;
+          Trace("ff::range::bitsum")
+              << "sum with no bits: " << current << std::endl;
           e = zero;
           for (const auto& child : current)
           {
@@ -279,7 +275,8 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
               Integer(
                   s.get_model().eval(ints.at(it.first)).get_decimal_string(0)),
               d_p);
-          Trace("ff::range::model") << "model " << it.first << ": " << val.toSignedInteger() << std::endl;
+          Trace("ff::range::model") << "model " << it.first << ": "
+                                    << val.toSignedInteger() << std::endl;
           model.insert({it.first, val});
         }
       }
@@ -289,7 +286,8 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
         Integer z3val =
             Integer(s.get_model().eval(z3var).get_decimal_string(0));
         auto val = FiniteFieldValue(z3val.isBitSet(bitI), d_p);
-        Trace("ff::range::model") << "model " << var << ": " << val.toSignedInteger() << std::endl;
+        Trace("ff::range::model")
+            << "model " << var << ": " << val.toSignedInteger() << std::endl;
         Assert(!model.count(var));
         model.insert({var, val});
       }

@@ -68,9 +68,7 @@ class RangeSolver : EnvObj
   std::unordered_map<Node, Range> d_assertedRanges{};
   /** Ranges computed. */
   std::unordered_map<Node, Range> d_ranges{};
-  /** Bit-sums detected: (sum, bits, fact). */
-  std::vector<std::tuple<Node, std::vector<Node>, Node>> d_bitsums{};
-  /** Non-range, non-bitsum facts. */
+  /** Non-range facts. */
   std::vector<Node> d_facts{};
   /** The number of parents each node has in the forest of trees with roots in d_facts. */
   std::unordered_map<Node, size_t> d_parentsInFacts{};
