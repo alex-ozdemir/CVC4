@@ -2,7 +2,7 @@
 ; EXPECT: sat
 ; XOR compilation strategy (unsound because even though the XOR sum can not
 ; overflow, the bit decomposition sum can.
-; COMMAND-LINE: --ff-range-solver
+; COMMAND-LINE: --ffr
 (set-info :smt-lib-version 2.6)
 (set-info :category "crafted")
 (set-logic QF_FF)

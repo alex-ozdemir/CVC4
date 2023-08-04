@@ -213,7 +213,8 @@ TEST_F(TestFfNodeParser, affineSum)
     doCommand("(declare-const b1 F)");
     doCommand("(declare-const b2 F)");
     {
-      const auto res = parse::affineSum(parseNode("(ff.add x x y y b0)"));
+      const auto res = parse::affineSum(parseNode("(ff.add x x y y b0)"),
+                                        [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
       const auto& [monomials, others] = res.value();
       // 3 b/c rewriter
@@ -222,7 +223,8 @@ TEST_F(TestFfNodeParser, affineSum)
     }
     {
       const auto res =
-          parse::affineSum(parseNode("(ff.add (ff.mul x x) x y y b0)"));
+          parse::affineSum(parseNode("(ff.add (ff.mul x x) x y y b0)"),
+                           [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
       const auto& [monomials, others] = res.value();
       // 3 b/c rewriter
@@ -231,7 +233,8 @@ TEST_F(TestFfNodeParser, affineSum)
     }
     {
       const auto res = parse::affineSum(
-          parseNode("(ff.add (ff.mul x x) x y (as ff1 F) y b0)"));
+          parseNode("(ff.add (ff.mul x x) x y (as ff1 F) y b0)"),
+          [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
       const auto& [monomials, others] = res.value();
       // 3 b/c rewriter
@@ -258,9 +261,10 @@ TEST_F(TestFfNodeParser, bitSums)
     {
       // bitsum with implicit 1 coeff
       std::unordered_set<Node> bits = {b0, b1, b2, b3};
-      const auto res =
-          parse::bitSums(parseNode("(ff.add x y b0 (ff.mul (as ff2 F) b1))"),
-                         [&bits](const Node& b) { return bits.count(b); });
+      const auto res = parse::bitSums(
+          parseNode("(ff.add x y b0 (ff.mul (as ff2 F) b1))"),
+          [&bits](const Node& b) { return bits.count(b); },
+          [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
       const auto& [bitSums, others] = res.value();
       EXPECT_EQ(bitSums.size(), 1);
@@ -276,7 +280,8 @@ TEST_F(TestFfNodeParser, bitSums)
       const auto res = parse::bitSums(
           parseNode("(ff.add (ff.mul x y) x y (ff.mul (as ff-1 F) b0) (ff.mul "
                     "(as ff-2 F) b1) (ff.mul (as ff-4 F) b2))"),
-          [&bits](const Node& b) { return bits.count(b); });
+          [&bits](const Node& b) { return bits.count(b); },
+          [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
       const auto& [bitSums, others] = res.value();
       EXPECT_EQ(bitSums.size(), 1);
@@ -293,7 +298,8 @@ TEST_F(TestFfNodeParser, bitSums)
       const auto res = parse::bitSums(
           parseNode("(ff.add (ff.mul x y) x y (ff.mul (as ff-1 F) b0) (ff.mul "
                     "(as ff-2 F) b1) (ff.mul (as ff-8 F) b3))"),
-          [&bits](const Node& b) { return bits.count(b); });
+          [&bits](const Node& b) { return bits.count(b); },
+          [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
       const auto& [bitSums, others] = res.value();
       EXPECT_EQ(bitSums.size(), 1);
@@ -309,7 +315,8 @@ TEST_F(TestFfNodeParser, bitSums)
       const auto res = parse::bitSums(
           parseNode("(ff.add (ff.mul x y) x y (ff.mul (as ff-1 F) b0) (ff.mul "
                     "(as ff-2 F) b1) (ff.mul (as ff1 F) b3))"),
-          [&bits](const Node& b) { return bits.count(b); });
+          [&bits](const Node& b) { return bits.count(b); },
+          [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
       const auto& [bitSums, others] = res.value();
       EXPECT_EQ(bitSums.size(), 1);
@@ -326,7 +333,8 @@ TEST_F(TestFfNodeParser, bitSums)
           parseNode(
               "(ff.add (ff.mul x y) x y (ff.mul (as ff-1 F) b0) (ff.mul (as "
               "ff-2 F) b1) (ff.mul (as ff1 F) b2) (ff.mul (as ff2 F) b3))"),
-          [&bits](const Node& b) { return bits.count(b); });
+          [&bits](const Node& b) { return bits.count(b); },
+          [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
       const auto& [bitSums, others] = res.value();
       EXPECT_EQ(bitSums.size(), 2);
@@ -347,7 +355,8 @@ TEST_F(TestFfNodeParser, bitSums)
           parseNode("(ff.add (ff.mul x y) y (ff.mul (as ff1 F) b0) (ff.mul (as "
                     "ff2 F) b1) (ff.mul (as ff4 F) x) (ff.mul (as ff8 F) b2) "
                     "(ff.mul (as ff16 F) b3))"),
-          [&bits](const Node& b) { return bits.count(b); });
+          [&bits](const Node& b) { return bits.count(b); },
+          [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
       const auto& [bitSums, others] = res.value();
       EXPECT_EQ(bitSums.size(), 2);
@@ -359,6 +368,27 @@ TEST_F(TestFfNodeParser, bitSums)
       EXPECT_EQ(bitSums[1].second.size(), 2);
       EXPECT_EQ(bitSums[1].second[0], b2);
       EXPECT_EQ(bitSums[1].second[1], b3);
+      EXPECT_EQ(others.size(), 3);
+    }
+    {
+      // a big bit-sum where one bit is used twice.
+      std::unordered_set<Node> bits = {b0, b1, b2, b3};
+      std::unordered_set<Node> otherUses = {
+          parseNode("(ff.mul (as ff8 F) b3)")};
+      const auto res = parse::bitSums(
+          parseNode(
+              "(ff.add (ff.mul x y b0) y (ff.mul (as ff1 F) b0) (ff.mul (as "
+              "ff2 F) b1) (ff.mul (as ff4 F) b2) (ff.mul (as ff8 F) b3) )"),
+          [&bits](const Node& b) { return bits.count(b); },
+          [&otherUses](const Node& b) { return otherUses.count(b); });
+      EXPECT_TRUE(res.has_value());
+      const auto& [bitSums, others] = res.value();
+      EXPECT_EQ(bitSums.size(), 1);
+      EXPECT_EQ(bitSums[0].first.toSignedInteger(), 1);
+      EXPECT_EQ(bitSums[0].second.size(), 3);
+      EXPECT_EQ(bitSums[0].second[0], b0);
+      EXPECT_EQ(bitSums[0].second[1], b1);
+      EXPECT_EQ(bitSums[0].second[2], b2);
       EXPECT_EQ(others.size(), 3);
     }
   }
@@ -385,7 +415,8 @@ TEST_F(TestFfNodeParser, bitSums2)
           parseNode(
               "(ff.add (ff.mul x y) x y (ff.mul (as ff1 F) b0) (ff.mul (as "
               "ff2 F) b1) (ff.mul (as ff4 F) b2) (ff.mul (as ff8 F) b3))"),
-          [&bits](const Node& b) { return bits.count(b); });
+          [&bits](const Node& b) { return bits.count(b); },
+          [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
       const auto& [bitSums, others] = res.value();
       EXPECT_EQ(bitSums.size(), 1);

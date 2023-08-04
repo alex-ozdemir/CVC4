@@ -17,6 +17,7 @@
 
 // external includes
 #include <z3++.h>
+#include <z3.h>
 
 // std includes
 #include <algorithm>
@@ -40,6 +41,7 @@ RangeSolver::RangeSolver(Env& env, const Integer& p) : EnvObj(env), d_p(p){};
 
 void RangeSolver::assertFact(TNode fact)
 {
+  Trace("ff::range::fact") << "fact " << fact << std::endl;
   // is this a bit-constraint?
   std::optional<Node> range = parse::bitConstraint(fact);
   if (range.has_value())
@@ -57,7 +59,7 @@ void RangeSolver::assertFact(TNode fact)
   }
 
   // is this a range-shrinking disequality?
-  if (options().ff.ffRangeNe)
+  if (options().ff.ffrNeTighten)
   {
     std::optional<std::pair<Node, FiniteFieldValue>> varNeValue =
         parse::varNeValue(fact);
@@ -85,7 +87,13 @@ void RangeSolver::assertFact(TNode fact)
   }
 
   savePlainFact(fact);
-  Trace("ff::range") << "fact " << fact << std::endl;
+}
+
+z3::expr z3Range(const z3::expr& val, const Range& range)
+{
+  z3::expr lo = val.ctx().int_val(range.d_lo.toString().c_str());
+  z3::expr hi = val.ctx().int_val(range.d_hi.toString().c_str());
+  return (lo <= val) && (val <= hi);
 }
 
 std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
@@ -106,9 +114,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
     z3::expr var = ctx.int_const(i.first.getName().c_str());
     // maybe redudant
     ints.insert({i.first, var});
-    z3::expr lo = ctx.int_val(i.second.d_lo.toString().c_str());
-    z3::expr hi = ctx.int_val(i.second.d_hi.toString().c_str());
-    assertions.push_back((var >= lo) & (var <= hi));
+    assertions.push_back(z3Range(var, i.second));
   }
 
   // map: cvc5 var -> (z3 expr, bit number)
@@ -130,7 +136,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       if (current.isVar())
       {
         e = ctx.int_const(current.getName().c_str());
-        assertions.push_back((e >= 0) & (e < p));
+        // assertions.push_back((e >= 0) & (e < p));
       }
       else if (current.isConst())
       {
@@ -142,15 +148,20 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       else if (current.getKind() == kind::FINITE_FIELD_ADD)
       {
         bool stdAdd = true;
-        if (options().ff.ffElimBits)
+        if (options().ff.ffrElimBits)
         {
           // look for bit-sums in the addition; replace them with ranges.
-          auto res = parse::bitSums(current, [this, &bitRange](const Node& x) {
-            bool isBit = d_parentsInFacts.at(x) == 1 && bitRange == getRange(x);
-            Trace("ff::range::isBit")
-                << " isBit " << x << " : " << isBit << std::endl;
-            return isBit;
-          });
+          auto res = parse::bitSums(
+              current,
+              [this, &bitRange](const Node& x) {
+                size_t nParents = d_parentsInFacts.at(x);
+                bool isBit = nParents == 1 && bitRange == getRange(x);
+                Trace("ff::range::isBit")
+                    << " isBit " << x << " : " << isBit << " (" << nParents
+                    << " parents)" << std::endl;
+                return isBit;
+              },
+              [this](const Node& x) { return d_parentsInFacts.at(x) >= 2; });
           if (res.has_value() && !res.value().first.empty())
           {
             auto& [bitSums, rest] = res.value();
@@ -169,7 +180,8 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
               e = e + acc * k;
               if (TraceIsOn("ff::range"))
               {
-                Trace("ff::range") << "bitsum: " << coeff << " * bitsum(";
+                Trace("ff::range")
+                    << "bitsum: " << acc << " = " << coeff << " * bitsum(";
                 for (const auto& b : bits)
                 {
                   Trace("ff::range") << b << ",";
@@ -201,10 +213,10 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       }
       else if (current.getKind() == kind::FINITE_FIELD_MULT)
       {
-        e = one;
-        for (const auto& child : current)
+        e = ints.at(current[0]);
+        for (size_t i = 1; i < current.getNumChildren(); ++i)
         {
-          e = e * ints.at(child);
+          e = e * ints.at(current[i]);
         }
       }
       else if (current.getKind() == kind::EQUAL
@@ -226,35 +238,64 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       qI++;
       assertions.push_back((ints.at(f[0]) - ints.at(f[1])) == q * p);
 
-      if (options().ff.ffQuotientRanges)
+      if (options().ff.ffrBoundQuotient)
       {
         // use range analysis to bound q tightly.
         auto diffRange = getRange(f[0]) - getRange(f[1]);
-        Trace("ff::range") << "range " << f << ": " << diffRange << std::endl;
-        auto lo = ctx.int_val(
-            diffRange.d_lo.ceilingDivideQuotient(d_p).toString().c_str());
-        auto hi = ctx.int_val(
-            diffRange.d_hi.ceilingDivideQuotient(d_p).toString().c_str());
-        assertions.push_back((q >= lo) && (q <= hi));
+        auto qRange = diffRange.ceilingDivideQuotient(d_p);
+        Trace("ff::range") << "q range " << qRange.d_lo << " to " << qRange.d_hi
+                           << std::endl;
+        assertions.push_back(z3Range(q, qRange));
       }
     }
     else
     {
-      // inequality: (left - right) * inv = 1 + q * p
+      // inequality:
       Assert(f.getKind() == kind::NOT && f[0].getKind() == kind::EQUAL);
       Node e = f[0];
-      z3::expr q =
-          ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
-      z3::expr i =
-          ctx.int_const((std::string("__i") + std::to_string(qI)).c_str());
-      qI++;
-      assertions.push_back((ints.at(e[0]) - ints.at(e[1])) * i == one + q * p);
+      z3::expr diff = ints.at(e[0]) - ints.at(e[1]);
+      if (options().ff.ffrNeNorm)
+      {
+        // encode with norm: diff - __n = __q * p
+        //                   0 < __n < p
+        //
+        z3::expr q =
+            ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
+        z3::expr n =
+            ctx.int_const((std::string("__n") + std::to_string(qI)).c_str());
+        qI++;
+        assertions.push_back(diff - n == q * p);
+        assertions.push_back((zero < n) && (n < p));
+        if (options().ff.ffrBoundQuotient)
+        {
+          // use range analysis to bound q tightly.
+          auto diffRange = getRange(e[0]) - getRange(e[1]);
+          Range nRange(1, d_p);
+          auto qRange = (diffRange - nRange).ceilingDivideQuotient(d_p);
+          Trace("ff::range") << "q range " << qRange.d_lo << " to "
+                             << qRange.d_hi << std::endl;
+          assertions.push_back(z3Range(q, qRange));
+        }
+      }
+      else
+      {
+        // encode with inverse: diff * __i = 1 + __q * p
+        z3::expr q =
+            ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
+        z3::expr i =
+            ctx.int_const((std::string("__i") + std::to_string(qI)).c_str());
+        qI++;
+        assertions.push_back(diff * i == one + q * p);
+      }
 
-      assertions.push_back((i >= zero) && (i < p));
+      // assertions.push_back((i >= zero) && (i < p));
     }
   }
 
-  z3::solver s{ctx};
+  Trace("ff::range::z3") << "z3 version: " << Z3_get_full_version()
+                         << std::endl;
+  // specify tactic manually.
+  z3::solver s = z3::tactic(ctx, "qfnia").mk_solver();
   for (const auto& a : assertions)
   {
     Trace("ff::range::assert") << "to z3: " << a << std::endl;
@@ -266,14 +307,21 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
     case z3::check_result::sat:
     {
       std::unordered_map<Node, FiniteFieldValue> model{};
+      auto z3model = s.get_model();
+      for (size_t i = 0; i < z3model.num_consts(); ++i)
+      {
+        auto decl = z3model.get_const_decl(i);
+        auto interp = z3model.get_const_interp(decl);
+        Trace("ff::range::z3")
+            << "z3 model " << decl.name() << " = " << interp << std::endl;
+      }
       for (const auto& it : ints)
       {
         if (it.first.isVar() && !varsToBits.count(it.first))
         {
           // Not sure what to do with the argument to get_decimal_string.
           auto val = FiniteFieldValue(
-              Integer(
-                  s.get_model().eval(ints.at(it.first)).get_decimal_string(0)),
+              Integer(z3model.eval(ints.at(it.first)).get_decimal_string(0)),
               d_p);
           Trace("ff::range::model") << "model " << it.first << ": "
                                     << val.toSignedInteger() << std::endl;
@@ -283,8 +331,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       for (const auto& [var, entry] : varsToBits)
       {
         const auto& [z3var, bitI] = entry;
-        Integer z3val =
-            Integer(s.get_model().eval(z3var).get_decimal_string(0));
+        Integer z3val = Integer(z3model.eval(z3var).get_decimal_string(0));
         auto val = FiniteFieldValue(z3val.isBitSet(bitI), d_p);
         Trace("ff::range::model")
             << "model " << var << ": " << val.toSignedInteger() << std::endl;
@@ -438,6 +485,11 @@ Range Range::intersect(const Range& other) const
 bool Range::contains(const Range& other) const
 {
   return d_lo <= other.d_lo && d_hi >= other.d_hi;
+}
+
+Range Range::ceilingDivideQuotient(const Integer& q) const
+{
+  return Range(d_lo.ceilingDivideQuotient(q), d_hi.ceilingDivideQuotient(q));
 }
 
 std::ostream& operator<<(std::ostream& o, const Range& r)

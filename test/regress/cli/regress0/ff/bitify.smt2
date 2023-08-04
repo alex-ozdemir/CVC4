@@ -1,8 +1,7 @@
 ; REQUIRES: cocoa
 ; EXPECT: sat
 ; quiet because of model-checking warnings
-; COMMAND-LINE: --pp-ff-to-int -q
-; COMMAND-LINE: --ff-range-solver
+; COMMAND-LINE: --ffr
 (set-info :smt-lib-version 2.6)
 (set-info :category "crafted")
 (set-logic QF_FF)

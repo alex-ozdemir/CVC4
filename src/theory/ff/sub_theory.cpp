@@ -89,7 +89,7 @@ void SubTheory::postCheck(Theory::Effort e)
   if (e == Theory::EFFORT_FULL)
   {
     if (d_facts.empty()) return;
-    if (options().ff.ffRangeSolver)
+    if (options().ff.ffr)
     {
       d_rangeSolver.clear();
       for (const Node& node : d_facts)

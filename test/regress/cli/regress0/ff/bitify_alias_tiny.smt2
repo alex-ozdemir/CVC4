@@ -1,7 +1,7 @@
 ; REQUIRES: cocoa
 ; EXPECT: sat
 ; COMMAND-LINE:
-; COMMAND-LINE: --ff-range-solver
+; COMMAND-LINE: --ffr
 (set-info :smt-lib-version 2.6)
 (set-info :category "crafted")
 (set-logic QF_FF)

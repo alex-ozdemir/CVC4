@@ -124,32 +124,67 @@ std::optional<std::pair<Node, std::vector<Node>>> bitsConstraint(
     const Node& fact);
 
 /**
- * Detect whether this node is an affine sum
+ * Detect whether this node is an affine sum of terms that do not have other uses.
  *
  * @param t a potential affine sum
+ * @param hasOtherUses node predicate for whether there are other uses
  * @return the linear monomials
  *         everything else in the sum
  */
+template <class HasOtherUses>
 std::optional<
     std::pair<std::unordered_map<Node, FiniteFieldValue>, std::vector<Node>>>
-affineSum(const Node& t);
+affineSum(const Node& t, HasOtherUses hasOtherUses)
+{
+  TypeNode ty = t.getType();
+  if (!ty.isFiniteField())
+  {
+    return {};
+  }
+  if (t.getKind() != kind::FINITE_FIELD_ADD)
+  {
+    return {};
+  }
+  std::unordered_map<Node, FiniteFieldValue> monomials{};
+  std::vector<Node> otherSummands{};
+
+  for (const Node& summand : t)
+  {
+    if (!hasOtherUses(summand))
+    {
+      auto monomial = linearMonomial(summand);
+      if (monomial.has_value())
+      {
+        monomials.insert(std::move(monomial.value()));
+        continue;
+      }
+    }
+
+    otherSummands.push_back(summand);
+  }
+
+  return {{std::move(monomials), std::move(otherSummands)}};
+}
+
 
 /**
  * Given a sum s1 + ... + sN, extract sub-sums of form k * (x0 + 2*x1 + 4*x2 +
  * ... 2^I*xI), where each xJ passes the predicate isBit.
  *
  * @param t a potential bitsum
+ * @param isBit node predicate that indicates whether a variable is bitConstrained
+ * @param hasOtherUses node predicate for whether there are other uses
  * @return the bitsums (k, {xJ})
  *         everything else in the sum
  */
-template <class IsBit>
+template <class IsBit, class HasOtherUses>
 std::optional<
     std::pair<std::vector<std::pair<FiniteFieldValue, std::vector<Node>>>,
               std::vector<Node>>>
-bitSums(const Node& t, IsBit isBit)
+bitSums(const Node& t, IsBit isBit, HasOtherUses hasOtherUses)
 {
   auto nm = NodeManager::currentNM();
-  auto res = affineSum(t);
+  auto res = affineSum(t, hasOtherUses);
   if (!res.has_value())
   {
     return {};

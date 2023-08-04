@@ -395,38 +395,6 @@ std::optional<std::pair<Node, std::vector<Node>>> bitsConstraint(
   return {{negOneVar, std::move(bits)}};
 }
 
-std::optional<
-    std::pair<std::unordered_map<Node, FiniteFieldValue>, std::vector<Node>>>
-affineSum(const Node& t)
-{
-  TypeNode ty = t.getType();
-  if (!ty.isFiniteField())
-  {
-    return {};
-  }
-  if (t.getKind() != kind::FINITE_FIELD_ADD)
-  {
-    return {};
-  }
-  std::unordered_map<Node, FiniteFieldValue> monomials{};
-  std::vector<Node> otherSummands{};
-
-  for (const Node& summand : t)
-  {
-    auto monomial = linearMonomial(summand);
-    if (monomial.has_value())
-    {
-      monomials.insert(std::move(monomial.value()));
-    }
-    else
-    {
-      otherSummands.push_back(summand);
-    }
-  }
-
-  return {{std::move(monomials), std::move(otherSummands)}};
-}
-
 }  // namespace parse
 
 }  // namespace ff

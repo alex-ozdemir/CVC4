@@ -48,6 +48,8 @@ struct Range
   bool operator!=(const Range& other) const;
   Range intersect(const Range& other) const;
   bool contains(const Range& other) const;
+  /** the quotient of this range by `other`, rounded outwards */
+  Range ceilingDivideQuotient(const Integer& other) const;
 
   Integer d_lo, d_hi;
 };

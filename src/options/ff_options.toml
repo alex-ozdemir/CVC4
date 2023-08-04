@@ -18,33 +18,41 @@ name   = "Finite Field Theory"
   help       = "include field polynomials in Groebner basis computation; don't do this"
 
 [[option]]
-  name       = "ffRangeSolver"
+  name       = "ffr"
   category   = "expert"
-  long       = "ff-range-solver"
+  long       = "ffr"
   type       = "bool"
   default    = "false"
-  help       = "use the range solver"
+  help       = "use the FF range solver"
 
 [[option]]
-  name       = "ffQuotientRanges"
+  name       = "ffrBoundQuotient"
   category   = "expert"
-  long       = "ff-quotient-ranges"
+  long       = "ffr-bound-quotient"
   type       = "bool"
-  default    = "true"
+  default    = "false"
   help       = "bound quotient ranges in the range solver"
 
 [[option]]
-  name       = "ffRangeNe"
+  name       = "ffrNeTighten"
   category   = "expert"
-  long       = "ff-range-ne"
+  long       = "ffr-ne-tighten"
   type       = "bool"
   default    = "true"
   help       = "use disequalities (ne) to tighten ranges"
 
 [[option]]
-  name       = "ffElimBits"
+  name       = "ffrNeNorm"
   category   = "expert"
-  long       = "ff-elim-bits"
+  long       = "ffr-ne-norm"
+  type       = "bool"
+  default    = "true"
+  help       = "encode disequalities through normalization (instead of inverses)"
+
+[[option]]
+  name       = "ffrElimBits"
+  category   = "expert"
+  long       = "ffr-elim-bits"
   type       = "bool"
   default    = "true"
   help       = "eliminate bits if they're only used in a bit-sum"
