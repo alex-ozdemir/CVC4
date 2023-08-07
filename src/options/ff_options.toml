@@ -56,3 +56,11 @@ name   = "Finite Field Theory"
   type       = "bool"
   default    = "true"
   help       = "eliminate bits if they're only used in a bit-sum"
+
+[[option]]
+  name       = "ffrCse"
+  category   = "expert"
+  long       = "ffr-cse"
+  type       = "bool"
+  default    = "false"
+  help       = "run common sub-expression elimination for +"
