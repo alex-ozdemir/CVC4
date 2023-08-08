@@ -64,3 +64,11 @@ name   = "Finite Field Theory"
   type       = "bool"
   default    = "false"
   help       = "run common sub-expression elimination for +"
+
+[[option]]
+  name       = "ffrUnsoundInt"
+  category   = "expert"
+  long       = "ffr-unsound-int"
+  type       = "bool"
+  default    = "false"
+  help       = "solve equations only over the integers (UNSOUND for UNSAT)"

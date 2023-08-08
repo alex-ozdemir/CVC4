@@ -269,60 +269,74 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
     }
     if (f.getKind() == kind::EQUAL)
     {
-      // equality: left - right = q * p
-      z3::expr q =
-          ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
-      qI++;
-      assertions.push_back((ints.at(f[0]) - ints.at(f[1])) == q * p);
-
-      if (options().ff.ffrBoundQuotient)
+      if (options().ff.ffrUnsoundInt)
       {
-        // use range analysis to bound q tightly.
-        auto diffRange = getRange(f[0]) - getRange(f[1]);
-        auto qRange = diffRange.ceilingDivideQuotient(d_p);
-        Trace("ff::range") << "q range " << qRange.d_lo << " to " << qRange.d_hi
-                           << std::endl;
-        assertions.push_back(z3Range(q, qRange));
+        assertions.push_back(ints.at(f[0]) == ints.at(f[1]));
       }
-    }
-    else
-    {
-      // inequality:
-      Assert(f.getKind() == kind::NOT && f[0].getKind() == kind::EQUAL);
-      Node e = f[0];
-      z3::expr diff = ints.at(e[0]) - ints.at(e[1]);
-      if (options().ff.ffrNeNorm)
+      else
       {
-        // encode with norm: diff - __n = __q * p
-        //                   0 < __n < p
-        //
+        // equality: left - right = q * p
         z3::expr q =
             ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
-        z3::expr n =
-            ctx.int_const((std::string("__n") + std::to_string(qI)).c_str());
         qI++;
-        assertions.push_back(diff - n == q * p);
-        assertions.push_back((zero < n) && (n < p));
+        assertions.push_back((ints.at(f[0]) - ints.at(f[1])) == q * p);
+
         if (options().ff.ffrBoundQuotient)
         {
           // use range analysis to bound q tightly.
-          auto diffRange = getRange(e[0]) - getRange(e[1]);
-          Range nRange(1, d_p);
-          auto qRange = (diffRange - nRange).ceilingDivideQuotient(d_p);
+          auto diffRange = getRange(f[0]) - getRange(f[1]);
+          auto qRange = diffRange.ceilingDivideQuotient(d_p);
           Trace("ff::range") << "q range " << qRange.d_lo << " to "
                              << qRange.d_hi << std::endl;
           assertions.push_back(z3Range(q, qRange));
         }
       }
+    }
+    else
+    {
+      Assert(f.getKind() == kind::NOT && f[0].getKind() == kind::EQUAL);
+      Node e = f[0];
+      z3::expr diff = ints.at(e[0]) - ints.at(e[1]);
+      if (options().ff.ffrUnsoundInt)
+      {
+        assertions.push_back(diff != 0);
+      }
       else
       {
-        // encode with inverse: diff * __i = 1 + __q * p
-        z3::expr q =
-            ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
-        z3::expr i =
-            ctx.int_const((std::string("__i") + std::to_string(qI)).c_str());
-        qI++;
-        assertions.push_back(diff * i == one + q * p);
+        // inequality:
+        if (options().ff.ffrNeNorm)
+        {
+          // encode with norm: diff - __n = __q * p
+          //                   0 < __n < p
+          //
+          z3::expr q =
+              ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
+          z3::expr n =
+              ctx.int_const((std::string("__n") + std::to_string(qI)).c_str());
+          qI++;
+          assertions.push_back(diff - n == q * p);
+          assertions.push_back((zero < n) && (n < p));
+          if (options().ff.ffrBoundQuotient)
+          {
+            // use range analysis to bound q tightly.
+            auto diffRange = getRange(e[0]) - getRange(e[1]);
+            Range nRange(1, d_p);
+            auto qRange = (diffRange - nRange).ceilingDivideQuotient(d_p);
+            Trace("ff::range") << "q range " << qRange.d_lo << " to "
+                               << qRange.d_hi << std::endl;
+            assertions.push_back(z3Range(q, qRange));
+          }
+        }
+        else
+        {
+          // encode with inverse: diff * __i = 1 + __q * p
+          z3::expr q =
+              ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
+          z3::expr i =
+              ctx.int_const((std::string("__i") + std::to_string(qI)).c_str());
+          qI++;
+          assertions.push_back(diff * i == one + q * p);
+        }
       }
 
       // assertions.push_back((i >= zero) && (i < p));
