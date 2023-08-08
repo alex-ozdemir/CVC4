@@ -278,8 +278,14 @@ TEST_F(TestFfNodeParser, bitSums)
       // bitsum with negative coeffs
       std::unordered_set<Node> bits = {b0, b1, b2, b3};
       const auto res = parse::bitSums(
-          parseNode("(ff.add (ff.mul x y) x y (ff.mul (as ff-1 F) b0) (ff.mul "
-                    "(as ff-2 F) b1) (ff.mul (as ff-4 F) b2))"),
+          parseNode("(ff.add "
+                    "(ff.mul x y) "
+                    "x "
+                    "y "
+                    "(ff.mul (as ff-1 F) b0) "
+                    "(ff.mul (as ff-2 F) b1) "
+                    "(ff.mul (as ff-4 F) b2) "
+                    ")"),
           [&bits](const Node& b) { return bits.count(b); },
           [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
@@ -327,28 +333,6 @@ TEST_F(TestFfNodeParser, bitSums)
       EXPECT_EQ(others.size(), 4);
     }
     {
-      // two bitsums with neg/pos coefficients
-      std::unordered_set<Node> bits = {b0, b1, b2, b3};
-      const auto res = parse::bitSums(
-          parseNode(
-              "(ff.add (ff.mul x y) x y (ff.mul (as ff-1 F) b0) (ff.mul (as "
-              "ff-2 F) b1) (ff.mul (as ff1 F) b2) (ff.mul (as ff2 F) b3))"),
-          [&bits](const Node& b) { return bits.count(b); },
-          [](const Node&) { return false; });
-      EXPECT_TRUE(res.has_value());
-      const auto& [bitSums, others] = res.value();
-      EXPECT_EQ(bitSums.size(), 2);
-      EXPECT_EQ(bitSums[0].first.toSignedInteger(), 1);
-      EXPECT_EQ(bitSums[0].second.size(), 2);
-      EXPECT_EQ(bitSums[0].second[0], b2);
-      EXPECT_EQ(bitSums[0].second[1], b3);
-      EXPECT_EQ(bitSums[1].first.toSignedInteger(), -1);
-      EXPECT_EQ(bitSums[1].second.size(), 2);
-      EXPECT_EQ(bitSums[1].second[0], b0);
-      EXPECT_EQ(bitSums[1].second[1], b1);
-      EXPECT_EQ(others.size(), 3);
-    }
-    {
       // two bitsums with a gap
       std::unordered_set<Node> bits = {b0, b1, b2, b3};
       const auto res = parse::bitSums(
@@ -391,6 +375,45 @@ TEST_F(TestFfNodeParser, bitSums)
       EXPECT_EQ(bitSums[0].second[2], b2);
       EXPECT_EQ(others.size(), 3);
     }
+    {
+      // bitsum with weird, positive start
+      std::unordered_set<Node> bits = {b0, b1, b2, b3};
+      const auto res = parse::bitSums(
+          parseNode("(ff.add"
+                    "(ff.mul (as ff6 F) b0)"
+                    "(ff.mul (as ff12 F) b1)"
+                    "(ff.mul (as ff24 F) b2)"
+                    ")"),
+          [&bits](const Node& b) { return bits.count(b); },
+          [](const Node&) { return false; });
+      EXPECT_TRUE(res.has_value());
+      const auto& [bitSums, others] = res.value();
+      EXPECT_EQ(bitSums.size(), 1);
+      EXPECT_EQ(bitSums[0].first.toSignedInteger(), 6);
+      EXPECT_EQ(bitSums[0].second.size(), 3);
+      EXPECT_EQ(others.size(), 0);
+    }
+    {
+      // bitsum with weird, positive and negative start
+      std::unordered_set<Node> bits = {b0, b1, b2, b3};
+      const auto res = parse::bitSums(
+          parseNode("(ff.add"
+                    "(ff.mul (as ff6 F) b0)"
+                    "(ff.mul (as ff12 F) b1)"
+                    "(ff.mul (as ff-4 F) b2)"
+                    "(ff.mul (as ff-8 F) b3)"
+                    ")"),
+          [&bits](const Node& b) { return bits.count(b); },
+          [](const Node&) { return false; });
+      EXPECT_TRUE(res.has_value());
+      const auto& [bitSums, others] = res.value();
+      EXPECT_EQ(bitSums.size(), 2);
+      EXPECT_EQ(bitSums[0].first.toSignedInteger(), -4);
+      EXPECT_EQ(bitSums[0].second.size(), 2);
+      EXPECT_EQ(bitSums[1].first.toSignedInteger(), 6);
+      EXPECT_EQ(bitSums[1].second.size(), 2);
+      EXPECT_EQ(others.size(), 0);
+    }
   }
 }
 
@@ -413,14 +436,20 @@ TEST_F(TestFfNodeParser, bitSums2)
       std::unordered_set<Node> bits = {b0, b1, b2, b3};
       const auto res = parse::bitSums(
           parseNode(
-              "(ff.add (ff.mul x y) x y (ff.mul (as ff1 F) b0) (ff.mul (as "
-              "ff2 F) b1) (ff.mul (as ff4 F) b2) (ff.mul (as ff8 F) b3))"),
+              "(ff.add "
+              "(ff.mul x y) "
+              "x "
+              "y "
+              "(ff.mul (as ff1 F) b0) "
+              "(ff.mul (as ff2 F) b1) "
+              "(ff.mul (as ff4 F) b2) "
+              "(ff.mul (as ff8 F) b3))"),
           [&bits](const Node& b) { return bits.count(b); },
           [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());
       const auto& [bitSums, others] = res.value();
       EXPECT_EQ(bitSums.size(), 1);
-      EXPECT_EQ(bitSums[0].first.toSignedInteger(), 1);
+      EXPECT_EQ(bitSums[0].first.toSignedInteger(), -1);
       EXPECT_EQ(bitSums[0].second.size(), 4);
       EXPECT_EQ(others.size(), 3);
     }

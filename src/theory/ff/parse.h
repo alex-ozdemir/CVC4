@@ -23,8 +23,10 @@
 // std includes
 #include <optional>
 #include <unordered_map>
+#include <queue>
 
 // internal includes
+#include "base/output.h"
 #include "expr/node.h"
 #include "util/finite_field_value.h"
 
@@ -192,11 +194,13 @@ bitSums(const Node& t, IsBit isBit, HasOtherUses hasOtherUses)
   TypeNode ty = t.getType();
   const Integer& size = ty.getFfSize();
   auto& [monomials, rest] = res.value();
+  Trace("ff::parse::debug") << "bitSums start" << std::endl;
 
   std::unordered_map<FiniteFieldValue, Node, FiniteFieldValueHashFunction>
       bitMonomials{};
   std::unordered_set<FiniteFieldValue, FiniteFieldValueHashFunction>
       monomialCoeffs{};
+  std::priority_queue<std::pair<Integer, FiniteFieldValue>> q{};
   for (const auto& [var, coeff] : monomials)
   {
     monomialCoeffs.insert(coeff);
@@ -210,16 +214,22 @@ bitSums(const Node& t, IsBit isBit, HasOtherUses hasOtherUses)
       rest.push_back(
           nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
     }
+    else
+    {
+      q.emplace(-coeff.toSignedInteger().abs(), coeff);
+      Trace("ff::parse::debug") << "bitMonomial " << coeff << " " << var << std::endl;
+    }
   }
+
 
   std::vector<std::pair<FiniteFieldValue, std::vector<Node>>> bitSums{};
   // TODO: consider other starting constants. Especially to handle gaps...
-  std::vector<FiniteFieldValue> startConsts = {{1, size}, {-1, size}};
   FiniteFieldValue two(2, size);
   // look for runs k*x, 2k*y, 4k*z, ...
-  for (size_t i = 0; i < startConsts.size(); ++i)
+  while (!q.empty())
   {
-    FiniteFieldValue k = startConsts[i];
+    FiniteFieldValue k = q.top().second;
+    q.pop();
     FiniteFieldValue acc = k;
     std::vector<Node> bits{};
     std::vector<Node> erasedSummands{};
@@ -235,7 +245,6 @@ bitSums(const Node& t, IsBit isBit, HasOtherUses hasOtherUses)
     if (monomialCoeffs.count(acc))
     {
       monomialCoeffs.erase(acc);
-      startConsts.push_back(two * acc);
     }
     if (bits.size() > 1)
     {
