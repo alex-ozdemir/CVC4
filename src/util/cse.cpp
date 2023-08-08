@@ -24,6 +24,7 @@
 #include <vector>
 
 // internal includes
+#include "base/output.h"
 #include "expr/node_traversal.h"
 
 namespace cvc5::internal {
@@ -232,6 +233,8 @@ Node greedyCse(const Node& t, Kind k)
       // skip now-inactive nodes
       continue;
     }
+    Trace("util::cse") << "intersect " << x << std::endl
+                       << "      and " << y << std::endl;
 
     // do the intersection
     const auto [cse_in_x, x_new] = stratify(x, xi, len);

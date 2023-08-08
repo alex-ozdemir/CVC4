@@ -65,15 +65,12 @@ class RangeSolver : EnvObj
   void clear();
 
  private:
-  void savePlainFact(const Node& fact);
   /** Ranges detected. */
   std::unordered_map<Node, Range> d_assertedRanges{};
   /** Ranges computed. */
   std::unordered_map<Node, Range> d_ranges{};
   /** Non-range facts. */
   std::vector<Node> d_facts{};
-  /** The number of parents each node has in the forest of trees with roots in d_facts. */
-  std::unordered_map<Node, size_t> d_parentsInFacts{};
   /** The prime modulus for this field. */
   Integer d_p;
 };

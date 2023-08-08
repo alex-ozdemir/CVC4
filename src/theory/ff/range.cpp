@@ -31,6 +31,7 @@
 #include "smt/env.h"
 #include "smt/env_obj.h"
 #include "theory/ff/parse.h"
+#include "util/cse.h"
 #include "util/finite_field_value.h"
 
 namespace cvc5::internal {
@@ -86,7 +87,7 @@ void RangeSolver::assertFact(TNode fact)
     }
   }
 
-  savePlainFact(fact);
+  d_facts.emplace_back(fact);
 }
 
 z3::expr z3Range(const z3::expr& val, const Range& range)
@@ -120,8 +121,42 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
   // map: cvc5 var -> (z3 expr, bit number)
   std::unordered_map<Node, std::pair<z3::expr, size_t>> varsToBits{};
 
+  std::vector<Node> facts = d_facts;
+  Node andFacts = NodeManager::currentNM()->mkAnd(facts);
+  if (options().ff.ffrCse)
+  {
+    Node result = util::greedyCse(andFacts, kind::FINITE_FIELD_ADD);
+    Assert(result.getNumChildren() == andFacts.getNumChildren());
+    if (TraceIsOn("ff::range"))
+    {
+      for (size_t i = 0; i < result.getNumChildren(); ++i)
+      {
+        if (result[i] != andFacts[i])
+        {
+          Trace("ff::range") << "CSE " << andFacts[i] << std::endl
+                             << " to " << result[i] << std::endl;
+        }
+      }
+    }
+
+    facts.clear();
+    facts.insert(facts.begin(), result.begin(), result.end());
+    andFacts = result;
+  }
+
+  // enumerate (parent, child) pairs; compute parent counts
+  std::unordered_map<Node, size_t> parentCounts{};
+  for (TNode parent : NodeDfsIterable(andFacts))
+  {
+    for (const Node& child : parent)
+    {
+      ++parentCounts.at(child);
+    }
+    parentCounts.insert({parent, 0});
+  }
+
   // facts
-  for (const auto& f : d_facts)
+  for (const auto& f : facts)
   {
     for (TNode current :
          NodeDfsIterable(f, VisitOrder::POSTORDER, [&ints](TNode nn) {
@@ -153,15 +188,17 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
           // look for bit-sums in the addition; replace them with ranges.
           auto res = parse::bitSums(
               current,
-              [this, &bitRange](const Node& x) {
-                size_t nParents = d_parentsInFacts.at(x);
+              [this, &bitRange, &parentCounts](const Node& x) {
+                size_t nParents = parentCounts.at(x);
                 bool isBit = nParents == 1 && bitRange == getRange(x);
                 Trace("ff::range::isBit")
                     << " isBit " << x << " : " << isBit << " (" << nParents
                     << " parents)" << std::endl;
                 return isBit;
               },
-              [this](const Node& x) { return d_parentsInFacts.at(x) >= 2; });
+              [&parentCounts](const Node& x) {
+                return parentCounts.at(x) >= 2;
+              });
           if (res.has_value() && !res.value().first.empty())
           {
             auto& [bitSums, rest] = res.value();
@@ -419,26 +456,6 @@ void RangeSolver::clear()
   d_assertedRanges.clear();
   d_ranges.clear();
   d_facts.clear();
-}
-
-void RangeSolver::savePlainFact(const Node& fact)
-{
-  // it's a plain fact; update parent counts
-  // enumerate (parent, child) pairs
-  for (TNode parent :
-       NodeDfsIterable(fact, VisitOrder::POSTORDER, [this](TNode n) {
-         // skip N as a parent if N has already been a child
-         return d_parentsInFacts.count(n);
-       }))
-  {
-    for (const Node& child : parent)
-    {
-      ++d_parentsInFacts.at(child);
-    }
-    d_parentsInFacts.insert({parent, 0});
-  }
-
-  d_facts.emplace_back(fact);
 }
 
 Range::Range(const Integer& singleton) : d_lo(singleton), d_hi(singleton){};
