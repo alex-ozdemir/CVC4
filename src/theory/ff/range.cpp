@@ -69,14 +69,14 @@ void RangeSolver::assertFact(TNode fact)
       auto it = d_assertedRanges.find(varNeValue->first);
       if (it != d_assertedRanges.end())
       {
-        if (it->second.d_lo == varNeValue->second.toInteger())
+        if (it->second.d_lo == varNeValue->second.toSignedInteger())
         {
           it->second.d_lo += 1;
           Trace("ff::range::bounds") << "tighten to range " << varNeValue->first
                                      << ": " << it->second << std::endl;
           return;
         }
-        if (it->second.d_hi == varNeValue->second.toInteger())
+        if (it->second.d_hi == varNeValue->second.toSignedInteger())
         {
           it->second.d_hi -= 1;
           Trace("ff::range::bounds") << "tighten to range " << varNeValue->first
@@ -127,21 +127,29 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
   {
     Node result = util::greedyCse(andFacts, kind::FINITE_FIELD_ADD);
     Assert(result.getNumChildren() == andFacts.getNumChildren());
+
+    facts.clear();
+    if (result.getKind() == kind::AND)
+    {
+      facts.insert(facts.begin(), result.begin(), result.end());
+    }
+    else
+    {
+      facts.push_back(result);
+    }
+    andFacts = result;
+
     if (TraceIsOn("ff::range"))
     {
-      for (size_t i = 0; i < result.getNumChildren(); ++i)
+      for (size_t i = 0; i < facts.size(); ++i)
       {
-        if (result[i] != andFacts[i])
+        if (facts[i] != d_facts[i])
         {
-          Trace("ff::range") << "CSE " << andFacts[i] << std::endl
-                             << " to " << result[i] << std::endl;
+          Trace("ff::range") << "CSE " << d_facts[i] << std::endl
+                             << " to " << facts[i] << std::endl;
         }
       }
     }
-
-    facts.clear();
-    facts.insert(facts.begin(), result.begin(), result.end());
-    andFacts = result;
   }
 
   // enumerate (parent, child) pairs; compute parent counts
@@ -158,6 +166,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
   // facts
   for (const auto& f : facts)
   {
+    Trace("ff::range::debug") << "enc fact " << f << std::endl;
     for (TNode current :
          NodeDfsIterable(f, VisitOrder::POSTORDER, [&ints](TNode nn) {
            bool ffFact =
@@ -176,7 +185,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       else if (current.isConst())
       {
         e = ctx.int_val(current.getConst<FiniteFieldValue>()
-                            .toInteger()
+                            .toSignedInteger()
                             .toString()
                             .c_str());
       }
@@ -213,7 +222,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
               z3::expr acc = ctx.int_const(
                   (std::string("__acc") + std::to_string(accI)).c_str());
               accI++;
-              z3::expr k = ctx.int_val(coeff.toInteger().toString().c_str());
+              z3::expr k = ctx.int_val(coeff.toSignedInteger().toString().c_str());
               e = e + acc * k;
               if (TraceIsOn("ff::range"))
               {
@@ -285,7 +294,11 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
         {
           // use range analysis to bound q tightly.
           auto diffRange = getRange(f[0]) - getRange(f[1]);
-          auto qRange = diffRange.ceilingDivideQuotient(d_p);
+          Trace("ff::range::debug")
+              << "l range " << f[0] << ": " << getRange(f[0]) << std::endl;
+          Trace("ff::range::debug")
+              << "r range " << f[1] << ": " << getRange(f[1]) << std::endl;
+          auto qRange = diffRange.floorDivideQuotient(d_p);
           Trace("ff::range") << "q range " << qRange.d_lo << " to "
                              << qRange.d_hi << std::endl;
           assertions.push_back(z3Range(q, qRange));
@@ -294,7 +307,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
     }
     else
     {
-      Assert(f.getKind() == kind::NOT && f[0].getKind() == kind::EQUAL);
+      Assert(f.getKind() == kind::NOT && f[0].getKind() == kind::EQUAL) << f;
       Node e = f[0];
       z3::expr diff = ints.at(e[0]) - ints.at(e[1]);
       if (options().ff.ffrUnsoundInt)
@@ -321,7 +334,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
             // use range analysis to bound q tightly.
             auto diffRange = getRange(e[0]) - getRange(e[1]);
             Range nRange(1, d_p);
-            auto qRange = (diffRange - nRange).ceilingDivideQuotient(d_p);
+            auto qRange = (diffRange - nRange).floorDivideQuotient(d_p);
             Trace("ff::range") << "q range " << qRange.d_lo << " to "
                                << qRange.d_hi << std::endl;
             assertions.push_back(z3Range(q, qRange));
@@ -429,7 +442,7 @@ Range RangeSolver::getRange(TNode term)
     }
     else if (current.isConst())
     {
-      r = Range(current.getConst<FiniteFieldValue>().toInteger());
+      r = Range(current.getConst<FiniteFieldValue>().toSignedInteger());
     }
     else if (current.getKind() == kind::FINITE_FIELD_ADD)
     {
@@ -474,7 +487,13 @@ void RangeSolver::clear()
 
 Range::Range(const Integer& singleton) : d_lo(singleton), d_hi(singleton){};
 
-Range::Range(const Integer& lo, const Integer& hi) : d_lo(lo), d_hi(hi){};
+Range::Range(const Integer& lo, const Integer& hi) : d_lo(lo), d_hi(hi)
+{
+  if (d_hi < d_lo)
+  {
+    std::swap(d_hi, d_lo);
+  }
+};
 
 Range Range::operator+(const Range& other) const
 {
@@ -518,9 +537,10 @@ bool Range::contains(const Range& other) const
   return d_lo <= other.d_lo && d_hi >= other.d_hi;
 }
 
-Range Range::ceilingDivideQuotient(const Integer& q) const
+Range Range::floorDivideQuotient(const Integer& q) const
 {
-  return Range(d_lo.ceilingDivideQuotient(q), d_hi.ceilingDivideQuotient(q));
+  Assert(q.strictlyPositive());
+  return Range(d_lo.floorDivideQuotient(q), d_hi.floorDivideQuotient(q));
 }
 
 std::ostream& operator<<(std::ostream& o, const Range& r)

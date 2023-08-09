@@ -39,7 +39,6 @@ struct Range
 {
   Range(const Integer& singleton);
   Range(const Integer& lo, const Integer& hi);
-  /** inclusive */
   Range operator+(const Range& other) const;
   Range operator*(const Range& other) const;
   Range operator-() const;
@@ -48,9 +47,10 @@ struct Range
   bool operator!=(const Range& other) const;
   Range intersect(const Range& other) const;
   bool contains(const Range& other) const;
-  /** the quotient of this range by `other`, rounded outwards */
-  Range ceilingDivideQuotient(const Integer& other) const;
+  /** the quotient of this range by `other`, rounded down */
+  Range floorDivideQuotient(const Integer& other) const;
 
+  /** inclusive; possibly negative; d_lo <= d_hi */
   Integer d_lo, d_hi;
 };
 
