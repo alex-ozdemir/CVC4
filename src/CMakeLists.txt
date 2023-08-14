@@ -694,6 +694,8 @@ libcvc5_add_sources(
   theory/ext_theory.h
   theory/ff/core.cpp
   theory/ff/core.h
+  theory/ff/gauss.cpp
+  theory/ff/gauss.h
   theory/ff/multi_roots.cpp
   theory/ff/multi_roots.h
   theory/ff/parse.cpp
