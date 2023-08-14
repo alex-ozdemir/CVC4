@@ -68,6 +68,12 @@ class FiniteFieldValue
   /* Get value. */
   const Integer& getValue() const;
 
+  /* Is zero? */
+  bool isZero() const;
+
+  /* Is one? */
+  bool isOne() const;
+
   /* Get field size. */
   const Integer& getFieldSize() const;
 

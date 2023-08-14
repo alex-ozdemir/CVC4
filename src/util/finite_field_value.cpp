@@ -21,6 +21,10 @@ namespace cvc5::internal {
 
 const Integer& FiniteFieldValue::getValue() const { return d_value; }
 
+bool FiniteFieldValue::isZero() const { return d_value.isZero(); }
+
+bool FiniteFieldValue::isOne() const { return d_value.isOne(); }
+
 const Integer& FiniteFieldValue::getFieldSize() const { return d_size; }
 
 Integer FiniteFieldValue::toInteger() const { return d_value; }
