@@ -22,8 +22,8 @@
 
 // std includes
 #include <optional>
-#include <unordered_map>
 #include <queue>
+#include <unordered_map>
 
 // internal includes
 #include "base/output.h"
@@ -55,10 +55,11 @@ using SpectrumOpt = std::optional<Spectrum>;
 /**
  * Perform computations needed to check whether t is part of a bit-constraint.
  * @param t a field term
- * @param depth how deep to search in term before concluding that this is not a bit-constraint
+ * @param depth how deep to search in term before concluding that this is not a
+ * bit-constraint
  * @return none if t is too deep or mulitvariate, otherwise, a Spectrum.
  */
-SpectrumOpt spectrum(const Node& t, uint8_t depth=5);
+SpectrumOpt spectrum(const Node& t, uint8_t depth = 5);
 
 /**
  * Detect whether this node is a bit-constraint.
@@ -97,6 +98,17 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> sumLinearMonomial(
     const Node& t);
 
 /**
+ * Detect whether this node is a sum of affine monomials
+ *
+ * @param t a potential affine funciton
+ * @return a constant and
+ *         a map from variables to scalars
+ */
+std::optional<
+    std::pair<FiniteFieldValue, std::unordered_map<Node, FiniteFieldValue>>>
+sumAffineMonomial(const Node& t);
+
+/**
  * Detect whether this node is a linear equality
  *
  * @param t a potential linear equality
@@ -104,6 +116,17 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> sumLinearMonomial(
  */
 std::optional<std::unordered_map<Node, FiniteFieldValue>> linearEq(
     const Node& t);
+
+/**
+ * Detect whether this node is an affine equality
+ *
+ * @param t a potential linear equality
+ * @return a constant and
+ *         a map from variables to scalars, encoding a sum that must be zero.
+ */
+std::optional<
+    std::pair<FiniteFieldValue, std::unordered_map<Node, FiniteFieldValue>>>
+affineEq(const Node& t);
 
 /**
  * For a linear map in N variables, ensure that at least N/2 have positive
@@ -129,7 +152,8 @@ std::optional<std::pair<Node, std::vector<Node>>> bitsConstraint(
     const Node& fact);
 
 /**
- * Detect whether this node is an affine sum of terms that do not have other uses.
+ * Detect whether this node is an affine sum of terms that do not have other
+ * uses.
  *
  * @param t a potential affine sum
  * @param hasOtherUses node predicate for whether there are other uses
@@ -171,13 +195,13 @@ affineSum(const Node& t, HasOtherUses hasOtherUses)
   return {{std::move(monomials), std::move(otherSummands)}};
 }
 
-
 /**
  * Given a sum s1 + ... + sN, extract sub-sums of form k * (x0 + 2*x1 + 4*x2 +
  * ... 2^I*xI), where each xJ passes the predicate isBit.
  *
  * @param t a potential bitsum
- * @param isBit node predicate that indicates whether a variable is bitConstrained
+ * @param isBit node predicate that indicates whether a variable is
+ * bitConstrained
  * @param hasOtherUses node predicate for whether there are other uses
  * @return the bitsums (k, {xJ})
  *         everything else in the sum
@@ -220,10 +244,10 @@ bitSums(const Node& t, IsBit isBit, HasOtherUses hasOtherUses)
     else
     {
       q.emplace(-coeff.toSignedInteger().abs(), coeff);
-      Trace("ff::parse::debug") << "bitMonomial " << coeff << " " << var << std::endl;
+      Trace("ff::parse::debug")
+          << "bitMonomial " << coeff << " " << var << std::endl;
     }
   }
-
 
   std::vector<std::pair<FiniteFieldValue, std::vector<Node>>> bitSums{};
   // TODO: consider other starting constants. Especially to handle gaps...

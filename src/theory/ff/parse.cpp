@@ -279,6 +279,57 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> sumLinearMonomial(
   return {};
 }
 
+std::optional<
+    std::pair<FiniteFieldValue, std::unordered_map<Node, FiniteFieldValue>>>
+sumAffineMonomial(const Node& t)
+{
+  TypeNode ty = t.getType();
+  if (!ty.isFiniteField())
+  {
+    return {};
+  }
+
+  std::unordered_map<Node, FiniteFieldValue> sum{};
+  FiniteFieldValue k(0, ty.getFfSize());
+
+  auto linearMonomialOpt = linearMonomial(t);
+  if (linearMonomialOpt.has_value())
+  {
+    sum.insert(linearMonomialOpt.value());
+  }
+  else if (t.isConst())
+  {
+    k = t.getConst<FiniteFieldValue>();
+  }
+  else if (t.getKind() == kind::FINITE_FIELD_ADD)
+  {
+    // a sum
+    for (const auto& child : t)
+    {
+      if (child.isConst())
+      {
+        k += child.getConst<FiniteFieldValue>();
+        continue;
+      }
+      linearMonomialOpt = linearMonomial(child);
+      if (linearMonomialOpt.has_value())
+      {
+        increment(sum, linearMonomialOpt->first, linearMonomialOpt->second);
+      }
+      else
+      {
+        return {};
+      }
+    }
+  }
+  else
+  {
+    return {};
+  }
+
+  return {{k, std::move(sum)}};
+}
+
 std::optional<std::unordered_map<Node, FiniteFieldValue>> linearEq(
     const Node& t)
 {
@@ -295,6 +346,34 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> linearEq(
         for (const auto& r : right.value())
         {
           increment(left.value(), r.first, -r.second);
+        }
+        return std::move(left.value());
+      }
+    }
+  }
+  return {};
+}
+
+std::optional<
+    std::pair<FiniteFieldValue, std::unordered_map<Node, FiniteFieldValue>>>
+affineEq(const Node& t)
+{
+  if (t.getKind() == kind::EQUAL && t[0].getType().isFiniteField())
+  {
+    std::optional<
+        std::pair<FiniteFieldValue, std::unordered_map<Node, FiniteFieldValue>>>
+        left = sumAffineMonomial(t[0]);
+    if (left.has_value())
+    {
+      std::optional<std::pair<FiniteFieldValue,
+                              std::unordered_map<Node, FiniteFieldValue>>>
+          right = sumAffineMonomial(t[1]);
+      if (right.has_value())
+      {
+        left->first -= right->first;
+        for (const auto& r : right->second)
+        {
+          increment(left->second, r.first, -r.second);
         }
         return std::move(left.value());
       }

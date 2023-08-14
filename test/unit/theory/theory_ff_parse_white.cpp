@@ -116,6 +116,15 @@ TEST_F(TestFfNodeParser, sumLinearMonomial)
     EXPECT_TRUE(parse::sumLinearMonomial(
                     parseNode("(ff.add (ff.mul x (as ff1 F)) (ff.neg y))"))
                     .has_value());
+    EXPECT_FALSE(
+        parse::sumLinearMonomial(
+            parseNode("(ff.add (as ff1 F) (ff.mul x (as ff1 F)) (ff.neg y))"))
+            .has_value());
+    EXPECT_FALSE(
+        parse::sumLinearMonomial(parseNode("(ff.add (as ff1 F) (ff.mul x (as "
+                                           "ff1 F)) (as ff5 F) (ff.neg y))"))
+            .has_value());
+    EXPECT_FALSE(parse::sumLinearMonomial(parseNode("(as ff1 F)")).has_value());
   }
 }
 
@@ -147,6 +156,80 @@ TEST_F(TestFfNodeParser, linearEq)
             parseNode(
                 "(= (ff.add (ff.mul (as ff4 F) x) (ff.mul (as ff2 F) y)) y)"))
             .has_value());
+    EXPECT_FALSE(
+        parse::linearEq(parseNode("(= (ff.add (as ff2 F) (ff.mul (as ff4 F) x) "
+                                  "(ff.mul (as ff2 F) y)) y)"))
+            .has_value());
+    EXPECT_FALSE(parse::linearEq(parseNode("(= (as ff4 F) y)")).has_value());
+  }
+}
+
+TEST_F(TestFfNodeParser, sumAffineMonomial)
+{
+  {
+    doCommand("(define-sort F () (_ FiniteField 7))");
+    doCommand("(declare-const x F)");
+    doCommand("(declare-const y F)");
+    EXPECT_TRUE(parse::sumAffineMonomial(parseNode("(as ff0 F)")).has_value());
+    EXPECT_TRUE(parse::sumAffineMonomial(parseNode("(ff.mul x (as ff1 F))"))
+                    .has_value());
+    EXPECT_TRUE(parse::sumAffineMonomial(parseNode("(ff.mul (as ff1 F) x)"))
+                    .has_value());
+    EXPECT_TRUE(parse::sumAffineMonomial(parseNode("x")).has_value());
+    EXPECT_TRUE(parse::sumAffineMonomial(parseNode("(ff.neg x)")).has_value());
+    EXPECT_TRUE(
+        parse::sumAffineMonomial(parseNode("(ff.add x y)")).has_value());
+    EXPECT_TRUE(
+        parse::sumAffineMonomial(parseNode("(ff.add (ff.mul x (as ff1 F)) y)"))
+            .has_value());
+    EXPECT_TRUE(parse::sumAffineMonomial(
+                    parseNode("(ff.add (ff.mul x (as ff1 F)) (ff.neg y))"))
+                    .has_value());
+    EXPECT_TRUE(
+        parse::sumAffineMonomial(
+            parseNode("(ff.add (as ff1 F) (ff.mul x (as ff1 F)) (ff.neg y))"))
+            .has_value());
+    EXPECT_TRUE(
+        parse::sumAffineMonomial(parseNode("(ff.add (as ff1 F) (ff.mul x (as "
+                                           "ff1 F)) (as ff5 F) (ff.neg y))"))
+            .has_value());
+    EXPECT_TRUE(parse::sumAffineMonomial(parseNode("(as ff1 F)")).has_value());
+  }
+}
+
+TEST_F(TestFfNodeParser, affineEq)
+{
+  {
+    doCommand("(define-sort F () (_ FiniteField 7))");
+    doCommand("(declare-const x F)");
+    doCommand("(declare-const y F)");
+    EXPECT_TRUE(parse::affineEq(parseNode("(= x (as ff0 F))")).has_value());
+    EXPECT_TRUE(parse::affineEq(parseNode("(= x x)")).has_value());
+    EXPECT_TRUE(parse::affineEq(parseNode("(= x y)")).has_value());
+    EXPECT_TRUE(
+        parse::affineEq(parseNode("(= x (ff.mul (as ff2 F) y))")).has_value());
+    EXPECT_TRUE(
+        parse::affineEq(parseNode("(= y (ff.mul (as ff2 F) y))")).has_value());
+    EXPECT_TRUE(
+        parse::affineEq(
+            parseNode(
+                "(= y (ff.add (ff.mul (as ff4 F) x) (ff.mul (as ff2 F) y)))"))
+            .has_value());
+    EXPECT_TRUE(
+        parse::affineEq(
+            parseNode(
+                "(= (ff.add (ff.mul (as ff4 F) x) (ff.mul (as ff2 F) y)) y)"))
+            .has_value());
+    EXPECT_TRUE(
+        parse::affineEq(
+            parseNode(
+                "(= (ff.add (ff.mul (as ff4 F) x) (ff.mul (as ff2 F) y)) y)"))
+            .has_value());
+    EXPECT_TRUE(
+        parse::affineEq(parseNode("(= (ff.add (as ff2 F) (ff.mul (as ff4 F) x) "
+                                  "(ff.mul (as ff2 F) y)) y)"))
+            .has_value());
+    EXPECT_TRUE(parse::affineEq(parseNode("(= (as ff4 F) y)")).has_value());
   }
 }
 
