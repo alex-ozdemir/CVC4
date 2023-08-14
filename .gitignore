@@ -12,4 +12,12 @@ generated/
 \#*\#
 *.swp
 /debug/
+/debug*
+/build*
 /deps/
+__pycache__
+zkorca
+*venv
+compile_commands.json
+/*.smt2
+.ccls-cache

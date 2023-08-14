@@ -29,42 +29,6 @@ class TestFfNodeParser : public TestWithParser
 {
 };
 
-TEST_F(TestFfNodeParser, square)
-{
-  {
-    doCommand("(define-sort F () (_ FiniteField 7))");
-    doCommand("(declare-const x F)");
-    Node x = parseNode("(ff.mul x x)");
-    EXPECT_TRUE(parse::square(x).has_value());
-  }
-}
-
-TEST_F(TestFfNodeParser, xMinusOne)
-{
-  {
-    doCommand("(define-sort F () (_ FiniteField 7))");
-    doCommand("(declare-const x F)");
-    EXPECT_TRUE(
-        parse::xMinusOne(parseNode("(ff.add x (as ff-1 F))")).has_value());
-    EXPECT_TRUE(
-        parse::xMinusOne(parseNode("(ff.add (as ff-1 F) x)")).has_value());
-  }
-}
-
-TEST_F(TestFfNodeParser, xXMinusOne)
-{
-  {
-    doCommand("(define-sort F () (_ FiniteField 7))");
-    doCommand("(declare-const x F)");
-    EXPECT_TRUE(
-        parse::xXMinusOne(parseNode("(ff.mul x (ff.add (as ff-1 F) x))"))
-            .has_value());
-    EXPECT_TRUE(
-        parse::xXMinusOne(parseNode("(ff.mul (ff.add (as ff-1 F) x) x)"))
-            .has_value());
-  }
-}
-
 TEST_F(TestFfNodeParser, bitConstraint)
 {
   {
@@ -81,7 +45,24 @@ TEST_F(TestFfNodeParser, bitConstraint)
     EXPECT_TRUE(
         parse::bitConstraint(parseNode("(= x (ff.mul x x))")).has_value());
     EXPECT_FALSE(
-        parse::bitConstraint(parseNode("(= x x (ff.mul x x))")).has_value());
+        parse::bitConstraint(parseNode("(= x (ff.mul x x x))")).has_value());
+    EXPECT_TRUE(
+        parse::bitConstraint(
+            parseNode(
+                "(= (as ff0 F) (ff.add (ff.mul x x) (ff.mul (as ff-1 F) x)))"))
+            .has_value());
+    EXPECT_TRUE(
+        parse::bitConstraint(
+            parseNode("(= (as ff0 F) (ff.add (ff.mul (as ff-1 F) x x) x))"))
+            .has_value());
+    EXPECT_TRUE(
+        parse::bitConstraint(
+            parseNode("(= (as ff0 F) (ff.add (ff.mul x x (as ff-1 F)) x))"))
+            .has_value());
+    EXPECT_FALSE(
+        parse::bitConstraint(parseNode("(= (as ff0 F) x)")).has_value());
+    EXPECT_FALSE(parse::bitConstraint(parseNode("(= (as ff0 F) (ff.mul x x))"))
+                     .has_value());
   }
 }
 
@@ -435,15 +416,14 @@ TEST_F(TestFfNodeParser, bitSums2)
       // aliasing bit-sum
       std::unordered_set<Node> bits = {b0, b1, b2, b3};
       const auto res = parse::bitSums(
-          parseNode(
-              "(ff.add "
-              "(ff.mul x y) "
-              "x "
-              "y "
-              "(ff.mul (as ff1 F) b0) "
-              "(ff.mul (as ff2 F) b1) "
-              "(ff.mul (as ff4 F) b2) "
-              "(ff.mul (as ff8 F) b3))"),
+          parseNode("(ff.add "
+                    "(ff.mul x y) "
+                    "x "
+                    "y "
+                    "(ff.mul (as ff1 F) b0) "
+                    "(ff.mul (as ff2 F) b1) "
+                    "(ff.mul (as ff4 F) b2) "
+                    "(ff.mul (as ff8 F) b3))"),
           [&bits](const Node& b) { return bits.count(b); },
           [](const Node&) { return false; });
       EXPECT_TRUE(res.has_value());

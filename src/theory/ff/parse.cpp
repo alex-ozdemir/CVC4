@@ -18,11 +18,13 @@
 // external includes
 
 // std includes
+#include <numeric>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
 
 // internal includes
+#include "theory/theory.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -30,97 +32,128 @@ namespace ff {
 
 namespace parse {
 
-std::optional<Node> square(const Node& t)
+bool add_overflows(uint8_t x, uint8_t y) { return x + y < x; }
+
+template <typename DegreeOp, typename FieldOp>
+SpectrumOpt helperResultOp(SpectrumOpt&& a,
+                           SpectrumOpt&& b,
+                           DegreeOp dOp,
+                           FieldOp fOp)
 {
-  if (t.getKind() == kind::FINITE_FIELD_MULT && t[0].isVar() && t[0] == t[1])
+  if (!(a.has_value() && b.has_value()))
   {
-    return t[0];
+    // failed child
+    return {};
   }
-  return {};
+  if (a->degree && b->degree && a->var != b->var)
+  {
+    // multivariate
+    return {};
+  }
+  uint8_t degree = dOp(a->degree, b->degree);
+  if (degree > 2)
+  {
+    // high-degree
+    return {};
+  }
+  FiniteFieldValue val0 = fOp(a->val0, b->val0);
+  FiniteFieldValue val1 = fOp(a->val1, b->val1);
+  Node&& var = a->degree ? std::move(a->var) : std::move(b->var);
+  return {{var, degree, val0, val1}};
+};
+
+/** Subtract spectra */
+SpectrumOpt helperResultSub(SpectrumOpt&& a, SpectrumOpt&& b)
+{
+  return helperResultOp(
+      std::move(a),
+      std::move(b),
+      [](const uint8_t& x, const uint8_t& y) { return std::max(x, y); },
+      [](const FiniteFieldValue& x, const FiniteFieldValue& y) {
+        return x - y;
+      });
+};
+
+/** Add spectra */
+SpectrumOpt helperResultAdd(SpectrumOpt&& a, SpectrumOpt&& b)
+{
+  return helperResultOp(
+      std::move(a),
+      std::move(b),
+      [](const uint8_t& x, const uint8_t& y) { return std::max(x, y); },
+      [](const FiniteFieldValue& x, const FiniteFieldValue& y) {
+        return x + y;
+      });
 }
 
-std::optional<Node> xMinusOne(const Node& t)
+/** Multiply spectra */
+SpectrumOpt helperResultMul(SpectrumOpt&& a, SpectrumOpt&& b)
 {
-  if (t.getKind() == kind::FINITE_FIELD_ADD && t.getNumChildren() == 2)
+  return helperResultOp(
+      std::move(a),
+      std::move(b),
+      [](const uint8_t& x, const uint8_t& y) { return x + y; },
+      [](const FiniteFieldValue& x, const FiniteFieldValue& y) {
+        return x * y;
+      });
+};
+
+SpectrumOpt spectrum(const Node& t, uint8_t depth)
+{
+  Assert(t.getType().isFiniteField() || t.getKind() == kind::EQUAL) << t;
+  if (Theory::isLeafOf(t, THEORY_FF))
   {
-    if (t[0].isVar() && t[1].isConst()
-        && t[1].getConst<FiniteFieldValue>().toSignedInteger() == -1)
+    if (t.isConst())
     {
-      return t[0];
+      FiniteFieldValue v = t.getConst<FiniteFieldValue>();
+      return {{Node::null(), 0, v, v}};
     }
-    if (t[1].isVar() && t[0].isConst()
-        && t[0].getConst<FiniteFieldValue>().toSignedInteger() == -1)
+    else
     {
-      return t[1];
+      const Integer modulus = t.getType().getFfSize();
+      return {{t, 1, {1, modulus}, {0, modulus}}};
     }
   }
-  return {};
-}
-
-std::optional<Node> xXMinusOne(const Node& t)
-{
-  if (t.getKind() == kind::FINITE_FIELD_MULT && t.getNumChildren() == 2)
+  switch (t.getKind())
   {
-    if (t[0].isVar())
+    case kind::FINITE_FIELD_ADD:
     {
-      std::optional<Node> rightX = xMinusOne(t[1]);
-      if (rightX.has_value() && t[0] == rightX.value())
+      SpectrumOpt acc = spectrum(t[0]);
+      for (size_t i = 1; i < t.getNumChildren(); ++i)
       {
-        return t[0];
+        acc = helperResultAdd(std::move(acc), spectrum(t[i]));
       }
+      return acc;
     }
-    else if (t[1].isVar())
+    case kind::EQUAL:
     {
-      std::optional<Node> leftX = xMinusOne(t[0]);
-      if (leftX.has_value() && t[1] == leftX.value())
-      {
-        return t[1];
-      }
+      return helperResultSub(spectrum(t[0]), spectrum(t[1]));
     }
+    case kind::FINITE_FIELD_MULT:
+    {
+      SpectrumOpt acc = spectrum(t[0]);
+      for (size_t i = 1; i < t.getNumChildren(); ++i)
+      {
+        acc = helperResultMul(std::move(acc), spectrum(t[i]));
+      }
+      return acc;
+    }
+    default: Unreachable() << t.getKind();
   }
   return {};
 }
 
 std::optional<Node> bitConstraint(const Node& fact)
 {
-  if (fact.getKind() == kind::EQUAL && fact[0].getType().isFiniteField())
+  if (fact.getKind() == kind::NOT)
   {
-    if (fact[0].isVar())
-    {
-      if (fact[0] == square(fact[1]))
-      {
-        // (= x (ff.mul x x))
-        return fact[0];
-      }
-    }
-    if (fact[1].isVar())
-    {
-      if (fact[1] == square(fact[0]))
-      {
-        // (= (ff.mul x x) x)
-        return fact[1];
-      }
-    }
-    if (fact[0].isConst()
-        && fact[0].getConst<FiniteFieldValue>().toInteger() == 0)
-    {
-      std::optional<Node> opt = xXMinusOne(fact[1]);
-      if (opt.has_value())
-      {
-        // (= 0 (ff.mul x (ff.add x -1)))
-        return opt;
-      }
-    }
-    if (fact[1].isConst()
-        && fact[1].getConst<FiniteFieldValue>().toInteger() == 0)
-    {
-      std::optional<Node> opt = xXMinusOne(fact[0]);
-      if (opt.has_value())
-      {
-        // (= (ff.mul x (ff.add x -1)) 0)
-        return opt;
-      }
-    }
+    return {};
+  }
+  SpectrumOpt r = spectrum(fact);
+  if (r.has_value() && r->degree == 2 && r->val0.getValue() == 0
+      && r->val1.getValue() == 0)
+  {
+    return {r->var};
   }
   return {};
 }

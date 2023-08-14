@@ -27,6 +27,7 @@
 
 // internal includes
 #include "base/output.h"
+#include "expr/attribute.h"
 #include "expr/node.h"
 #include "util/finite_field_value.h"
 
@@ -36,26 +37,28 @@ namespace ff {
 
 namespace parse {
 
-/**
- * Detect whether this node is a squared variable
- * @param t a potential FF square
- * @return the variable (unsquared), if this is a square.
- */
-std::optional<Node> square(const Node& t);
+/** Characterization of a univariate, degree <= 2 polynomial */
+struct Spectrum
+{
+  /** the variable; ignore if degree is 0 */
+  Node var;
+  /** the degree in {0, 1, 2} */
+  uint8_t degree;
+  /** value at 0 */
+  FiniteFieldValue val0;
+  /** value at 1 */
+  FiniteFieldValue val1;
+};
+
+using SpectrumOpt = std::optional<Spectrum>;
 
 /**
- * Detect whether this node has form (x - 1)
- * @param t a node
- * @return the variable x, if t matches the pattern
+ * Perform computations needed to check whether t is part of a bit-constraint.
+ * @param t a field term
+ * @param depth how deep to search in term before concluding that this is not a bit-constraint
+ * @return none if t is too deep or mulitvariate, otherwise, a Spectrum.
  */
-std::optional<Node> xMinusOne(const Node& t);
-
-/**
- * Detect whether this node has form (ff.mul x (x - 1)) (or equivalent)
- * @param t a node
- * @return the variable x if t matches the pattern
- */
-std::optional<Node> xXMinusOne(const Node& t);
+SpectrumOpt spectrum(const Node& t, uint8_t depth=5);
 
 /**
  * Detect whether this node is a bit-constraint.
