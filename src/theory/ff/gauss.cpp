@@ -282,7 +282,7 @@ Row addScaleRows(const Row& r0, const Row& r1, const Ffv& k)
     else if (c1 < c0)
     {
       ++i1;
-      out.emplace_back(c1, v1);
+      out.emplace_back(c1, v1 * k);
     }
     else
     {
@@ -304,7 +304,10 @@ Row addScaleRows(const Row& r0, const Row& r1, const Ffv& k)
   else if (i1 < r1.size())
   {
     // copy rest of r1
-    out.insert(out.end(), std::next(r1.begin(), i1), r1.end());
+    for (; i1 < r1.size(); ++i1)
+    {
+      out.emplace_back(r1[i1].first, r1[i1].second * k);
+    }
   }
   return out;
 }

@@ -222,5 +222,47 @@ TEST_F(TestGauss, fuzzRref)
   }
 }
 
+TEST_F(TestGauss, fuzzRrefSolver)
+{
+  srand(0);
+  size_t m = 101;
+  size_t iters = 100;
+  size_t maxVars = 10;
+  size_t eqnsPerVar = 2;
+
+  // TraceChannel.on("ff::gauss::ref::debug");
+  // TraceChannel.on("ff::gauss::form");
+
+  for (size_t iter = 0; iter < iters; ++iter)
+  {
+    size_t vars = rand() % maxVars + 1;
+    size_t eqns = eqnsPerVar * vars;
+    std::vector<Ffv> solution{};
+    for (size_t i = 0; i < vars; ++i)
+    {
+      solution.emplace_back(rand() % m, m);
+    }
+    Matrix mat(m, vars + 1, 1, eqns);
+    Ffv zero{0, m};
+    for (size_t r = 0; r < eqns; ++r)
+    {
+      Ffv const_(0, m);
+      for (size_t c = 0; c < vars; ++c)
+      {
+        Ffv coeff(rand() % m, m);
+        mat.setEntry(r, c, coeff);
+        const_ += coeff * solution[c];
+      }
+      mat.setEntry(r, vars, -const_);
+    }
+
+    mat.rref();
+    for (size_t i = 0; i < vars; ++i)
+    {
+      EXPECT_EQ(mat.getEntry(i, vars), solution[i]);
+    }
+  }
+}
+
 }  // namespace test
 }  // namespace cvc5::internal

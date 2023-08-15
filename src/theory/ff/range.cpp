@@ -141,7 +141,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
     }
     andFacts = result;
 
-    if (TraceIsOn("ff::range"))
+    if (TraceIsOn("ff::range") && d_facts.size() == facts.size())
     {
       for (size_t i = 0; i < facts.size(); ++i)
       {
@@ -266,6 +266,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
     }
   }
 
+  std::unordered_map<Node, Node> gaussSubs{};
   // do gaussian elimination
   if (options().ff.ffrGauss)
   {
@@ -354,22 +355,24 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
     facts = std::move(nonLinearFacts);
     const auto& [substs, eqns] = matrix.output();
     Node zero = nm->mkConst(FiniteFieldValue(0, d_p));
-    std::vector<Node> subVars{};
-    std::vector<Node> subExprs{};
     for (const auto& [subVar, subExpr] : substs)
     {
       std::vector<Node> summands{};
       for (const auto& [col, coeff] : subExpr)
       {
-        summands.push_back(nm->mkNode(
-            kind::FINITE_FIELD_MULT, iToVar[col], nm->mkConst(coeff)));
+        Node summand = col == constCol ? nm->mkConst(coeff)
+                                       : nm->mkNode(kind::FINITE_FIELD_MULT,
+                                                    iToVar[col],
+                                                    nm->mkConst(coeff));
+        summands.push_back(summand);
       }
-      subVars.push_back(iToVar[subVar]);
-      subExprs.push_back(mkAdd(std::move(summands)));
-      Trace("ff::gauss::debug") << " elim: " << subVars.back() << " to "
-                                << subExprs.back() << std::endl;
+      Node var = iToVar[subVar];
+      Node expr = mkAdd(std::move(summands));
+      Trace("ff::gauss::debug") << " elim: " << var << "(" << subVar << ")"
+                                << " to " << expr << std::endl;
+      gaussSubs.insert({var, expr});
     }
-    Trace("ff::gauss") << "Gauss ends; elim'd " << subVars.size() << " vars"
+    Trace("ff::gauss") << "Gauss ends; elim'd " << gaussSubs.size() << " vars"
                        << " of " << cols - 1 << " vars" << std::endl;
     for (const auto& eqn : eqns)
     {
@@ -384,12 +387,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
           << "post-rref fact: " << facts.back() << std::endl;
     }
     Node factsAnd = nm->mkAnd(facts);
-    std::unordered_map<TNode, TNode> cache{};
-    Node factsAndSub = factsAnd.substitute(subVars.begin(),
-                                           subVars.end(),
-                                           subExprs.begin(),
-                                           subExprs.end(),
-                                           cache);
+    Node factsAndSub = factsAnd.substitute(gaussSubs.begin(), gaussSubs.end());
     facts.clear();
     if (factsAnd.getKind() == kind::AND)
     {
@@ -499,6 +497,13 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
         }
       }
     }
+    else if (f.getKind() == kind::CONST_BOOLEAN)
+    {
+      if (!f.getConst<bool>())
+      {
+        return {};
+      }
+    }
     else
     {
       Assert(f.getKind() == kind::NOT && f[0].getKind() == kind::EQUAL) << f;
@@ -567,6 +572,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
     case z3::check_result::sat:
     {
       std::unordered_map<Node, FiniteFieldValue> model{};
+      std::unordered_map<Node, Node> modelAsNodes{};
       auto z3model = s.get_model();
       for (size_t i = 0; i < z3model.num_consts(); ++i)
       {
@@ -575,6 +581,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
         Trace("ff::range::z3")
             << "z3 model " << decl.name() << " = " << interp << std::endl;
       }
+      auto nm = NodeManager::currentNM();
       for (const auto& it : ints)
       {
         if (it.first.isVar() && !varsToBits.count(it.first))
@@ -586,21 +593,30 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
           Trace("ff::range::model") << "model " << it.first << ": "
                                     << val.toSignedInteger() << std::endl;
           model.insert({it.first, val});
+          modelAsNodes.insert({it.first, nm->mkConst(val)});
         }
+      }
+      for (const auto& [v, e] : gaussSubs)
+      {
+        Node k =
+            rewrite(e.substitute(modelAsNodes.begin(), modelAsNodes.end()));
+        Assert(k.isConst()) << "non-const " << k << " for " << v << " in model";
+        model.insert({v, k.getConst<FiniteFieldValue>()});
+        modelAsNodes.insert({v, k});
+        Trace("ff::range::model")
+            << "model " << v << ": "
+            << k.getConst<FiniteFieldValue>().toSignedInteger() << std::endl;
       }
       for (const auto& [var, entry] : varsToBits)
       {
         const auto& [cvcVar, bitI] = entry;
-        if (ints.count(cvcVar))
-        {
-          auto z3var = ints.at(cvcVar);
-          Integer z3val = Integer(z3model.eval(z3var).get_decimal_string(0));
-          auto val = FiniteFieldValue(z3val.isBitSet(bitI), d_p);
-          Trace("ff::range::model")
-              << "model " << var << ": " << val.toSignedInteger() << std::endl;
-          Assert(!model.count(var));
-          model.insert({var, val});
-        }
+        bool bit = model.at(cvcVar).toInteger().isBitSet(bitI);
+        auto val = FiniteFieldValue(bit, d_p);
+        Trace("ff::range::model")
+            << "model " << var << ": " << val.toSignedInteger() << std::endl;
+        Assert(!model.count(var));
+        model.insert({var, val});
+        modelAsNodes.insert({var, nm->mkConst(val)});
       }
 
       return model;
