@@ -26,11 +26,19 @@ name   = "Finite Field Theory"
   help       = "use the FF range solver"
 
 [[option]]
+  name       = "ffrGauss"
+  category   = "expert"
+  long       = "ffr-gauss"
+  type       = "bool"
+  default    = "true"
+  help       = "do gaussian elimination in the range solver"
+
+[[option]]
   name       = "ffrBoundQuotient"
   category   = "expert"
   long       = "ffr-bound-quotient"
   type       = "bool"
-  default    = "false"
+  default    = "true"
   help       = "bound quotient ranges in the range solver"
 
 [[option]]
@@ -62,7 +70,7 @@ name   = "Finite Field Theory"
   category   = "expert"
   long       = "ffr-cse"
   type       = "bool"
-  default    = "false"
+  default    = "true"
   help       = "run common sub-expression elimination for +"
 
 [[option]]

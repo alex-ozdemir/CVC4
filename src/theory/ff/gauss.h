@@ -69,8 +69,16 @@ class Matrix
   bool inRef() const;
   /** in reduced row echelon form? */
   bool inRref() const;
-  /** columns that can be eliminated */
-  size_t elimCols() const { return d_cols - d_protCols; }
+  /** interpret a RREF matrix as substitutions and linear equation
+   *
+   * @return list of substitutions [(var, sparse row)]
+   *         list of linear equations [sparse row]
+   * */
+  std::pair<std::vector<std::pair<size_t, std::vector<std::pair<size_t, Ffv>>>>,
+            std::vector<std::vector<std::pair<size_t, Ffv>>>>
+  output() const;
+  /** as a string */
+  std::string toString() const;
 
   // Getters
 
@@ -80,6 +88,8 @@ class Matrix
   size_t cols() const { return d_cols; }
   /** number of protected columns */
   size_t protCols() const { return d_protCols; }
+  /** number of columns that can be eliminated */
+  size_t elimCols() const { return d_cols - d_protCols; }
   /** modulus */
   const Integer& mod() const { return d_mod; }
 

@@ -27,9 +27,11 @@
 // internal includes
 #include "context/cdhashmap.h"
 #include "expr/node_traversal.h"
+#include "expr/skolem_manager.h"
 #include "options/ff_options.h"
 #include "smt/env.h"
 #include "smt/env_obj.h"
+#include "theory/ff/gauss.h"
 #include "theory/ff/parse.h"
 #include "util/cse.h"
 #include "util/finite_field_value.h"
@@ -38,7 +40,12 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-RangeSolver::RangeSolver(Env& env, const Integer& p) : EnvObj(env), d_p(p){};
+RangeSolver::RangeSolver(Env& env, const Integer& p) : EnvObj(env), d_p(p)
+{
+  Trace("ff::range")
+      << "new range solver; field:\n(define-sort F () (_ FiniteField " << d_p
+      << "))" << std::endl;
+};
 
 void RangeSolver::assertFact(TNode fact)
 {
@@ -97,29 +104,23 @@ z3::expr z3Range(const z3::expr& val, const Range& range)
   return (lo <= val) && (val <= hi);
 }
 
+bool isFf(TNode n)
+{
+  if (n.getType().isFiniteField()) return true;
+  if (n.getKind() == kind::EQUAL)
+  {
+    return n[0].getType().isFiniteField();
+  }
+  else if (n.getKind() == kind::NOT)
+  {
+    return n[0].getKind() == kind::EQUAL && n[0][0].getType().isFiniteField();
+  }
+  return false;
+}
+
 std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
 {
   Range bitRange = Range(0, 1);
-  z3::context ctx;
-  z3::expr zero = ctx.int_val(0);
-  z3::expr one = ctx.int_val(1);
-  z3::expr p = ctx.int_val(d_p.toString().c_str());
-  size_t qI = 0;
-  size_t accI = 0;
-  std::unordered_map<Node, z3::expr> ints{};
-  std::vector<z3::expr> assertions{};
-
-  // ranges
-  for (const auto& i : d_assertedRanges)
-  {
-    z3::expr var = ctx.int_const(i.first.getName().c_str());
-    // maybe redudant
-    ints.insert({i.first, var});
-    assertions.push_back(z3Range(var, i.second));
-  }
-
-  // map: cvc5 var -> (z3 expr, bit number)
-  std::unordered_map<Node, std::pair<z3::expr, size_t>> varsToBits{};
 
   std::vector<Node> facts = d_facts;
   Node andFacts = NodeManager::currentNM()->mkAnd(facts);
@@ -127,6 +128,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
   {
     Node result = util::greedyCse(andFacts, kind::FINITE_FIELD_ADD);
     Assert(result.getNumChildren() == andFacts.getNumChildren());
+    Assert(rewrite(result) == andFacts);
 
     facts.clear();
     if (result.getKind() == kind::AND)
@@ -152,51 +154,59 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
     }
   }
 
-  // enumerate (parent, child) pairs; compute parent counts
-  std::unordered_map<Node, size_t> parentCounts{};
-  for (TNode parent : NodeDfsIterable(andFacts))
-  {
-    for (const Node& child : parent)
-    {
-      ++parentCounts.at(child);
-    }
-    parentCounts.insert({parent, 0});
-  }
+  // map: bit var -> (acc var, bit number)
+  std::unordered_map<Node, std::pair<Node, size_t>> varsToBits{};
 
-  // facts
-  for (const auto& f : facts)
+  // extract bit-sums from facts
+  if (options().ff.ffrElimBits)
   {
-    Trace("ff::range::debug") << "enc fact " << f << std::endl;
-    for (TNode current :
-         NodeDfsIterable(f, VisitOrder::POSTORDER, [&ints](TNode nn) {
-           bool ffFact =
-               nn.getKind() == kind::NOT || nn.getKind() == kind::EQUAL;
-           bool ffTerm = nn.getType().isFiniteField();
-           return ints.count(nn) || !(ffFact || ffTerm);
-         }))
+    size_t accI = 0;
+    auto nm = NodeManager::currentNM();
+    auto ffSort = nm->mkFiniteFieldType(d_p);
+    std::unordered_map<Node, Node> rws{};
+
+    // enumerate (parent, child) pairs; compute parent counts
+    std::unordered_map<Node, size_t> parentCounts{};
+    for (TNode parent : NodeDfsIterable(andFacts))
     {
-      Assert(!ints.count(current));
-      z3::expr e = zero;
-      if (current.isVar())
+      for (const Node& child : parent)
       {
-        e = ctx.int_const(current.getName().c_str());
-        // assertions.push_back((e >= 0) & (e < p));
+        ++parentCounts.at(child);
       }
-      else if (current.isConst())
+      parentCounts.insert({parent, 0});
+    }
+
+    // rewrite facts
+    for (auto& f : facts)
+    {
+      Trace("ff::range::debug") << "enc fact " << f << std::endl;
+      for (TNode current :
+           NodeDfsIterable(f, VisitOrder::POSTORDER, [&rws](TNode nn) {
+             return rws.count(nn) || !isFf(nn);
+           }))
       {
-        e = ctx.int_val(current.getConst<FiniteFieldValue>()
-                            .toSignedInteger()
-                            .toString()
-                            .c_str());
-      }
-      else if (current.getKind() == kind::FINITE_FIELD_ADD)
-      {
-        bool stdAdd = true;
-        if (options().ff.ffrElimBits)
+        if (current.isVar() || current.isConst())
+        {
+          rws.emplace(current, current);
+          continue;
+        }
+
+        NodeBuilder builder(current.getKind());
+        if (current.getMetaKind() == kind::metakind::PARAMETERIZED)
+        {
+          builder << current.getOperator();
+        }
+        for (const auto& c : current)
+        {
+          builder << (rws.count(c) ? TNode(rws.at(c)) : c);
+        }
+        Node newCurrent = builder.constructNode();
+
+        if (newCurrent.getKind() == kind::FINITE_FIELD_ADD)
         {
           // look for bit-sums in the addition; replace them with ranges.
           auto res = parse::bitSums(
-              current,
+              newCurrent,
               [this, &bitRange, &parentCounts](const Node& x) {
                 size_t nParents = parentCounts.at(x);
                 bool isBit = nParents == 1 && bitRange == getRange(x);
@@ -206,24 +216,23 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
                 return isBit;
               },
               [&parentCounts](const Node& x) {
-                return parentCounts.at(x) >= 2;
+                return !parentCounts.count(x) || parentCounts.at(x) >= 2;
               });
           if (res.has_value() && !res.value().first.empty())
           {
-            auto& [bitSums, rest] = res.value();
-            e = zero;
-            for (const auto& r : rest)
-            {
-              // rw because the parser mangles
-              e = e + ints.at(rewrite(r));
-            }
+            auto& [bitSums, summands] = res.value();
             for (const auto& [coeff, bits] : bitSums)
             {
-              z3::expr acc = ctx.int_const(
-                  (std::string("__acc") + std::to_string(accI)).c_str());
+              std::string name = std::string("__acc") + std::to_string(accI);
               accI++;
-              z3::expr k = ctx.int_val(coeff.toSignedInteger().toString().c_str());
-              e = e + acc * k;
+              Node acc = nm->getSkolemManager()->mkDummySkolem(name, ffSort);
+              d_assertedRanges.emplace(
+                  acc, Range(0, Integer(2).pow(bits.size()) - 1));
+              Node summand = coeff.isOne() ? acc
+                                           : nm->mkNode(kind::FINITE_FIELD_MULT,
+                                                        nm->mkConst(coeff),
+                                                        acc);
+              summands.push_back(summand);
               if (TraceIsOn("ff::range"))
               {
                 Trace("ff::range")
@@ -238,23 +247,207 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
               {
                 varsToBits.insert({bits[i], {acc, i}});
               }
-              z3::expr upper =
-                  ctx.int_val(Integer(2).pow(bits.size()).toString().c_str());
-              assertions.push_back((acc >= 0) && (acc < upper));
+              // remove bit ranges?
             }
-            stdAdd = false;
+            if (summands.size() > 1)
+            {
+              newCurrent = nm->mkNode(kind::FINITE_FIELD_ADD, summands);
+            }
+            else
+            {
+              Assert(summands.size() > 0);
+              newCurrent = summands[0];
+            }
           }
         }
+        rws.insert({current, newCurrent});
+      }
+      f = rws.at(f);
+    }
+  }
 
-        if (stdAdd)
+  // do gaussian elimination
+  if (options().ff.ffrGauss)
+  {
+    auto nm = NodeManager::currentNM();
+    std::unordered_set<Node> nodes{};
+    std::unordered_set<Node> protVars{};
+    std::unordered_set<Node> elimVars{};
+    for (const auto& f : facts)
+    {
+      for (TNode current :
+           NodeDfsIterable(f, VisitOrder::POSTORDER, [&nodes](TNode nn) {
+             return nodes.count(nn) || !isFf(nn);
+           }))
+      {
+        nodes.insert(current);
+        if (current.isVar())
         {
-          Trace("ff::range::bitsum")
-              << "sum with no bits: " << current << std::endl;
-          e = zero;
-          for (const auto& child : current)
+          if (d_assertedRanges.count(current))
           {
-            e = e + ints.at(child);
+            protVars.insert(current);
           }
+          else
+          {
+            elimVars.insert(current);
+          }
+        }
+      }
+    }
+    std::unordered_map<Node, size_t> varToI{};
+    std::vector<Node> iToVar{};
+    for (const auto& var : elimVars)
+    {
+      varToI.emplace(var, iToVar.size());
+      iToVar.push_back(var);
+    }
+    for (const auto& var : protVars)
+    {
+      varToI.emplace(var, iToVar.size());
+      iToVar.push_back(var);
+    }
+
+    std::vector<
+        std::pair<FiniteFieldValue, std::unordered_map<Node, FiniteFieldValue>>>
+        affineFacts{};
+    std::vector<Node> nonLinearFacts{};
+    for (const auto& f : facts)
+    {
+      auto r = parse::affineEq(f);
+      if (r.has_value())
+      {
+        Trace("ff::gauss::debug") << "affine fact " << f << std::endl;
+        affineFacts.push_back(std::move(r.value()));
+      }
+      else
+      {
+        Trace("ff::gauss::debug") << "    nl fact " << f << std::endl;
+        nonLinearFacts.push_back(f);
+      }
+    }
+    size_t rows = affineFacts.size();
+    // one extra protected column for the constant.
+    iToVar.push_back(nm->mkConst(FiniteFieldValue(1, d_p)));
+    size_t protCols = protVars.size() + 1;
+    size_t cols = protCols + elimVars.size();
+    size_t constCol = cols - 1;
+    Trace("ff::gauss") << "Gauss starts with " << elimVars.size() << "/"
+                       << (cols - 1) << " elim'ble vars and " << rows << " eqns"
+                       << std::endl;
+    Matrix matrix(d_p, cols, protCols, rows);
+    for (size_t r = 0; r < rows; ++r)
+    {
+      for (const auto& [var, coeff] : affineFacts[r].second)
+      {
+        size_t c = varToI.at(var);
+        matrix.setEntry(r, c, coeff);
+      }
+      if (!affineFacts[r].first.isZero())
+      {
+        matrix.setEntry(r, constCol, affineFacts[r].first);
+      }
+    }
+    Trace("ff::gauss::debug") << "before RREF" << std::endl << matrix;
+    matrix.rref();
+    Trace("ff::gauss::debug") << "after RREF" << std::endl << matrix;
+    Assert(matrix.inRref());
+    facts = std::move(nonLinearFacts);
+    const auto& [substs, eqns] = matrix.output();
+    Node zero = nm->mkConst(FiniteFieldValue(0, d_p));
+    std::vector<Node> subVars{};
+    std::vector<Node> subExprs{};
+    for (const auto& [subVar, subExpr] : substs)
+    {
+      std::vector<Node> summands{};
+      for (const auto& [col, coeff] : subExpr)
+      {
+        summands.push_back(nm->mkNode(
+            kind::FINITE_FIELD_MULT, iToVar[col], nm->mkConst(coeff)));
+      }
+      subVars.push_back(iToVar[subVar]);
+      subExprs.push_back(mkAdd(std::move(summands)));
+      Trace("ff::gauss::debug") << " elim: " << subVars.back() << " to "
+                                << subExprs.back() << std::endl;
+    }
+    Trace("ff::gauss") << "Gauss ends; elim'd " << subVars.size() << " vars"
+                       << " of " << cols - 1 << " vars" << std::endl;
+    for (const auto& eqn : eqns)
+    {
+      std::vector<Node> summands{};
+      for (const auto& [col, coeff] : eqn)
+      {
+        summands.push_back(nm->mkNode(
+            kind::FINITE_FIELD_MULT, iToVar[col], nm->mkConst(coeff)));
+      }
+      facts.push_back(rewrite(zero.eqNode(mkAdd(std::move(summands)))));
+      Trace("ff::gauss::debug")
+          << "post-rref fact: " << facts.back() << std::endl;
+    }
+    Node factsAnd = nm->mkAnd(facts);
+    std::unordered_map<TNode, TNode> cache{};
+    Node factsAndSub = factsAnd.substitute(subVars.begin(),
+                                           subVars.end(),
+                                           subExprs.begin(),
+                                           subExprs.end(),
+                                           cache);
+    facts.clear();
+    if (factsAnd.getKind() == kind::AND)
+    {
+      Assert(factsAnd.getNumChildren() == factsAndSub.getNumChildren());
+      for (const auto& c : factsAndSub)
+      {
+        Trace("ff::gauss::debug") << "post-gauss fact: " << c << std::endl;
+        facts.push_back(c);
+      }
+    }
+    else
+    {
+      Trace("ff::gauss::debug")
+          << "post-gauss fact: " << factsAndSub << std::endl;
+      facts.push_back(factsAndSub);
+    }
+  }
+
+  // embed facts for z3
+  z3::context ctx;
+  z3::expr zero = ctx.int_val(0);
+  z3::expr one = ctx.int_val(1);
+  z3::expr p = ctx.int_val(d_p.toString().c_str());
+  size_t fI = 0;
+  std::unordered_map<Node, z3::expr> ints{};
+  std::vector<z3::expr> assertions{};
+
+  for (const auto& f : facts)
+  {
+    Trace("ff::range::debug") << "enc fact " << f << std::endl;
+    for (TNode current :
+         NodeDfsIterable(f, VisitOrder::POSTORDER, [&ints](TNode nn) {
+           return ints.count(nn) || !isFf(nn);
+         }))
+    {
+      Assert(!ints.count(current));
+      z3::expr e = zero;
+      if (current.isVar())
+      {
+        e = ctx.int_const(current.getName().c_str());
+        if (d_assertedRanges.count(current))
+        {
+          assertions.push_back(z3Range(e, d_assertedRanges.at(current)));
+        }
+      }
+      else if (current.isConst())
+      {
+        e = ctx.int_val(current.getConst<FiniteFieldValue>()
+                            .toSignedInteger()
+                            .toString()
+                            .c_str());
+      }
+      else if (current.getKind() == kind::FINITE_FIELD_ADD)
+      {
+        e = zero;
+        for (const auto& child : current)
+        {
+          e = e + ints.at(child);
         }
       }
       else if (current.getKind() == kind::FINITE_FIELD_MULT)
@@ -276,6 +469,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       }
       ints.insert({current, e});
     }
+
     if (f.getKind() == kind::EQUAL)
     {
       if (options().ff.ffrUnsoundInt)
@@ -286,8 +480,8 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       {
         // equality: left - right = q * p
         z3::expr q =
-            ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
-        qI++;
+            ctx.int_const((std::string("__q") + std::to_string(fI)).c_str());
+        fI++;
         assertions.push_back((ints.at(f[0]) - ints.at(f[1])) == q * p);
 
         if (options().ff.ffrBoundQuotient)
@@ -323,10 +517,10 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
           //                   0 < __n < p
           //
           z3::expr q =
-              ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
+              ctx.int_const((std::string("__q") + std::to_string(fI)).c_str());
           z3::expr n =
-              ctx.int_const((std::string("__n") + std::to_string(qI)).c_str());
-          qI++;
+              ctx.int_const((std::string("__n") + std::to_string(fI)).c_str());
+          fI++;
           assertions.push_back(diff - n == q * p);
           assertions.push_back((zero < n) && (n < p));
           if (options().ff.ffrBoundQuotient)
@@ -344,10 +538,10 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
         {
           // encode with inverse: diff * __i = 1 + __q * p
           z3::expr q =
-              ctx.int_const((std::string("__q") + std::to_string(qI)).c_str());
+              ctx.int_const((std::string("__q") + std::to_string(fI)).c_str());
           z3::expr i =
-              ctx.int_const((std::string("__i") + std::to_string(qI)).c_str());
-          qI++;
+              ctx.int_const((std::string("__i") + std::to_string(fI)).c_str());
+          fI++;
           assertions.push_back(diff * i == one + q * p);
         }
       }
@@ -360,10 +554,12 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
                          << std::endl;
   // specify tactic manually.
   z3::solver s = z3::tactic(ctx, "qfnia").mk_solver();
-  for (const auto& a : assertions)
+  if (TraceIsOn("ff::range::assert"))
   {
-    Trace("ff::range::assert") << "to z3: " << a << std::endl;
-    // s.add(a);
+    for (const auto& a : assertions)
+    {
+      Trace("ff::range::assert") << "to z3: " << a << std::endl;
+    }
   }
   z3::check_result r = s.check(assertions.size(), &assertions[0]);
   switch (r)
@@ -394,13 +590,17 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       }
       for (const auto& [var, entry] : varsToBits)
       {
-        const auto& [z3var, bitI] = entry;
-        Integer z3val = Integer(z3model.eval(z3var).get_decimal_string(0));
-        auto val = FiniteFieldValue(z3val.isBitSet(bitI), d_p);
-        Trace("ff::range::model")
-            << "model " << var << ": " << val.toSignedInteger() << std::endl;
-        Assert(!model.count(var));
-        model.insert({var, val});
+        const auto& [cvcVar, bitI] = entry;
+        if (ints.count(cvcVar))
+        {
+          auto z3var = ints.at(cvcVar);
+          Integer z3val = Integer(z3model.eval(z3var).get_decimal_string(0));
+          auto val = FiniteFieldValue(z3val.isBitSet(bitI), d_p);
+          Trace("ff::range::model")
+              << "model " << var << ": " << val.toSignedInteger() << std::endl;
+          Assert(!model.count(var));
+          model.insert({var, val});
+        }
       }
 
       return model;
@@ -483,6 +683,23 @@ void RangeSolver::clear()
   d_assertedRanges.clear();
   d_ranges.clear();
   d_facts.clear();
+}
+
+Node RangeSolver::mkAdd(std::vector<Node>&& summands)
+{
+  auto nm = NodeManager::currentNM();
+  if (summands.empty())
+  {
+    return nm->mkConst(FiniteFieldValue(0, d_p));
+  }
+  else if (summands.size() == 1)
+  {
+    return summands[0];
+  }
+  else
+  {
+    return nm->mkNode(kind::FINITE_FIELD_ADD, std::move(summands));
+  }
 }
 
 Range::Range(const Integer& singleton) : d_lo(singleton), d_hi(singleton){};

@@ -143,8 +143,12 @@ void Matrix::ref()
       const auto& [_, pr2] =
           *std::min_element(prOptions.begin(), prOptions.end());
       Trace("ff::gauss::ref::debug") << " chose pr=" << pr2 << std::endl;
-      swapRows(pr, pr2);
-      // could defer divisions with a fractional representation.
+      if (pr2 != pr)
+      {
+        swapRows(pr, pr2);
+        Trace("ff::gauss::ref::debug")
+            << "swap " << pr << " <-> " << pr2 << ": " << *this << std::endl;
+      }
       scaleRow(pr, -getEntry(pr, pc).recip());
       Assert(getEntry(pr, pc).toSignedInteger() == -1);
       for (size_t i = pr + 1; i < d_rows; ++i)
@@ -216,6 +220,39 @@ bool Matrix::inRref() const
   return true;
 }
 
+std::pair<std::vector<std::pair<size_t, std::vector<std::pair<size_t, Ffv>>>>,
+          std::vector<std::vector<std::pair<size_t, Ffv>>>>
+Matrix::output() const
+{
+  std::vector<std::pair<size_t, std::vector<std::pair<size_t, Ffv>>>> substs{};
+  std::vector<std::vector<std::pair<size_t, Ffv>>> eqns{};
+  for (size_t r = 0; r < d_rows; ++r)
+  {
+    if (!d_mat[r].empty())
+    {
+      size_t firstC = d_mat[r][0].first;
+      if (firstC < elimCols())
+      {
+        substs.emplace_back(firstC, d_mat[r]);
+        Assert(substs.back().second[0].second.toSignedInteger() == -1);
+        substs.back().second.erase(substs.back().second.begin());
+      }
+      else
+      {
+        eqns.push_back(d_mat[r]);
+      }
+    }
+  }
+  return {std::move(substs), std::move(eqns)};
+}
+
+std::string Matrix::toString() const
+{
+  std::stringstream o{};
+  o << *this;
+  return o.str();
+}
+
 /** r * k */
 Row scaleRow(const Row& r, const Ffv& k)
 {
@@ -262,10 +299,12 @@ Row addScaleRows(const Row& r0, const Row& r1, const Ffv& k)
   if (i0 < r0.size())
   {
     // copy rest of r0
+    out.insert(out.end(), std::next(r0.begin(), i0), r0.end());
   }
   else if (i1 < r1.size())
   {
     // copy rest of r1
+    out.insert(out.end(), std::next(r1.begin(), i1), r1.end());
   }
   return out;
 }
@@ -325,6 +364,7 @@ void Matrix::scaleRow(size_t r, const Ffv& k)
 }
 void Matrix::addRowMultiple(size_t rSrc, size_t rDst, const Ffv& srcMultiple)
 {
+  Assert(rSrc != rDst);
   Assert(rSrc < d_rows);
   Assert(rDst < d_rows);
   Row newRDst = addScaleRows(d_mat[rDst], d_mat[rSrc], srcMultiple);
@@ -358,8 +398,8 @@ std::ostream& operator<<(std::ostream& o, const Matrix& m)
       sizes[c] = std::max(sizes[c], s[r][c].size());
     }
   }
-  o << " Matrix GF(" << m.mod() << "), " << m.rows() << " x " << m.cols()
-    << ", " << m.protCols() << " protected columns" << std::endl;
+  o << " Matrix " << m.rows() << " x " << m.cols() << ", " << m.protCols()
+    << " protected columns, GF(" << m.mod() << "), " << std::endl;
   for (size_t r = 0; r < m.rows(); ++r)
   {
     o << '[';

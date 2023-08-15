@@ -65,6 +65,9 @@ class RangeSolver : EnvObj
   void clear();
 
  private:
+  /** create a sum (with as few as 0 elements) */
+  Node mkAdd(std::vector<Node>&& summands);
+
   /** Ranges detected. */
   std::unordered_map<Node, Range> d_assertedRanges{};
   /** Ranges computed. */
