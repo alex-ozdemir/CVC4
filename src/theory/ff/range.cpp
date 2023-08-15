@@ -246,8 +246,8 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
               for (size_t i = 0; i < bits.size(); ++i)
               {
                 varsToBits.insert({bits[i], {acc, i}});
+                d_assertedRanges.erase(bits[i]);
               }
-              // remove bit ranges?
             }
             if (summands.size() > 1)
             {
@@ -262,7 +262,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
         }
         rws.insert({current, newCurrent});
       }
-      f = rws.at(f);
+      f = rws.count(f) ? rws.at(f) : f;
     }
   }
 
@@ -415,6 +415,14 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
   std::unordered_map<Node, z3::expr> ints{};
   std::vector<z3::expr> assertions{};
 
+  // every range must be asserted, regardless of use.
+  for (const auto& [var, range] : d_assertedRanges)
+  {
+    z3::expr e = ctx.int_const(var.getName().c_str());
+    assertions.push_back(z3Range(e, range));
+    ints.insert({var, e});
+  }
+
   for (const auto& f : facts)
   {
     Trace("ff::range::debug") << "enc fact " << f << std::endl;
@@ -428,10 +436,6 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       if (current.isVar())
       {
         e = ctx.int_const(current.getName().c_str());
-        if (d_assertedRanges.count(current))
-        {
-          assertions.push_back(z3Range(e, d_assertedRanges.at(current)));
-        }
       }
       else if (current.isConst())
       {
