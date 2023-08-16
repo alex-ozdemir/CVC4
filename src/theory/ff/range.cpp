@@ -563,11 +563,11 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
                          << std::endl;
   // specify tactic manually.
   z3::solver s = z3::tactic(ctx, "qfnia").mk_solver();
-  if (TraceIsOn("ff::range::assert"))
+  if (TraceIsOn("ff::range::z3"))
   {
     for (const auto& a : assertions)
     {
-      Trace("ff::range::assert") << "to z3: " << a << std::endl;
+      Trace("ff::range::z3") << "to z3: " << a << std::endl;
     }
   }
   z3::check_result r = s.check(assertions.size(), &assertions[0]);
