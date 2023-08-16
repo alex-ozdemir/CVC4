@@ -100,6 +100,10 @@ SpectrumOpt helperResultMul(SpectrumOpt&& a, SpectrumOpt&& b)
 
 SpectrumOpt spectrum(const Node& t, uint8_t depth)
 {
+  if (t.getKind() == kind::NOT)
+  {
+    return {};
+  }
   Assert(t.getType().isFiniteField() || t.getKind() == kind::EQUAL) << t;
   if (Theory::isLeafOf(t, THEORY_FF))
   {
@@ -118,23 +122,24 @@ SpectrumOpt spectrum(const Node& t, uint8_t depth)
   {
     case kind::FINITE_FIELD_ADD:
     {
-      SpectrumOpt acc = spectrum(t[0]);
+      SpectrumOpt acc = spectrum(t[0], depth - 1);
       for (size_t i = 1; i < t.getNumChildren(); ++i)
       {
-        acc = helperResultAdd(std::move(acc), spectrum(t[i]));
+        acc = helperResultAdd(std::move(acc), spectrum(t[i], depth - 1));
       }
       return acc;
     }
     case kind::EQUAL:
     {
-      return helperResultSub(spectrum(t[0]), spectrum(t[1]));
+      return helperResultSub(spectrum(t[0], depth - 1),
+                             spectrum(t[1], depth - 1));
     }
     case kind::FINITE_FIELD_MULT:
     {
-      SpectrumOpt acc = spectrum(t[0]);
+      SpectrumOpt acc = spectrum(t[0], depth - 1);
       for (size_t i = 1; i < t.getNumChildren(); ++i)
       {
-        acc = helperResultMul(std::move(acc), spectrum(t[i]));
+        acc = helperResultMul(std::move(acc), spectrum(t[i], depth - 1));
       }
       return acc;
     }
@@ -143,12 +148,20 @@ SpectrumOpt spectrum(const Node& t, uint8_t depth)
   return {};
 }
 
+bool zeroConstraint(const Node& fact)
+{
+  SpectrumOpt r = spectrum(fact);
+  return r.has_value() && r->degree == 1 && r->val0.getValue() == 0;
+}
+
+bool oneConstraint(const Node& fact)
+{
+  SpectrumOpt r = spectrum(fact);
+  return r.has_value() && r->degree == 1 && r->val1.getValue() == 0;
+}
+
 std::optional<Node> bitConstraint(const Node& fact)
 {
-  if (fact.getKind() == kind::NOT)
-  {
-    return {};
-  }
   SpectrumOpt r = spectrum(fact);
   if (r.has_value() && r->degree == 2 && r->val0.getValue() == 0
       && r->val1.getValue() == 0)

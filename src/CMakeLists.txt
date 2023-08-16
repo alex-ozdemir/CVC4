@@ -77,6 +77,8 @@ libcvc5_add_sources(
   preprocessing/passes/bv_to_int.h
   preprocessing/passes/extended_rewriter_pass.cpp
   preprocessing/passes/extended_rewriter_pass.h
+  preprocessing/passes/ff_disjunctive_bit.cpp
+  preprocessing/passes/ff_disjunctive_bit.h
   preprocessing/passes/ff_to_int.cpp
   preprocessing/passes/ff_to_int.h
   preprocessing/passes/foreign_theory_rewrite.cpp

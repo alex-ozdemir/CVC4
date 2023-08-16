@@ -123,9 +123,10 @@ def add_to_cmake(header_path, cpp_path):
             continue
         print(f"trying to add {cpp_path} to {cmake_path}")
         lines = open(cmake_path).readlines()
-        if os.path.dirname(header_path) not in [l.strip() for l in lines]:
+        suf_prefix = os.path.dirname(cpp_path)
+        if all(not l.strip().startswith(suf_prefix) for l in lines):
             print(
-                f"no source file in {os.path.dirname(header_path)} registered in {cmake_path}; looking elsewhere"
+                f"no source file in {suf_prefix} registered in {cmake_path}; looking elsewhere"
             )
             continue
         output = ""

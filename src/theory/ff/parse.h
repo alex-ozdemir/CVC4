@@ -62,6 +62,18 @@ using SpectrumOpt = std::optional<Spectrum>;
 SpectrumOpt spectrum(const Node& t, uint8_t depth = 5);
 
 /**
+ * Detect whether this node constrains a variable to 0.
+ * @param fact a node asserted to FF
+ */
+bool zeroConstraint(const Node& fact);
+
+/**
+ * Detect whether this node constrains a variable to 1.
+ * @param fact a node asserted to FF
+ */
+bool oneConstraint(const Node& fact);
+
+/**
  * Detect whether this node is a bit-constraint.
  * @param fact a node asserted to FF
  * @return a variable that is bit-constrained by this fact, if this fact is a

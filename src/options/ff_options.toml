@@ -18,6 +18,14 @@ name   = "Finite Field Theory"
   help       = "include field polynomials in Groebner basis computation; don't do this"
 
 [[option]]
+  name       = "ffDisjunctiveBit"
+  category   = "expert"
+  long       = "ff-disjunctive-bit"
+  type       = "bool"
+  default    = "false"
+  help       = "leave disjunctive bit constraints (or (= x 1) (= x 0)) alone; otherwise, preprocess to (= (* x x) x)"
+
+[[option]]
   name       = "ffr"
   category   = "expert"
   long       = "ffr"
