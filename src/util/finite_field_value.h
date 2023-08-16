@@ -31,26 +31,34 @@
 
 namespace cvc5::internal {
 
+struct FfSize
+{
+  FfSize(Integer size) : d_val(size)
+  {
+    // we only support prime fields right now
+    Assert(size.isProbablePrime()) << "not prime: " << size;
+  }
+  operator const Integer&() const { return d_val; }
+  bool operator==(const FfSize& y) const { return d_val == y.d_val; }
+  bool operator!=(const FfSize& y) const { return d_val != y.d_val; }
+
+  Integer d_val;
+}; /* struct FfSize */
+
 class FiniteFieldValue
 {
  public:
-  FiniteFieldValue(const Integer& val, const Integer& size)
+  FiniteFieldValue(const Integer& val, const FfSize& size)
       : d_size(size),
         // normalize value into [0, size)
         d_value(val.floorDivideRemainder(size))
   {
-    // we only support prime fields right now
-    Assert(size.isProbablePrime());
   }
 
   /**
    * Construct the zero in this field
    */
-  FiniteFieldValue(const Integer& size) : d_size(size), d_value(0)
-  {
-    // we only support prime fields right now
-    Assert(size.isProbablePrime());
-  }
+  FiniteFieldValue(const FfSize& size) : d_size(size), d_value(0) {}
 
   ~FiniteFieldValue() {}
 
@@ -128,7 +136,6 @@ class FiniteFieldValue
   static FiniteFieldValue mkOne(const Integer& modulus);
 
  private:
-
   /** bring d_value back into the range below */
   void normalize();
 
@@ -138,30 +145,17 @@ class FiniteFieldValue
    *  - no negative numbers: d_value >= 0
    */
 
-  Integer d_size;
+  FfSize d_size;
   Integer d_value;
 
 }; /* class FiniteFieldValue */
-
-struct FfSize
-{
-  FfSize(Integer size) : d_size(size)
-  {
-    // we only support prime fields right now
-    Assert(size.isProbablePrime());
-  }
-  operator const Integer&() const { return d_size; }
-  bool operator==(const FfSize& y) const { return d_size == y.d_size; }
-
-  Integer d_size;
-}; /* struct FfSize */
 
 /*
  * Hash function for the FfSize constants.
  */
 struct FfSizeHashFunction
 {
-  size_t operator()(const FfSize& to) const { return to.d_size.hash(); }
+  size_t operator()(const FfSize& to) const { return to.d_val.hash(); }
 }; /* struct FfSizeHashFunction */
 
 /*
@@ -180,7 +174,10 @@ struct IntToFiniteField
     Assert(size.isProbablePrime());
   }
   operator const Integer&() const { return d_size; }
-  bool operator==(const IntToFiniteField& y) const { return d_size == y.d_size; }
+  bool operator==(const IntToFiniteField& y) const
+  {
+    return d_size == y.d_size;
+  }
 
   Integer d_size;
 }; /* struct IntToFiniteField */
@@ -190,7 +187,10 @@ struct IntToFiniteField
  */
 struct IntToFiniteFieldHashFunction
 {
-  size_t operator()(const IntToFiniteField& to) const { return to.d_size.hash(); }
+  size_t operator()(const IntToFiniteField& to) const
+  {
+    return to.d_size.hash();
+  }
 }; /* struct IntToFiniteFieldHashFunction */
 
 /* -----------------------------------------------------------------------
@@ -245,12 +245,8 @@ FiniteFieldValue operator/(const FiniteFieldValue& x,
  * ----------------------------------------------------------------------- */
 
 std::ostream& operator<<(std::ostream& os, const FiniteFieldValue& ff);
-
-inline std::ostream& operator<<(std::ostream& os, const IntToFiniteField& bv);
-inline std::ostream& operator<<(std::ostream& os, const IntToFiniteField& bv)
-{
-  return os << "[" << bv.d_size << "]";
-}
+std::ostream& operator<<(std::ostream& os, const FfSize& ff);
+std::ostream& operator<<(std::ostream& os, const IntToFiniteField& bv);
 
 }  // namespace cvc5::internal
 

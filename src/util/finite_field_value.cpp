@@ -31,7 +31,7 @@ Integer FiniteFieldValue::toInteger() const { return d_value; }
 
 Integer FiniteFieldValue::toSignedInteger() const
 {
-  Integer half_size = d_size.divByPow2(1) + 1;
+  Integer half_size = d_size.d_val.divByPow2(1) + 1;
   return (d_value < half_size) ? d_value : d_value - d_size;
 }
 
@@ -43,12 +43,12 @@ std::string FiniteFieldValue::toString() const
 size_t FiniteFieldValue::hash() const
 {
   PairHashFunction<size_t, size_t> h;
-  return h(std::make_pair(d_value.hash(), d_size.hash()));
+  return h(std::make_pair(d_value.hash(), d_size.d_val.hash()));
 }
 
 void FiniteFieldValue::normalize()
 {
-  d_value = d_value.floorDivideRemainder(d_size);
+  d_value = d_value.floorDivideRemainder(d_size.d_val);
 }
 
 /* -----------------------------------------------------------------------
@@ -110,7 +110,7 @@ FiniteFieldValue operator-(const FiniteFieldValue& x, const FiniteFieldValue& y)
 
 FiniteFieldValue operator-(const FiniteFieldValue& x)
 {
-  return {x.d_size - x.d_value, x.d_size};
+  return {x.d_size.d_val - x.d_value, x.d_size};
 }
 
 FiniteFieldValue operator*(const FiniteFieldValue& x, const FiniteFieldValue& y)
@@ -178,6 +178,16 @@ FiniteFieldValue& FiniteFieldValue::operator/=(const FiniteFieldValue& y)
 std::ostream& operator<<(std::ostream& os, const FiniteFieldValue& ff)
 {
   return os << ff.toString();
+}
+
+std::ostream& operator<<(std::ostream& os, const FfSize& ff)
+{
+  return os << ff.d_val;
+}
+
+std::ostream& operator<<(std::ostream& os, const IntToFiniteField& bv)
+{
+  return os << "[" << bv.d_size << "]";
 }
 
 /* -----------------------------------------------------------------------

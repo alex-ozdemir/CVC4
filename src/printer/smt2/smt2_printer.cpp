@@ -223,7 +223,7 @@ void Smt2Printer::toStream(std::ostream& out,
       out << "(_ BitVec " << n.getConst<BitVectorSize>().d_size << ")";
       break;
     case kind::FINITE_FIELD_TYPE:
-      out << "(_ FiniteField " << n.getConst<FfSize>().d_size << ")";
+      out << "(_ FiniteField " << n.getConst<FfSize>().d_val << ")";
       break;
     case kind::INT_TO_FINITEFIELD_OP:
       out << "(_ int2ff " << n.getConst<IntToFiniteField>().d_size << ")";

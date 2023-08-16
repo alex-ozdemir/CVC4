@@ -119,9 +119,15 @@ def add_to_cmake(header_path, cpp_path):
     ):
         cmake_path = f"{cmake_dir}/CMakeLists.txt"
         if not os.path.exists(cmake_path):
+            print(f"no CMakeLists.txt at {cmake_path}; looking elsewhere")
             continue
         print(f"trying to add {cpp_path} to {cmake_path}")
         lines = open(cmake_path).readlines()
+        if os.path.dirname(header_path) not in [l.strip() for l in lines]:
+            print(
+                f"no source file in {os.path.dirname(header_path)} registered in {cmake_path}; looking elsewhere"
+            )
+            continue
         output = ""
         while len(lines) > 0 and "libcvc5_add_sources" not in lines[0]:
             output += lines[0]
@@ -131,11 +137,13 @@ def add_to_cmake(header_path, cpp_path):
             continue
         output += lines[0]
         del lines[0]
-        while len(lines) > 0 and (lines[0].strip() < cpp_path or lines[0].strip() == "("):
+        while len(lines) > 0 and (
+            lines[0].strip() < cpp_path or lines[0].strip() == "("
+        ):
             output += lines[0]
             del lines[0]
         if len(lines) == 0:
-            print(f"could not find place for {cpp_path} in {cmake_path}")
+            print(f"could not find place for {cpp_path} in {cmake_path}; looking elsewhere")
             continue
         output += f"  {cpp_path}\n"
         output += f"  {header_path}\n"
