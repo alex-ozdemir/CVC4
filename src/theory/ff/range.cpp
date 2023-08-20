@@ -118,17 +118,22 @@ bool isFf(TNode n)
   return false;
 }
 
-std::pair<Result, std::unordered_map<Node, FiniteFieldValue>> RangeSolver::check()
+std::pair<Result, std::unordered_map<Node, FiniteFieldValue>>
+RangeSolver::check()
 {
-  auto resultAndModel = checkHelper(true, options().ff.ffrIntTimeout);
-  if (resultAndModel.first == Result::SAT)
+  if (options().ff.ffrIntTimeout != 1)
   {
-    return resultAndModel;
+    auto resultAndModel = checkHelper(true, options().ff.ffrIntTimeout);
+    if (resultAndModel.first == Result::SAT)
+    {
+      return resultAndModel;
+    }
   }
   return checkHelper(false, 0);
 }
 
-std::pair<Result, std::unordered_map<Node, FiniteFieldValue>> RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
+std::pair<Result, std::unordered_map<Node, FiniteFieldValue>>
+RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
 {
   Range bitRange = Range(0, 1);
 
