@@ -97,19 +97,24 @@ void SubTheory::postCheck(Theory::Effort e)
         d_rangeSolver.assertFact(node);
       }
 
-      std::unordered_map<Node, FiniteFieldValue> model = d_rangeSolver.check();
+      std::pair<Result, std::unordered_map<Node, FiniteFieldValue>> res =
+          d_rangeSolver.check();
 
-      if (model.empty())
+      if (res.first == Result::UNSAT)
       {
         std::copy(
             d_facts.begin(), d_facts.end(), std::back_inserter(d_conflict));
       }
+      else if (res.first == Result::UNKNOWN)
+      {
+        Unreachable() << "UNKNOWN";
+      }
       else
       {
         const auto nm = NodeManager::currentNM();
-        for (const auto& it : model)
+        for (const auto& [var, val] : res.second)
         {
-          d_model.insert({it.first, nm->mkConst<FiniteFieldValue>(it.second)});
+          d_model.insert({var, nm->mkConst<FiniteFieldValue>(val)});
         }
       }
     }

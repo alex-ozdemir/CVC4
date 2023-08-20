@@ -35,6 +35,12 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
+enum class Result {
+  SAT,
+  UNSAT,
+  UNKNOWN,
+};
+
 struct Range
 {
   Range(const Integer& singleton);
@@ -60,7 +66,8 @@ class RangeSolver : EnvObj
   RangeSolver(Env& env, const Integer& p);
   void assertFact(TNode fact);
   // TODO: SAT might have an empty model.
-  std::unordered_map<Node, FiniteFieldValue> check();
+  std::pair<Result, std::unordered_map<Node, FiniteFieldValue>> check();
+  std::pair<Result, std::unordered_map<Node, FiniteFieldValue>> checkHelper(bool unsound, size_t timeoutMs);
   Range getRange(TNode term);
   void clear();
 

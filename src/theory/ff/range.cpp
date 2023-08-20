@@ -118,7 +118,17 @@ bool isFf(TNode n)
   return false;
 }
 
-std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
+std::pair<Result, std::unordered_map<Node, FiniteFieldValue>> RangeSolver::check()
+{
+  auto resultAndModel = checkHelper(true, options().ff.ffrIntTimeout);
+  if (resultAndModel.first == Result::SAT)
+  {
+    return resultAndModel;
+  }
+  return checkHelper(false, 0);
+}
+
+std::pair<Result, std::unordered_map<Node, FiniteFieldValue>> RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
 {
   Range bitRange = Range(0, 1);
 
@@ -179,7 +189,6 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
     // rewrite facts
     for (auto& f : facts)
     {
-      Trace("ff::range::debug") << "enc fact " << f << std::endl;
       for (TNode current :
            NodeDfsIterable(f, VisitOrder::POSTORDER, [&rws](TNode nn) {
              return rws.count(nn) || !isFf(nn);
@@ -474,7 +483,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
 
     if (f.getKind() == kind::EQUAL)
     {
-      if (options().ff.ffrUnsoundInt)
+      if (unsound)
       {
         assertions.push_back(ints.at(f[0]) == ints.at(f[1]));
       }
@@ -495,6 +504,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
           Trace("ff::range::debug")
               << "r range " << f[1] << ": " << getRange(f[1]) << std::endl;
           auto qRange = diffRange.floorDivideQuotient(d_p);
+          Trace("ff::range") << "for eq " << f << std::endl;
           Trace("ff::range") << "q range " << qRange.d_lo << " to "
                              << qRange.d_hi << std::endl;
           assertions.push_back(z3Range(q, qRange));
@@ -505,7 +515,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
     {
       if (!f.getConst<bool>())
       {
-        return {};
+        return {Result::UNKNOWN, {}};
       }
     }
     else
@@ -513,7 +523,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
       Assert(f.getKind() == kind::NOT && f[0].getKind() == kind::EQUAL) << f;
       Node e = f[0];
       z3::expr diff = ints.at(e[0]) - ints.at(e[1]);
-      if (options().ff.ffrUnsoundInt)
+      if (unsound)
       {
         assertions.push_back(diff != 0);
       }
@@ -538,6 +548,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
             auto diffRange = getRange(e[0]) - getRange(e[1]);
             Range nRange(1, d_p);
             auto qRange = (diffRange - nRange).floorDivideQuotient(d_p);
+            Trace("ff::range") << "for diseq " << f << std::endl;
             Trace("ff::range") << "q range " << qRange.d_lo << " to "
                                << qRange.d_hi << std::endl;
             assertions.push_back(z3Range(q, qRange));
@@ -563,6 +574,10 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
                          << std::endl;
   // specify tactic manually.
   z3::solver s = z3::tactic(ctx, "qfnia").mk_solver();
+  if (timeoutMs != 0)
+  {
+    s.set(":timeout", static_cast<uint32_t>(timeoutMs));
+  }
   if (TraceIsOn("ff::range::z3"))
   {
     for (const auto& a : assertions)
@@ -623,7 +638,7 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
         modelAsNodes.insert({var, nm->mkConst(val)});
       }
 
-      return model;
+      return {Result::SAT, std::move(model)};
     }
     case z3::check_result::unsat:
     {
@@ -635,10 +650,11 @@ std::unordered_map<Node, FiniteFieldValue> RangeSolver::check()
           Trace("ff::range::core") << " " << c << std::endl;
         }
       }
-      return {};
+      return {Result::UNSAT, {}};
     }
     case z3::check_result::unknown:
     {
+      return {Result::UNKNOWN, {}};
       Unimplemented() << "unknown";
     }
     default: Unreachable() << "error";
