@@ -128,6 +128,10 @@ RangeSolver::check()
     {
       return resultAndModel;
     }
+    if (resultAndModel.first == Result::UNSAT)
+    {
+      Trace("ff::range") << "integer UNSAT " << std::endl;
+    }
   }
   return checkHelper(false, 0);
 }
@@ -422,6 +426,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
 
   // embed facts for z3
   z3::context ctx;
+  // z3::set_param("verbose", 20);
   z3::expr zero = ctx.int_val(0);
   z3::expr one = ctx.int_val(1);
   z3::expr p = ctx.int_val(d_p.toString().c_str());
