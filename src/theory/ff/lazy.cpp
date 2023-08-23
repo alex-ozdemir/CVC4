@@ -219,6 +219,7 @@ void LazySolver::check()
                 << " (= " << a << "\n    " << b << ")" << std::endl;
             AlwaysAssert(a.getNumChildren() == b.getNumChildren())
                 << "Unimplemented";
+            // TODO: need to show that they're bits
             for (size_t k = 0; k < a.getNumChildren(); ++k)
             {
               CoCoA::RingElem diff =
