@@ -40,10 +40,10 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-RangeSolver::RangeSolver(Env& env, const Integer& p) : EnvObj(env), d_p(p)
+RangeSolver::RangeSolver(Env& env, const Integer& p) : EnvObj(env), FieldObj(p)
 {
   Trace("ff::range")
-      << "new range solver; field:\n(define-sort F () (_ FiniteField " << d_p
+      << "new range solver; field:\n(define-sort F () (_ FiniteField " << size()
       << "))" << std::endl;
 };
 
@@ -181,7 +181,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
   {
     size_t accI = 0;
     auto nm = NodeManager::currentNM();
-    auto ffSort = nm->mkFiniteFieldType(d_p);
+    auto ffSort = nm->mkFiniteFieldType(size());
     std::unordered_map<Node, Node> rws{};
 
     // enumerate (parent, child) pairs; compute parent counts
@@ -346,14 +346,14 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
     }
     size_t rows = affineFacts.size();
     // one extra protected column for the constant.
-    iToVar.push_back(nm->mkConst(FiniteFieldValue(1, d_p)));
+    iToVar.push_back(nm->mkConst(FiniteFieldValue(1, size())));
     size_t protCols = protVars.size() + 1;
     size_t cols = protCols + elimVars.size();
     size_t constCol = cols - 1;
     Trace("ff::gauss") << "Gauss starts with " << elimVars.size() << "/"
                        << (cols - 1) << " elim'ble vars and " << rows << " eqns"
                        << std::endl;
-    Matrix matrix(d_p, cols, protCols, rows);
+    Matrix matrix(size(), cols, protCols, rows);
     for (size_t r = 0; r < rows; ++r)
     {
       for (const auto& [var, coeff] : affineFacts[r].second)
@@ -372,7 +372,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
     Assert(matrix.inRref());
     facts = std::move(nonLinearFacts);
     const auto& [substs, eqns] = matrix.output();
-    Node zero = nm->mkConst(FiniteFieldValue(0, d_p));
+    Node zero = nm->mkConst(FiniteFieldValue(0, size()));
     for (const auto& [subVar, subExpr] : substs)
     {
       std::vector<Node> summands{};
@@ -429,7 +429,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
   // z3::set_param("verbose", 20);
   z3::expr zero = ctx.int_val(0);
   z3::expr one = ctx.int_val(1);
-  z3::expr p = ctx.int_val(d_p.toString().c_str());
+  z3::expr p = ctx.int_val(size().d_val.toString().c_str());
   size_t fI = 0;
   std::unordered_map<Node, z3::expr> ints{};
   std::vector<z3::expr> assertions{};
@@ -513,7 +513,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
               << "l range " << f[0] << ": " << getRange(f[0]) << std::endl;
           Trace("ff::range::debug")
               << "r range " << f[1] << ": " << getRange(f[1]) << std::endl;
-          auto qRange = diffRange.floorDivideQuotient(d_p);
+          auto qRange = diffRange.floorDivideQuotient(size());
           Trace("ff::range") << "for eq " << f << std::endl;
           Trace("ff::range") << "q range " << qRange.d_lo << " to "
                              << qRange.d_hi << std::endl;
@@ -556,8 +556,8 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
           {
             // use range analysis to bound q tightly.
             auto diffRange = getRange(e[0]) - getRange(e[1]);
-            Range nRange(1, d_p);
-            auto qRange = (diffRange - nRange).floorDivideQuotient(d_p);
+            Range nRange(1, size());
+            auto qRange = (diffRange - nRange).floorDivideQuotient(size());
             Trace("ff::range") << "for diseq " << f << std::endl;
             Trace("ff::range") << "q range " << qRange.d_lo << " to "
                                << qRange.d_hi << std::endl;
@@ -618,7 +618,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
           // Not sure what to do with the argument to get_decimal_string.
           auto val = FiniteFieldValue(
               Integer(z3model.eval(ints.at(it.first)).get_decimal_string(0)),
-              d_p);
+              size());
           Trace("ff::range::model") << "model " << it.first << ": "
                                     << val.toSignedInteger() << std::endl;
           model.insert({it.first, val});
@@ -640,7 +640,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       {
         const auto& [cvcVar, bitI] = entry;
         bool bit = model.at(cvcVar).toInteger().isBitSet(bitI);
-        auto val = FiniteFieldValue(bit, d_p);
+        auto val = FiniteFieldValue(bit, size());
         Trace("ff::range::model")
             << "model " << var << ": " << val.toSignedInteger() << std::endl;
         Assert(!model.count(var));
@@ -712,7 +712,7 @@ Range RangeSolver::getRange(TNode term)
     }
     else if (current.isVar() || current.getKind() == kind::APPLY_UF)
     {
-      r = Range(0, d_p - 1);
+      r = Range(0, size().d_val - 1);
     }
     else
     {
@@ -729,23 +729,6 @@ void RangeSolver::clear()
   d_assertedRanges.clear();
   d_ranges.clear();
   d_facts.clear();
-}
-
-Node RangeSolver::mkAdd(std::vector<Node>&& summands)
-{
-  auto nm = NodeManager::currentNM();
-  if (summands.empty())
-  {
-    return nm->mkConst(FiniteFieldValue(0, d_p));
-  }
-  else if (summands.size() == 1)
-  {
-    return summands[0];
-  }
-  else
-  {
-    return nm->mkNode(kind::FINITE_FIELD_ADD, std::move(summands));
-  }
 }
 
 Range::Range(const Integer& singleton) : d_lo(singleton), d_hi(singleton){};

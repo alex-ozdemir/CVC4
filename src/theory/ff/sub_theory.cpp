@@ -29,6 +29,7 @@
 #include "options/ff_options.h"
 #include "smt/env_obj.h"
 #include "theory/ff/core.h"
+#include "theory/ff/lazy.h"
 #include "theory/ff/multi_roots.h"
 #include "util/cocoa_globals.h"
 #include "util/finite_field_value.h"
@@ -89,7 +90,36 @@ void SubTheory::postCheck(Theory::Effort e)
   if (e == Theory::EFFORT_FULL)
   {
     if (d_facts.empty()) return;
-    if (options().ff.ffr)
+    if (options().ff.ffl)
+    {
+      LazySolver lazy(d_env, d_modulus);
+      for (const Node& node : d_facts)
+      {
+        lazy.assertFact(node);
+      }
+
+      lazy.check();
+
+      if (lazy.result() == Result::UNSAT)
+      {
+        std::copy(
+            d_facts.begin(), d_facts.end(), std::back_inserter(d_conflict));
+      }
+      else if (lazy.result() == Result::UNKNOWN)
+      {
+        Unreachable() << "UNKNOWN";
+      }
+      else
+      {
+        Assert(lazy.result() == Result::SAT);
+        const auto nm = NodeManager::currentNM();
+        for (const auto& [var, val] : lazy.model())
+        {
+          d_model.insert({var, nm->mkConst<FiniteFieldValue>(val)});
+        }
+      }
+    }
+    else if (options().ff.ffr)
     {
       d_rangeSolver.clear();
       for (const Node& node : d_facts)

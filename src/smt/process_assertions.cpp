@@ -60,9 +60,7 @@ ProcessAssertions::ProcessAssertions(Env& env, SolverEngineStatistics& stats)
   d_true = NodeManager::currentNM()->mkConst(true);
 }
 
-ProcessAssertions::~ProcessAssertions()
-{
-}
+ProcessAssertions::~ProcessAssertions() {}
 
 void ProcessAssertions::finishInit(PreprocessingPassContext* pc)
 {
@@ -204,9 +202,13 @@ bool ProcessAssertions::apply(AssertionPipeline& ap)
   {
     applyPass("ff-to-int", ap);
   }
-  if(!options().ff.ffDisjunctiveBit)
+  if (!options().ff.ffDisjunctiveBit || options().ff.ffBitsum)
   {
     applyPass("ff-disjunctive-bit", ap);
+    if (options().ff.ffBitsum)
+    {
+      applyPass("ff-bitsum", ap);
+    }
   }
 
   // Assertions MUST BE guaranteed to be rewritten by this point
@@ -315,7 +317,7 @@ bool ProcessAssertions::apply(AssertionPipeline& ap)
   {
     applyPass("ho-elim", ap);
   }
-  
+
   // begin: INVARIANT to maintain: no reordering of assertions or
   // introducing new ones
 

@@ -28,18 +28,13 @@
 #include "expr/node.h"
 #include "smt/env_obj.h"
 #include "theory/ff/to_int.h"
+#include "theory/ff/util.h"
 #include "util/finite_field_value.h"
 #include "util/integer.h"
 
 namespace cvc5::internal {
 namespace theory {
 namespace ff {
-
-enum class Result {
-  SAT,
-  UNSAT,
-  UNKNOWN,
-};
 
 struct Range
 {
@@ -60,7 +55,7 @@ struct Range
   Integer d_lo, d_hi;
 };
 
-class RangeSolver : EnvObj
+class RangeSolver : EnvObj, FieldObj
 {
  public:
   RangeSolver(Env& env, const Integer& p);
@@ -72,8 +67,6 @@ class RangeSolver : EnvObj
   void clear();
 
  private:
-  /** create a sum (with as few as 0 elements) */
-  Node mkAdd(std::vector<Node>&& summands);
 
   /** Ranges detected. */
   std::unordered_map<Node, Range> d_assertedRanges{};
@@ -81,8 +74,6 @@ class RangeSolver : EnvObj
   std::unordered_map<Node, Range> d_ranges{};
   /** Non-range facts. */
   std::vector<Node> d_facts{};
-  /** The prime modulus for this field. */
-  Integer d_p;
 };
 
 std::ostream& operator<<(std::ostream& o, const Range& r);

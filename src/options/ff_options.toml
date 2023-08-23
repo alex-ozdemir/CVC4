@@ -26,6 +26,22 @@ name   = "Finite Field Theory"
   help       = "leave disjunctive bit constraints (or (= x 1) (= x 0)) alone; otherwise, preprocess to (= (* x x) x)"
 
 [[option]]
+  name       = "ffBitsum"
+  category   = "expert"
+  long       = "ff-bitsum"
+  type       = "bool"
+  default    = "false"
+  help       = "parse bitsums"
+
+[[option]]
+  name       = "ffl"
+  category   = "expert"
+  long       = "ffl"
+  type       = "bool"
+  default    = "false"
+  help       = "use the FF lazy solver"
+
+[[option]]
   name       = "ffr"
   category   = "expert"
   long       = "ffr"

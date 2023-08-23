@@ -39,23 +39,13 @@ PreprocessingPassResult FfDisjunctiveBit::applyInternal(
   for (uint64_t i = 0; i < assertionsToPreprocess->size(); ++i)
   {
     Node fact = (*assertionsToPreprocess)[i];
-    if (fact.getKind() == kind::OR && fact.getNumChildren() == 2
-        && fact[0].getKind() == kind::EQUAL && fact[1].getKind() == kind::EQUAL
-        && fact[0][1].getType().isFiniteField()
-        && fact[1][0].getType().isFiniteField())
+    std::optional<Node> var = theory::ff::parse::disjunctiveBitConstraint(fact);
+    if (var.has_value())
     {
-      using theory::ff::parse::oneConstraint;
-      using theory::ff::parse::zeroConstraint;
-      if ((oneConstraint(fact[0]) && zeroConstraint(fact[1]))
-          || (oneConstraint(fact[1]) && zeroConstraint(fact[0])))
-      {
-        using theory::ff::parse::spectrum;
-        Node var = spectrum(fact[0])->var;
-        Trace("ff::disjunctive-bit")
-            << "rw bit constraint on: " << var << std::endl;
-        Node var2 = nm->mkNode(kind::FINITE_FIELD_MULT, var, var);
-        assertionsToPreprocess->replace(i, nm->mkNode(kind::EQUAL, var2, var));
-      }
+      Trace("ff::disjunctive-bit")
+          << "rw bit constraint on: " << *var << std::endl;
+      Node var2 = nm->mkNode(kind::FINITE_FIELD_MULT, *var, *var);
+      assertionsToPreprocess->replace(i, nm->mkNode(kind::EQUAL, var2, *var));
     }
   }
   return PreprocessingPassResult::NO_CONFLICT;

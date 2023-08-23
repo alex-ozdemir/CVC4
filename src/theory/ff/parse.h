@@ -306,6 +306,41 @@ bitSums(const Node& t, IsBit isBit, HasOtherUses hasOtherUses)
   return {{std::move(bitSums), std::move(rest)}};
 }
 
+/**
+ * Extract linear monomials.
+ *
+ * @param t a potential affine sum
+ * @param hasOtherUses node predicate for whether there are other uses
+ * @return the linear monomials
+ *         everything else in the sum
+ */
+std::optional<std::pair<std::vector<std::pair<Node, FiniteFieldValue>>,
+                        std::vector<Node>>>
+extractLinearMonomials(const Node& t);
+
+/**
+ * Given a sum s1 + ... + sN, extract sub-sums of form k * (x0 + 2*x1 + 4*x2 +
+ * ... 2^I*xI), where each xJ passes the predicate isBit.
+ *
+ * @param t a potential bitsum
+ * @param isBit node set containing bit-constrained vars; these are prefered in
+ *              bitsum extraction.
+ * @return the bitsums (k, {xJ})
+ *         everything else in the sum
+ */
+std::optional<
+    std::pair<std::vector<std::pair<FiniteFieldValue, std::vector<Node>>>,
+              std::vector<Node>>>
+bitSums(const Node& t, std::unordered_set<Node> isBit);
+
+/**
+ * Is this a disjunctive bit constraint (or (= x 0) (= x 1))?
+ *
+ * @param t a fact
+ * @return the var that is bit-constrained
+ */
+std::optional<Node> disjunctiveBitConstraint(const Node& t);
+
 }  // namespace parse
 
 }  // namespace ff

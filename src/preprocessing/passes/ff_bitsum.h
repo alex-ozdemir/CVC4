@@ -10,13 +10,13 @@
  * directory for licensing information.
  * ****************************************************************************
  *
- * replace disjunctive bit constraints with polynomial bit constraints
+ * parse ff bitsums
  */
 
 #include "cvc5_private.h"
 
-#ifndef CVC5__PREPROCESSING__PASSES__FF_DISJUNCTIVE_BIT_H
-#define CVC5__PREPROCESSING__PASSES__FF_DISJUNCTIVE_BIT_H
+#ifndef CVC5__PREPROCESSING__PASSES__FF_BITSUM_H
+#define CVC5__PREPROCESSING__PASSES__FF_BITSUM_H
 
 // external includes
 
@@ -30,18 +30,29 @@ namespace cvc5::internal {
 namespace preprocessing {
 namespace passes {
 
-class FfDisjunctiveBit : public PreprocessingPass
+class FfBitsum : public PreprocessingPass
 {
  public:
-  FfDisjunctiveBit(PreprocessingPassContext* preprocContext);
+  FfBitsum(PreprocessingPassContext* preprocContext);
 
  protected:
   PreprocessingPassResult applyInternal(
       AssertionPipeline* assertionsToPreprocess) override;
+
+ private:
+  /**
+   * Process a non-leaf.
+   */
+  Node nonLeaf(Node original, std::vector<Node>&& rwChildren);
+
+  /**
+   * Process a leaf.
+   */
+  Node leaf(Node original);
 };
 
 }  // namespace passes
 }  // namespace preprocessing
 }  // namespace cvc5::internal
 
-#endif /* CVC5__PREPROCESSING__PASSES__FF_DISJUNCTIVE_BIT_H */
+#endif /* CVC5__PREPROCESSING__PASSES__FF_BITSUM_H */

@@ -224,6 +224,8 @@ RewriteResponse TheoryFiniteFieldsRewriter::postRewrite(TNode t)
       return RewriteResponse(REWRITE_DONE, postRewriteFfAdd(t));
     case kind::FINITE_FIELD_MULT:
       return RewriteResponse(REWRITE_DONE, postRewriteFfMult(t));
+    case kind::FINITE_FIELD_BITSUM:
+      return RewriteResponse(REWRITE_DONE, t);
     case kind::EQUAL: return RewriteResponse(REWRITE_DONE, postRewriteFfEq(t));
     default: return RewriteResponse(REWRITE_DONE, t);
   }
@@ -240,6 +242,8 @@ RewriteResponse TheoryFiniteFieldsRewriter::preRewrite(TNode t)
       return RewriteResponse(REWRITE_DONE, preRewriteFfAdd(t));
     case kind::FINITE_FIELD_MULT:
       return RewriteResponse(REWRITE_DONE, preRewriteFfMult(t));
+    case kind::FINITE_FIELD_BITSUM:
+      return RewriteResponse(REWRITE_DONE, t);
     case kind::EQUAL: return RewriteResponse(REWRITE_DONE, t);
     default: return RewriteResponse(REWRITE_DONE, t);
   }

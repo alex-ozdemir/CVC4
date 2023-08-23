@@ -520,6 +520,149 @@ std::optional<std::pair<Node, std::vector<Node>>> bitsConstraint(
   return {{negOneVar, std::move(bits)}};
 }
 
+std::optional<std::pair<std::vector<std::pair<Node, FiniteFieldValue>>,
+                        std::vector<Node>>>
+extractLinearMonomials(const Node& t)
+{
+  TypeNode ty = t.getType();
+  if (!ty.isFiniteField())
+  {
+    return {};
+  }
+  if (t.getKind() != kind::FINITE_FIELD_ADD)
+  {
+    return {};
+  }
+  std::vector<std::pair<Node, FiniteFieldValue>> monomials{};
+  std::vector<Node> otherSummands{};
+
+  for (const Node& summand : t)
+  {
+    auto monomial = linearMonomial(summand);
+    if (monomial.has_value())
+    {
+      monomials.push_back(std::move(monomial.value()));
+    }
+    else
+    {
+      otherSummands.push_back(summand);
+    }
+  }
+
+  return {{std::move(monomials), std::move(otherSummands)}};
+}
+
+std::optional<
+    std::pair<std::vector<std::pair<FiniteFieldValue, std::vector<Node>>>,
+              std::vector<Node>>>
+bitSums(const Node& t, std::unordered_set<Node> isBit)
+{
+  auto nm = NodeManager::currentNM();
+  auto res = extractLinearMonomials(t);
+  if (!res.has_value())
+  {
+    return {};
+  }
+  TypeNode ty = t.getType();
+  const Integer& size = ty.getFfSize();
+  auto& [monomials, rest] = res.value();
+  Trace("ff::parse::debug") << "bitSums start" << std::endl;
+
+  std::unordered_map<FiniteFieldValue, Node, FiniteFieldValueHashFunction>
+      bitMonomials{};
+  std::unordered_set<FiniteFieldValue, FiniteFieldValueHashFunction>
+      monomialCoeffs{};
+  std::priority_queue<std::pair<Integer, FiniteFieldValue>> q{};
+  for (const auto& [var, coeff] : monomials)
+  {
+    monomialCoeffs.insert(coeff);
+    auto it = bitMonomials.find(coeff);
+    Trace("ff::parse::debug")
+        << "bitMonomial " << coeff << " " << var << std::endl;
+    if (it == bitMonomials.end())
+    {
+      bitMonomials.insert(it, {coeff, var});
+      q.emplace(-coeff.toSignedInteger().abs(), coeff);
+    }
+    else if (isBit.count(var) && !isBit.count(it->second))
+    {
+      // they're not a bit, and `var` is, evict them.
+      rest.push_back(
+          nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), it->second));
+      it->second = var;
+    }
+    else
+    {
+      Trace("ff::parse::debug")
+          << "skipped " << coeff << " " << var << std::endl;
+      rest.push_back(
+          nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
+    }
+  }
+
+  std::vector<std::pair<FiniteFieldValue, std::vector<Node>>> bitSums{};
+  // TODO: consider other starting constants. Especially to handle gaps...
+  FiniteFieldValue two(2, size);
+  // look for runs k*x, 2k*y, 4k*z, ...
+  while (!q.empty())
+  {
+    FiniteFieldValue k = q.top().second;
+    q.pop();
+    FiniteFieldValue acc = k;
+    std::vector<Node> bits{};
+    std::vector<Node> erasedSummands{};
+    while (bitMonomials.count(acc))
+    {
+      auto var = bitMonomials.at(acc);
+      bits.push_back(var);
+      erasedSummands.push_back(
+          nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(acc), var));
+      bitMonomials.erase(acc);
+      acc *= two;
+    }
+    if (monomialCoeffs.count(acc))
+    {
+      monomialCoeffs.erase(acc);
+    }
+    if (bits.size() > 1)
+    {
+      bitSums.emplace_back(k, std::move(bits));
+    }
+    else
+    {
+      for (auto& summand : erasedSummands)
+      {
+        rest.push_back(std::move(summand));
+      }
+    }
+  }
+
+  for (const auto& [coeff, var] : bitMonomials)
+  {
+    rest.push_back(
+        nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
+  }
+  return {{std::move(bitSums), std::move(rest)}};
+}
+
+std::optional<Node> disjunctiveBitConstraint(const Node& t)
+{
+  if (t.getKind() == kind::OR && t.getNumChildren() == 2
+      && t[0].getKind() == kind::EQUAL && t[1].getKind() == kind::EQUAL
+      && t[0][1].getType().isFiniteField() && t[1][0].getType().isFiniteField())
+  {
+    using theory::ff::parse::oneConstraint;
+    using theory::ff::parse::zeroConstraint;
+    if ((oneConstraint(t[0]) && zeroConstraint(t[1]))
+        || (oneConstraint(t[1]) && zeroConstraint(t[0])))
+    {
+      using theory::ff::parse::spectrum;
+      return {spectrum(t[0])->var};
+    }
+  }
+  return {};
+}
+
 }  // namespace parse
 
 }  // namespace ff

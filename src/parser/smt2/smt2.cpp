@@ -129,6 +129,7 @@ void Smt2State::addBitvectorOperators()
 void Smt2State::addFiniteFieldOperators()
 {
   addOperator(cvc5::FINITE_FIELD_ADD, "ff.add");
+  addOperator(cvc5::FINITE_FIELD_BITSUM, "ff.bitsum");
   addOperator(cvc5::FINITE_FIELD_MULT, "ff.mul");
   addOperator(cvc5::FINITE_FIELD_NEG, "ff.neg");
   addOperator(cvc5::FINITEFIELD_TO_NAT, "bv2nat");
