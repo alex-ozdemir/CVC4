@@ -74,6 +74,14 @@ name   = "Finite Field Theory"
   help       = "use disequalities (ne) to tighten ranges"
 
 [[option]]
+  name       = "ffrMod"
+  category   = "expert"
+  long       = "ffr-mod"
+  type       = "bool"
+  default    = "false"
+  help       = "use explicit modulus in integer encoding"
+
+[[option]]
   name       = "ffrNeNorm"
   category   = "expert"
   long       = "ffr-ne-norm"

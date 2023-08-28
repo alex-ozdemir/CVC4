@@ -1,0 +1,221 @@
+/******************************************************************************
+ * Top contributors (to current version):
+ *   Alex Ozdemir
+ *
+ * This file is part of the cvc5 project.
+ *
+ * Copyright (c) 2009-2023 by the authors listed in the file AUTHORS
+ * in the top-level source directory and their institutional affiliations.
+ * All rights reserved.  See the file COPYING in the top-level source
+ * directory for licensing information.
+ * ****************************************************************************
+ *
+ * incremental Groebner bases
+ */
+
+#ifdef CVC5_USE_COCOA
+
+#include "theory/ff/igb.h"
+
+// external includes
+#include <CoCoA/SparsePolyIter.H>
+#include <CoCoA/SparsePolyOps-RingElem.H>
+#include <CoCoA/SparsePolyOps-ideal.H>
+#include <CoCoA/SparsePolyRing.H>
+
+// std includes
+
+// internal includes
+#include "base/check.h"
+#include "base/output.h"
+
+namespace cvc5::internal {
+namespace theory {
+namespace ff {
+
+IncGb::IncGb(const std::string& name,
+             const CoCoA::ring& polyRing,
+             const std::vector<CoCoA::RingElem>& gens)
+    : d_name(name), d_polyRing(polyRing), d_i(gens[0]), d_newGens(gens)
+{
+}
+
+bool IncGb::contains(const CoCoA::RingElem& e) const
+{
+  Assert(CoCoA::HasGBasis(d_i));
+  return CoCoA::IsElem(e, d_i);
+}
+
+bool IncGb::canAdd(const CoCoA::RingElem& e) const { return true; }
+
+bool IncGb::trivial() const
+{
+  Assert(CoCoA::HasGBasis(d_i));
+  return CoCoA::IsOne(d_i);
+}
+
+void IncGb::add(const CoCoA::RingElem& e)
+{
+  Assert(CoCoA::HasGBasis(d_i));
+  d_newGens.push_back(e);
+}
+
+void IncGb::reduce()
+{
+  if (!hasNewGens()) return;
+  if (TraceIsOn("ffl::gb"))
+  {
+    Trace("ffl::gb") << d_name << " new gens:" << std::endl;
+    for (const auto& p : d_newGens)
+    {
+      Trace("ffl::gb") << " " << p << std::endl;
+    }
+  }
+  Trace("ffl") << "reducing " << d_name << " with " << d_newGens.size()
+               << " new gens" << std::endl;
+  d_i += CoCoA::ideal(d_newGens);
+  auto gb = CoCoA::ReducedGBasis(d_i);
+  d_newGens.clear();
+  Trace("ffl") << d_name << " GB has size " << gb.size() << std::endl;
+  if (TraceIsOn("ffl::gb"))
+  {
+    Trace("ffl::gb") << d_name << " GB:" << std::endl;
+    for (const auto& p : gb)
+    {
+      Trace("ffl::gb") << " " << p << std::endl;
+    }
+  }
+}
+
+const std::string& IncGb::name() const { return d_name; }
+
+bool IncGb::hasNewGens() const { return d_newGens.size(); }
+
+const std::vector<CoCoA::RingElem>& IncGb::basis() const
+{
+  Assert(CoCoA::HasGBasis(d_i));
+  return CoCoA::ReducedGBasis(d_i);
+}
+
+SparseGb::SparseGb(const std::string& name,
+                   const CoCoA::ring& polyRing,
+                   const std::vector<CoCoA::RingElem>& gens)
+    : IncGb(name, polyRing, gens)
+{
+}
+
+bool SparseGb::canAdd(const CoCoA::RingElem& e) const
+{
+  return (CoCoA::deg(e) <= 1 && CoCoA::NumTerms(e) <= 2);
+}
+
+SimpleLinearGb::SimpleLinearGb(const std::string& name,
+                               const CoCoA::ring& polyRing,
+                               const std::vector<CoCoA::RingElem>& gens)
+    : IncGb(name, polyRing, gens)
+{
+}
+
+bool SimpleLinearGb::canAdd(const CoCoA::RingElem& e) const
+{
+  return CoCoA::deg(e) <= 1;
+}
+
+LinearGb::LinearGb(const std::string& name,
+                   const CoCoA::ring& polyRing,
+                   const std::vector<CoCoA::RingElem>& gens)
+    : IncGb(name, polyRing, gens),
+      d_mat(CoCoA::BaseRing(polyRing), CoCoA::NumIndets(polyRing) + 1, 1)
+{
+}
+
+void LinearGb::reduce()
+{
+  if (!hasNewGens()) return;
+  if (TraceIsOn("ffl::gb"))
+  {
+    Trace("ffl::gb") << d_name << " new gens:" << std::endl;
+    for (const auto& p : d_newGens)
+    {
+      Trace("ffl::gb") << " " << p << std::endl;
+    }
+  }
+  Trace("ffl") << "reducing " << d_name << " with " << d_newGens.size()
+               << " new gens" << std::endl;
+  for (const auto& p : d_newGens)
+  {
+    addPolyToMatrix(p);
+  }
+  d_newGens.clear();
+  Trace("ffl") << " Gauss start" << std::endl;
+  d_mat.rref();
+  Trace("ffl") << " Gauss end" << std::endl;
+  std::vector<CoCoA::RingElem> gens{};
+  for (size_t i = 0; i < d_mat.rows(); ++i)
+  {
+    gens.push_back(rowAsPoly(i));
+  }
+  d_i = CoCoA::ideal(gens);
+  auto gb = CoCoA::ReducedGBasis(d_i);
+  Trace("ffl") << d_name << " GB has size " << gb.size() << std::endl;
+  if (TraceIsOn("ffl::gb"))
+  {
+    Trace("ffl::gb") << d_name << " GB:" << std::endl;
+    for (const auto& p : gb)
+    {
+      Trace("ffl::gb") << " " << p << std::endl;
+    }
+  }
+}
+
+CoCoA::RingElem LinearGb::rowAsPoly(size_t r)
+{
+  CoCoA::RingElem p(d_polyRing, d_mat.getEntry(r, d_mat.cols() - 1));
+  for (const auto& [c, v] : d_mat.getRow(r))
+  {
+    if (c + 1 < d_mat.cols())
+    {
+      try
+      {
+        p += CoCoA::indet(d_polyRing, c) * d_mat.getEntry(r, c);
+      }
+      catch (const CoCoA::ErrorInfo& e)
+      {
+        std::cerr << e << std::endl;
+      }
+    }
+  }
+  return p;
+}
+
+void LinearGb::addPolyToMatrix(const CoCoA::RingElem& e)
+{
+  size_t r = d_mat.rows();
+  d_mat.addRow();
+  Assert(CoCoA::deg(e) <= 1) << e;
+  for (CoCoA::SparsePolyIter it = CoCoA::BeginIter(e), end = CoCoA::EndIter(e);
+       it != end;
+       ++it)
+  {
+    long indetIdx = 0;
+    if (CoCoA::IsIndet(indetIdx, CoCoA::PP(it)))
+    {
+      d_mat.setEntry(r, indetIdx, CoCoA::coeff(it));
+    }
+    else
+    {
+      d_mat.setEntry(r, d_mat.cols() - 1, CoCoA::coeff(it));
+    }
+  }
+}
+
+bool LinearGb::canAdd(const CoCoA::RingElem& e) const
+{
+  return CoCoA::deg(e) <= 1;
+}
+
+}  // namespace ff
+}  // namespace theory
+}  // namespace cvc5::internal
+
+#endif /* CVC5_USE_COCOA */

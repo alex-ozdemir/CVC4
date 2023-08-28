@@ -38,6 +38,16 @@ struct FfSize
     // we only support prime fields right now
     Assert(size.isProbablePrime()) << "not prime: " << size;
   }
+  FfSize(int size) : d_val(size)
+  {
+    // we only support prime fields right now
+    Assert(d_val.isProbablePrime()) << "not prime: " << size;
+  }
+  FfSize(size_t size) : d_val(size)
+  {
+    // we only support prime fields right now
+    Assert(d_val.isProbablePrime()) << "not prime: " << size;
+  }
   operator const Integer&() const { return d_val; }
   bool operator==(const FfSize& y) const { return d_val == y.d_val; }
   bool operator!=(const FfSize& y) const { return d_val != y.d_val; }

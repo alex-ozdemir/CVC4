@@ -497,6 +497,10 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       {
         assertions.push_back(ints.at(f[0]) == ints.at(f[1]));
       }
+      else if (options().ff.ffrMod)
+      {
+        assertions.push_back((ints.at(f[0]) - ints.at(f[1])) % p == 0);
+      }
       else
       {
         // equality: left - right = q * p
@@ -536,6 +540,10 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       if (unsound)
       {
         assertions.push_back(diff != 0);
+      }
+      else if (options().ff.ffrMod)
+      {
+        assertions.push_back(diff % p != 0);
       }
       else
       {

@@ -70,7 +70,7 @@ class CocoaEncoder : FieldObj
     return d_cache.at(t);
   }
   std::vector<Node> bitsums() const;
-
+  const CoCoA::ring& polyRing() const { return d_polyRing.value(); }
 
  private:
   /** a bitsum or a var */

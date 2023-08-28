@@ -698,10 +698,14 @@ libcvc5_add_sources(
   theory/ext_theory.h
   theory/ff/cocoa.cpp
   theory/ff/cocoa.h
+  theory/ff/cocoa_gauss.cpp
+  theory/ff/cocoa_gauss.h
   theory/ff/core.cpp
   theory/ff/core.h
   theory/ff/gauss.cpp
   theory/ff/gauss.h
+  theory/ff/igb.cpp
+  theory/ff/igb.h
   theory/ff/lazy.cpp
   theory/ff/lazy.h
   theory/ff/multi_roots.cpp

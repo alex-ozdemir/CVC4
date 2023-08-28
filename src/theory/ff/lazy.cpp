@@ -25,108 +25,11 @@
 
 // internal includes
 #include "theory/ff/cocoa.h"
+#include "theory/ff/igb.h"
 
 namespace cvc5::internal {
 namespace theory {
 namespace ff {
-
-class IncGb
-{
- public:
-  IncGb(const std::string& name, const std::vector<CoCoA::RingElem>& gens);
-  virtual ~IncGb(){};
-  virtual bool contains(const CoCoA::RingElem& e) const;
-  virtual bool canAdd(const CoCoA::RingElem& e) const;
-  bool trivial() const;
-  void add(const CoCoA::RingElem& e);
-  void reduce();
-  const std::string& name() const;
-  bool hasNewGens() const;
-  const std::vector<CoCoA::RingElem>& basis() const;
-
- protected:
-  std::string d_name;
-  CoCoA::ideal d_i;
-  std::vector<CoCoA::RingElem> d_newGens{};
-};
-
-IncGb::IncGb(const std::string& name, const std::vector<CoCoA::RingElem>& gens)
-    : d_name(name), d_i(gens[0]), d_newGens(gens)
-{
-}
-bool IncGb::contains(const CoCoA::RingElem& e) const
-{
-  Assert(CoCoA::HasGBasis(d_i));
-  return CoCoA::IsElem(e, d_i);
-}
-bool IncGb::canAdd(const CoCoA::RingElem& e) const { return true; }
-bool IncGb::trivial() const
-{
-  Assert(CoCoA::HasGBasis(d_i));
-  return CoCoA::IsOne(d_i);
-}
-void IncGb::add(const CoCoA::RingElem& e)
-{
-  Assert(CoCoA::HasGBasis(d_i));
-  d_newGens.push_back(e);
-}
-void IncGb::reduce()
-{
-  if (TraceIsOn("ffl::gb"))
-  {
-    Trace("ffl::gb") << d_name << " new gens:" << std::endl;
-    for (const auto& p : d_newGens)
-    {
-      Trace("ffl::gb") << " " << p << std::endl;
-    }
-  }
-  Trace("ffl") << "reducing " << d_name << " with " << d_newGens.size()
-               << " new gens" << std::endl;
-  d_i += CoCoA::ideal(d_newGens);
-  auto gb = CoCoA::ReducedGBasis(d_i);
-  Trace("ffl") << d_name << " GB has size " << gb.size() << std::endl;
-  if (TraceIsOn("ffl::gb"))
-  {
-    Trace("ffl::gb") << d_name << " GB:" << std::endl;
-    for (const auto& p : gb)
-    {
-      Trace("ffl::gb") << " " << p << std::endl;
-    }
-  }
-}
-const std::string& IncGb::name() const { return d_name; }
-bool IncGb::hasNewGens() const { return d_newGens.size(); }
-const std::vector<CoCoA::RingElem>& IncGb::basis() const
-{
-  Assert(CoCoA::HasGBasis(d_i));
-  return CoCoA::ReducedGBasis(d_i);
-}
-
-class SparseGb : public IncGb
-{
- public:
-  SparseGb(const std::string& name, const std::vector<CoCoA::RingElem>& gens)
-      : IncGb(name, gens)
-  {
-  }
-  bool canAdd(const CoCoA::RingElem& e) const override
-  {
-    return (CoCoA::deg(e) <= 1 && CoCoA::NumTerms(e) <= 2);
-  }
-};
-
-class LinearGb : public IncGb
-{
- public:
-  LinearGb(const std::string& name, const std::vector<CoCoA::RingElem>& gens)
-      : IncGb(name, gens)
-  {
-  }
-  bool canAdd(const CoCoA::RingElem& e) const override
-  {
-    return CoCoA::deg(e) <= 1;
-  }
-};
 
 LazySolver::LazySolver(Env& env, const FfSize& size)
     : EnvObj(env), FieldObj(size)
@@ -174,8 +77,9 @@ void LazySolver::check()
       lGens.push_back(p);
     }
   }
-  LinearGb lIdeal(" lIdeal", lGens);
-  SparseGb nlIdeal("nlIdeal", nlGens);
+  // LinearGb lIdeal(" lIdeal", enc.polyRing(), lGens);
+  SimpleLinearGb lIdeal(" lIdeal", enc.polyRing(), lGens);
+  SparseGb nlIdeal("nlIdeal", enc.polyRing(), nlGens);
   std::vector<IncGb*> ideals{};
   ideals.push_back(&nlIdeal);
   ideals.push_back(&lIdeal);
@@ -188,7 +92,7 @@ void LazySolver::check()
       ideal->reduce();
       if (ideal->trivial())
       {
-        Trace("ffl") << "trivial GB " << ideal->name();
+        Trace("ffl") << "trivial GB " << ideal->name() << std::endl;
         d_result = Result::UNSAT;
         return;
       }
@@ -197,11 +101,11 @@ void LazySolver::check()
       {
         for (IncGb* i : ideals)
         {
-          if (i->canAdd(p))
+          if (i->canAdd(p) && !i->contains(p))
           {
             Trace("ffl::gb") << i->name() << " += " << p << std::endl;
+            i->add(p);
           }
-          i->add(p);
         }
       }
 
@@ -226,12 +130,12 @@ void LazySolver::check()
                   enc.getTermEncoding(a[k]) - enc.getTermEncoding(b[k]);
               for (IncGb* ideal2 : ideals)
               {
-                if (ideal2->canAdd(diff))
+                if (ideal2->canAdd(diff) && !ideal2->contains(diff))
                 {
                   Trace("ffl::bitprop")
                       << ideal2->name() << " += " << diff << std::endl;
+                  ideal2->add(diff);
                 }
-                ideal2->add(diff);
               }
             }
           }
