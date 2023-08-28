@@ -83,13 +83,13 @@ void LazySolver::check()
   std::vector<IncGb*> ideals{};
   ideals.push_back(&nlIdeal);
   ideals.push_back(&lIdeal);
-  nlIdeal.reduce();
-  lIdeal.reduce();
+  nlIdeal.computeBasis();
+  lIdeal.computeBasis();
   do
   {
     for (IncGb* ideal : ideals)
     {
-      ideal->reduce();
+      ideal->computeBasis();
       if (ideal->trivial())
       {
         Trace("ffl") << "trivial GB " << ideal->name() << std::endl;
@@ -101,10 +101,27 @@ void LazySolver::check()
       {
         for (IncGb* i : ideals)
         {
-          if (i->canAdd(p) && !i->contains(p))
+          CoCoA::RingElem reducedP = p;
           {
-            Trace("ffl::gb") << i->name() << " += " << p << std::endl;
-            i->add(p);
+            CoCoA::RingElem newReducedP = p;
+
+            do
+            {
+              reducedP = newReducedP;
+              for (IncGb* ii : ideals)
+              {
+                if (ii != i)
+                {
+                  newReducedP = ii->reduce(newReducedP);
+                }
+              }
+            } while (newReducedP != reducedP);
+          }
+
+          if (!CoCoA::IsZero(reducedP) && i->canAdd(reducedP) && !i->contains(reducedP))
+          {
+            Trace("ffl::gb") << i->name() << " += " << reducedP << std::endl;
+            i->add(reducedP);
           }
         }
       }

@@ -22,6 +22,7 @@
 #include <CoCoA/SparsePolyOps-RingElem.H>
 #include <CoCoA/SparsePolyOps-ideal.H>
 #include <CoCoA/SparsePolyRing.H>
+#include <CoCoA/ring.H>
 
 // std includes
 
@@ -36,33 +37,41 @@ namespace ff {
 IncGb::IncGb(const std::string& name,
              const CoCoA::ring& polyRing,
              const std::vector<CoCoA::RingElem>& gens)
-    : d_name(name), d_polyRing(polyRing), d_i(gens[0]), d_newGens(gens)
+    : d_name(name), d_polyRing(polyRing), d_i(), d_newGens(gens), d_basis()
 {
 }
 
 bool IncGb::contains(const CoCoA::RingElem& e) const
 {
-  Assert(CoCoA::HasGBasis(d_i));
-  return CoCoA::IsElem(e, d_i);
+  if (!d_i) return false;
+  Assert(CoCoA::HasGBasis(*d_i));
+  return CoCoA::IsElem(e, *d_i);
+}
+
+CoCoA::RingElem IncGb::reduce(const CoCoA::RingElem& e) const
+{
+  if (!d_i) return e;
+  Assert(CoCoA::HasGBasis(*d_i));
+  return e % *d_i;
 }
 
 bool IncGb::canAdd(const CoCoA::RingElem& e) const { return true; }
 
 bool IncGb::trivial() const
 {
-  Assert(CoCoA::HasGBasis(d_i));
-  return CoCoA::IsOne(d_i);
+  if (!d_i) return false;
+  Assert(CoCoA::HasGBasis(*d_i));
+  return CoCoA::IsOne(*d_i);
 }
 
 void IncGb::add(const CoCoA::RingElem& e)
 {
-  Assert(CoCoA::HasGBasis(d_i));
+  if (d_i) Assert(CoCoA::HasGBasis(*d_i));
   d_newGens.push_back(e);
 }
 
-void IncGb::reduce()
+void IncGb::tracePreComputeBasis() const
 {
-  if (!hasNewGens()) return;
   if (TraceIsOn("ffl::gb"))
   {
     Trace("ffl::gb") << d_name << " new gens:" << std::endl;
@@ -73,14 +82,32 @@ void IncGb::reduce()
   }
   Trace("ffl") << "reducing " << d_name << " with " << d_newGens.size()
                << " new gens" << std::endl;
-  d_i += CoCoA::ideal(d_newGens);
-  auto gb = CoCoA::ReducedGBasis(d_i);
+}
+
+void IncGb::computeBasis()
+{
+  if (!hasNewGens()) return;
+  tracePreComputeBasis();
+  if (d_i)
+  {
+    *d_i += CoCoA::ideal(d_newGens);
+  }
+  else
+  {
+    d_i = {CoCoA::ideal(d_newGens)};
+  }
+  d_basis = CoCoA::ReducedGBasis(*d_i);
   d_newGens.clear();
-  Trace("ffl") << d_name << " GB has size " << gb.size() << std::endl;
+  tracePostComputeBasis();
+}
+
+void IncGb::tracePostComputeBasis() const
+{
+  Trace("ffl") << d_name << " GB has size " << d_basis.size() << std::endl;
   if (TraceIsOn("ffl::gb"))
   {
     Trace("ffl::gb") << d_name << " GB:" << std::endl;
-    for (const auto& p : gb)
+    for (const auto& p : d_basis)
     {
       Trace("ffl::gb") << " " << p << std::endl;
     }
@@ -93,8 +120,10 @@ bool IncGb::hasNewGens() const { return d_newGens.size(); }
 
 const std::vector<CoCoA::RingElem>& IncGb::basis() const
 {
-  Assert(CoCoA::HasGBasis(d_i));
-  return CoCoA::ReducedGBasis(d_i);
+  if (!d_i) return d_basis;
+  Assert(d_newGens.empty());
+  Assert(CoCoA::HasGBasis(*d_i));
+  return d_basis;
 }
 
 SparseGb::SparseGb(const std::string& name,
@@ -129,19 +158,10 @@ LinearGb::LinearGb(const std::string& name,
 {
 }
 
-void LinearGb::reduce()
+void LinearGb::computeBasis()
 {
   if (!hasNewGens()) return;
-  if (TraceIsOn("ffl::gb"))
-  {
-    Trace("ffl::gb") << d_name << " new gens:" << std::endl;
-    for (const auto& p : d_newGens)
-    {
-      Trace("ffl::gb") << " " << p << std::endl;
-    }
-  }
-  Trace("ffl") << "reducing " << d_name << " with " << d_newGens.size()
-               << " new gens" << std::endl;
+  tracePreComputeBasis();
   for (const auto& p : d_newGens)
   {
     addPolyToMatrix(p);
@@ -156,16 +176,8 @@ void LinearGb::reduce()
     gens.push_back(rowAsPoly(i));
   }
   d_i = CoCoA::ideal(gens);
-  auto gb = CoCoA::ReducedGBasis(d_i);
-  Trace("ffl") << d_name << " GB has size " << gb.size() << std::endl;
-  if (TraceIsOn("ffl::gb"))
-  {
-    Trace("ffl::gb") << d_name << " GB:" << std::endl;
-    for (const auto& p : gb)
-    {
-      Trace("ffl::gb") << " " << p << std::endl;
-    }
-  }
+  d_basis = CoCoA::ReducedGBasis(*d_i);
+  tracePostComputeBasis();
 }
 
 CoCoA::RingElem LinearGb::rowAsPoly(size_t r)

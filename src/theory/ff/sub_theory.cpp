@@ -98,7 +98,14 @@ void SubTheory::postCheck(Theory::Effort e)
         lazy.assertFact(node);
       }
 
-      lazy.check();
+      try
+      {
+        lazy.check();
+      }
+      catch (CoCoA::ErrorInfo& e)
+      {
+        InternalError() << "CoCoA error: " << e << std::endl;
+      }
 
       if (lazy.result() == Result::UNSAT)
       {

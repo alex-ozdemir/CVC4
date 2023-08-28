@@ -26,6 +26,7 @@
 
 // std includes
 #include <string>
+#include <optional>
 
 // internal includes
 #include "theory/ff/cocoa_gauss.h"
@@ -40,19 +41,25 @@ class IncGb
   IncGb(const std::string& name, const CoCoA::ring& polyRing, const std::vector<CoCoA::RingElem>& gens);
   virtual ~IncGb(){};
   virtual bool contains(const CoCoA::RingElem& e) const;
+  CoCoA::RingElem reduce(const CoCoA::RingElem& e) const;
   virtual bool canAdd(const CoCoA::RingElem& e) const;
   virtual bool trivial() const;
   void add(const CoCoA::RingElem& e);
-  virtual void reduce();
+  virtual void computeBasis();
   const std::string& name() const;
   bool hasNewGens() const;
   const std::vector<CoCoA::RingElem>& basis() const;
 
  protected:
+  void tracePostComputeBasis() const;
+  void tracePreComputeBasis() const;
+
+
   std::string d_name;
   CoCoA::ring d_polyRing;
-  CoCoA::ideal d_i;
+  std::optional<CoCoA::ideal> d_i;
   std::vector<CoCoA::RingElem> d_newGens{};
+  std::vector<CoCoA::RingElem> d_basis{};
 };
 
 class SparseGb : public IncGb
@@ -76,7 +83,7 @@ class LinearGb : public IncGb
   bool canAdd(const CoCoA::RingElem& e) const override;
   //bool contains(const CoCoA::RingElem& e) const override;
   //bool trivial() const override;
-  void reduce() override;
+  void computeBasis() override;
  private:
   CoCoA::RingElem rowAsPoly(size_t r);
   void addPolyToMatrix(const CoCoA::RingElem& e);
