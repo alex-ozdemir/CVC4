@@ -143,6 +143,10 @@ SpectrumOpt spectrum(const Node& t, uint8_t depth)
       }
       return acc;
     }
+    case kind::FINITE_FIELD_BITSUM:
+    {
+      return {};
+    }
     default: Unreachable() << t.getKind();
   }
   return {};

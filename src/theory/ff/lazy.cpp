@@ -26,6 +26,7 @@
 // internal includes
 #include "theory/ff/cocoa.h"
 #include "theory/ff/igb.h"
+#include "theory/ff/parse.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -44,6 +45,7 @@ void LazySolver::assertFact(TNode fact)
 
 void LazySolver::check()
 {
+  std::unordered_set<Node> bits{};
   CocoaEncoder enc(size());
   for (const auto& fact : d_facts)
   {
@@ -52,6 +54,11 @@ void LazySolver::check()
   enc.endScan();
   for (const auto& fact : d_facts)
   {
+    auto bs = parse::bitConstraint(fact);
+    if (bs)
+    {
+      bits.insert(*bs);
+    }
     enc.addFact(fact);
   }
   if (TraceIsOn("ffl::poly"))
@@ -118,7 +125,8 @@ void LazySolver::check()
             } while (newReducedP != reducedP);
           }
 
-          if (!CoCoA::IsZero(reducedP) && i->canAdd(reducedP) && !i->contains(reducedP))
+          if (!CoCoA::IsZero(reducedP) && i->canAdd(reducedP)
+              && !i->contains(reducedP))
           {
             Trace("ffl::gb") << i->name() << " += " << reducedP << std::endl;
             i->add(reducedP);
@@ -138,20 +146,73 @@ void LazySolver::check()
           {
             Trace("ffl::bitprop")
                 << " (= " << a << "\n    " << b << ")" << std::endl;
-            AlwaysAssert(a.getNumChildren() == b.getNumChildren())
-                << "Unimplemented";
-            // TODO: need to show that they're bits
-            for (size_t k = 0; k < a.getNumChildren(); ++k)
+            size_t min = std::min(a.getNumChildren(), b.getNumChildren());
+            bool allBits = true;
+            for (const auto& sum : {a, b})
             {
-              CoCoA::RingElem diff =
-                  enc.getTermEncoding(a[k]) - enc.getTermEncoding(b[k]);
-              for (IncGb* ideal2 : ideals)
+              for (const auto& c : sum)
               {
-                if (ideal2->canAdd(diff) && !ideal2->contains(diff))
+                if (!bits.count(c))
                 {
-                  Trace("ffl::bitprop")
-                      << ideal2->name() << " += " << diff << std::endl;
-                  ideal2->add(diff);
+                  CoCoA::RingElem p = enc.getTermEncoding(c);
+                  CoCoA::RingElem bitConstraint = p * p - p;
+                  if (std::any_of(ideals.begin(),
+                                  ideals.end(),
+                                  [&bitConstraint](const auto& ii) {
+                                    return ii->contains(bitConstraint);
+                                  }))
+                  {
+                    Trace("ffl::bitprop")
+                        << " bit through GB " << c << std::endl;
+                    bits.insert(c);
+                  }
+                }
+                if (!bits.count(c))
+                {
+                  Trace("ffl::bitprop") << " non-bit " << c << std::endl;
+                  allBits = false;
+                }
+              }
+            }
+
+            if (allBits)
+            {
+              for (size_t k = 0; k < min; ++k)
+              {
+                CoCoA::RingElem diff =
+                    enc.getTermEncoding(a[k]) - enc.getTermEncoding(b[k]);
+                for (IncGb* ideal2 : ideals)
+                {
+                  if (ideal2->canAdd(diff) && !ideal2->contains(diff))
+                  {
+                    Trace("ffl::bitprop")
+                        << ideal2->name() << " += " << diff << std::endl;
+                    ideal2->add(diff);
+                  }
+                }
+              }
+
+              if (a.getNumChildren() != min || b.getNumChildren() != min)
+              {
+                size_t max = a.getNumChildren();
+                Node n = a;
+                if (b.getNumChildren() > max)
+                {
+                  max = b.getNumChildren();
+                  n = b;
+                }
+                for (size_t k = min; k < max; ++k)
+                {
+                  CoCoA::RingElem isZero = enc.getTermEncoding(n[k]);
+                  for (IncGb* ideal2 : ideals)
+                  {
+                    if (ideal2->canAdd(isZero) && !ideal2->contains(isZero))
+                    {
+                      Trace("ffl::bitprop")
+                          << ideal2->name() << " += " << isZero << std::endl;
+                      ideal2->add(isZero);
+                    }
+                  }
                 }
               }
             }
