@@ -567,6 +567,10 @@ bitSums(const Node& t, std::unordered_set<Node> isBit)
   const Integer& size = ty.getFfSize();
   auto& [monomials, rest] = res.value();
   Trace("ff::parse::debug") << "bitSums start" << std::endl;
+  if (TraceIsOn("ff::parse::debug") && monomials.size())
+  {
+    Trace("ff::parse::debug") << " term " << t << std::endl;
+  }
 
   std::unordered_map<FiniteFieldValue, Node, FiniteFieldValueHashFunction>
       bitMonomials{};
@@ -581,12 +585,16 @@ bitSums(const Node& t, std::unordered_set<Node> isBit)
         << "bitMonomial " << coeff << " " << var << std::endl;
     if (it == bitMonomials.end())
     {
+      Trace("ff::parse::debug")
+          << " fresh bit" << var << std::endl;
       bitMonomials.insert(it, {coeff, var});
       q.emplace(-coeff.toSignedInteger().abs(), coeff);
     }
     else if (isBit.count(var) && !isBit.count(it->second))
     {
       // they're not a bit, and `var` is, evict them.
+      Trace("ff::parse::debug")
+          << " " << var << " evicts " << it->second << std::endl;
       rest.push_back(
           nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), it->second));
       it->second = var;
@@ -594,7 +602,9 @@ bitSums(const Node& t, std::unordered_set<Node> isBit)
     else
     {
       Trace("ff::parse::debug")
-          << "skipped " << coeff << " " << var << std::endl;
+          << " skipped " << coeff << " " << var << std::endl;
+      Trace("ff::parse::debug")
+          << "  isBit: " << std::boolalpha << !!isBit.count(var) << std::endl;
       rest.push_back(
           nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
     }

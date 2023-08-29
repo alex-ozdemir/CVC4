@@ -21,6 +21,7 @@
 #include <unordered_set>
 
 // internal includes
+#include "expr/algorithm/flatten.h"
 #include "expr/node_traversal.h"
 #include "preprocessing/assertion_pipeline.h"
 #include "theory/ff/parse.h"
@@ -55,13 +56,18 @@ PreprocessingPassResult FfBitsum::applyInternal(
   std::unordered_set<Node> bits;
   for (uint64_t i = 0; i < assertionsToPreprocess->size(); ++i)
   {
-    Node fact = (*assertionsToPreprocess)[i];
-    if (fact.getKind() == kind::EQUAL && fact[0].getType().isFiniteField())
+    std::vector<TNode> anded{};
+    TNode assertion = (*assertionsToPreprocess)[i];
+    expr::algorithm::flatten(assertion, anded, kind::AND);
+    for (const auto& fact : anded)
     {
-      auto bitOpt = theory::ff::parse::bitConstraint(fact);
-      if (bitOpt.has_value())
+      if (fact.getKind() == kind::EQUAL && fact[0].getType().isFiniteField())
       {
-        bits.insert(*bitOpt);
+        auto bitOpt = theory::ff::parse::bitConstraint(fact);
+        if (bitOpt.has_value())
+        {
+          bits.insert(*bitOpt);
+        }
       }
     }
   }

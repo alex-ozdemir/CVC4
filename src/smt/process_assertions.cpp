@@ -197,20 +197,6 @@ bool ProcessAssertions::apply(AssertionPipeline& ap)
     applyPass("foreign-theory-rewrite", ap);
   }
 
-  // ff
-  if (options().smt.preprocessFfToInt)
-  {
-    applyPass("ff-to-int", ap);
-  }
-  if (!options().ff.ffDisjunctiveBit || options().ff.ffBitsum)
-  {
-    applyPass("ff-disjunctive-bit", ap);
-    if (options().ff.ffBitsum)
-    {
-      applyPass("ff-bitsum", ap);
-    }
-  }
-
   // Assertions MUST BE guaranteed to be rewritten by this point
   applyPass("rewrite", ap);
 
@@ -326,6 +312,20 @@ bool ProcessAssertions::apply(AssertionPipeline& ap)
   Trace("smt") << "ProcessAssertions::processAssertions() POST SIMPLIFICATION"
                << endl;
   Trace("smt") << " assertions     : " << ap.size() << endl;
+
+  // ff
+  if (options().smt.preprocessFfToInt)
+  {
+    applyPass("ff-to-int", ap);
+  }
+  if (!options().ff.ffDisjunctiveBit || options().ff.ffBitsum)
+  {
+    applyPass("ff-disjunctive-bit", ap);
+    if (options().ff.ffBitsum)
+    {
+      applyPass("ff-bitsum", ap);
+    }
+  }
 
   // ensure rewritten
   applyPass("rewrite", ap);
