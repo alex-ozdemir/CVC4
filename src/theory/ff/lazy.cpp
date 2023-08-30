@@ -85,8 +85,8 @@ void LazySolver::check()
     }
   }
   // LinearGb lIdeal(" lIdeal", enc.polyRing(), lGens);
-  SimpleLinearGb lIdeal(" lIdeal", enc.polyRing(), lGens);
-  SparseGb nlIdeal("nlIdeal", enc.polyRing(), nlGens);
+  SimpleLinearGb lIdeal(d_env, " lIdeal", enc.polyRing(), lGens);
+  SparseGb nlIdeal(d_env, "nlIdeal", enc.polyRing(), nlGens);
   std::vector<IncGb*> ideals{};
   ideals.push_back(&nlIdeal);
   ideals.push_back(&lIdeal);
@@ -147,6 +147,12 @@ void LazySolver::check()
             Trace("ffl::bitprop")
                 << " (= " << a << "\n    " << b << ")" << std::endl;
             size_t min = std::min(a.getNumChildren(), b.getNumChildren());
+            size_t max = std::max(a.getNumChildren(), b.getNumChildren());
+            if (max > size().d_val.length())
+            {
+              Trace("ffl::bitprop") << " bitsum overflow" << std::endl;
+              continue;
+            }
             bool allBits = true;
             for (const auto& sum : {a, b})
             {
@@ -175,43 +181,36 @@ void LazySolver::check()
               }
             }
 
-            if (allBits)
+            if (!allBits) continue;
+
+            for (size_t k = 0; k < min; ++k)
             {
-              for (size_t k = 0; k < min; ++k)
+              CoCoA::RingElem diff =
+                  enc.getTermEncoding(a[k]) - enc.getTermEncoding(b[k]);
+              for (IncGb* ideal2 : ideals)
               {
-                CoCoA::RingElem diff =
-                    enc.getTermEncoding(a[k]) - enc.getTermEncoding(b[k]);
-                for (IncGb* ideal2 : ideals)
+                if (ideal2->canAdd(diff) && !ideal2->contains(diff))
                 {
-                  if (ideal2->canAdd(diff) && !ideal2->contains(diff))
-                  {
-                    Trace("ffl::bitprop")
-                        << ideal2->name() << " += " << diff << std::endl;
-                    ideal2->add(diff);
-                  }
+                  Trace("ffl::bitprop")
+                      << ideal2->name() << " += " << diff << std::endl;
+                  ideal2->add(diff);
                 }
               }
+            }
 
-              if (a.getNumChildren() != min || b.getNumChildren() != min)
+            if (a.getNumChildren() != min || b.getNumChildren() != min)
+            {
+              Node n = b.getNumChildren() > min ? b : a;
+              for (size_t k = min; k < max; ++k)
               {
-                size_t max = a.getNumChildren();
-                Node n = a;
-                if (b.getNumChildren() > max)
+                CoCoA::RingElem isZero = enc.getTermEncoding(n[k]);
+                for (IncGb* ideal2 : ideals)
                 {
-                  max = b.getNumChildren();
-                  n = b;
-                }
-                for (size_t k = min; k < max; ++k)
-                {
-                  CoCoA::RingElem isZero = enc.getTermEncoding(n[k]);
-                  for (IncGb* ideal2 : ideals)
+                  if (ideal2->canAdd(isZero) && !ideal2->contains(isZero))
                   {
-                    if (ideal2->canAdd(isZero) && !ideal2->contains(isZero))
-                    {
-                      Trace("ffl::bitprop")
-                          << ideal2->name() << " += " << isZero << std::endl;
-                      ideal2->add(isZero);
-                    }
+                    Trace("ffl::bitprop")
+                        << ideal2->name() << " += " << isZero << std::endl;
+                    ideal2->add(isZero);
                   }
                 }
               }

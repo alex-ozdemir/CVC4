@@ -29,7 +29,6 @@
 #include "context/cdlist_forward.h"
 #include "expr/node.h"
 #include "smt/env_obj.h"
-#include "theory/ff/range.h"
 #include "theory/ff/stats.h"
 #include "theory/theory.h"
 #include "util/integer.h"
@@ -132,10 +131,6 @@ class SubTheory : protected EnvObj
    * The prime modulus for the base field.
    */
   Integer d_modulus;
-  /**
-   * Range solver
-   */
-  RangeSolver d_rangeSolver;
 };
 
 }  // namespace ff

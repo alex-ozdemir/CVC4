@@ -42,6 +42,7 @@ struct Range
   Range(const Integer& lo, const Integer& hi);
   Range operator+(const Range& other) const;
   Range operator*(const Range& other) const;
+  Range operator*(const Integer& other) const;
   Range operator-() const;
   Range operator-(const Range& other) const;
   bool operator==(const Range& other) const;

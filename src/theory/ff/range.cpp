@@ -42,14 +42,13 @@ namespace ff {
 
 RangeSolver::RangeSolver(Env& env, const Integer& p) : EnvObj(env), FieldObj(p)
 {
-  Trace("ff::range")
-      << "new range solver; field:\n(define-sort F () (_ FiniteField " << size()
-      << "))" << std::endl;
+  Trace("ffr") << "new range solver; field:\n(define-sort F () (_ FiniteField "
+               << size() << "))" << std::endl;
 };
 
 void RangeSolver::assertFact(TNode fact)
 {
-  Trace("ff::range::fact") << "fact " << fact << std::endl;
+  Trace("ffr::fact") << "fact " << fact << std::endl;
   // is this a bit-constraint?
   std::optional<Node> range = parse::bitConstraint(fact);
   if (range.has_value())
@@ -62,7 +61,7 @@ void RangeSolver::assertFact(TNode fact)
       r = it->second.intersect(r);
     }
     d_assertedRanges.insert({var, r});
-    Trace("ff::range::bounds") << "range " << var << ": " << r << std::endl;
+    Trace("ffr::bounds") << "range " << var << ": " << r << std::endl;
     return;
   }
 
@@ -79,15 +78,15 @@ void RangeSolver::assertFact(TNode fact)
         if (it->second.d_lo == varNeValue->second.toSignedInteger())
         {
           it->second.d_lo += 1;
-          Trace("ff::range::bounds") << "tighten to range " << varNeValue->first
-                                     << ": " << it->second << std::endl;
+          Trace("ffr::bounds") << "tighten to range " << varNeValue->first
+                               << ": " << it->second << std::endl;
           return;
         }
         if (it->second.d_hi == varNeValue->second.toSignedInteger())
         {
           it->second.d_hi -= 1;
-          Trace("ff::range::bounds") << "tighten to range " << varNeValue->first
-                                     << ": " << it->second << std::endl;
+          Trace("ffr::bounds") << "tighten to range " << varNeValue->first
+                               << ": " << it->second << std::endl;
           return;
         }
       }
@@ -130,7 +129,7 @@ RangeSolver::check()
     }
     if (resultAndModel.first == Result::UNSAT)
     {
-      Trace("ff::range") << "integer UNSAT " << std::endl;
+      Trace("ffr") << "integer UNSAT " << std::endl;
     }
   }
   return checkHelper(false, 0);
@@ -160,14 +159,14 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
     }
     andFacts = result;
 
-    if (TraceIsOn("ff::range") && d_facts.size() == facts.size())
+    if (TraceIsOn("ffr") && d_facts.size() == facts.size())
     {
       for (size_t i = 0; i < facts.size(); ++i)
       {
         if (facts[i] != d_facts[i])
         {
-          Trace("ff::range") << "CSE " << d_facts[i] << std::endl
-                             << " to " << facts[i] << std::endl;
+          Trace("ffr") << "CSE " << d_facts[i] << std::endl
+                       << " to " << facts[i] << std::endl;
         }
       }
     }
@@ -228,9 +227,8 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
               [this, &bitRange, &parentCounts](const Node& x) {
                 size_t nParents = parentCounts.at(x);
                 bool isBit = nParents == 1 && bitRange == getRange(x);
-                Trace("ff::range::isBit")
-                    << " isBit " << x << " : " << isBit << " (" << nParents
-                    << " parents)" << std::endl;
+                Trace("ffr::isBit") << " isBit " << x << " : " << isBit << " ("
+                                    << nParents << " parents)" << std::endl;
                 return isBit;
               },
               [&parentCounts](const Node& x) {
@@ -251,15 +249,15 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
                                                         nm->mkConst(coeff),
                                                         acc);
               summands.push_back(summand);
-              if (TraceIsOn("ff::range"))
+              if (TraceIsOn("ffr"))
               {
-                Trace("ff::range")
+                Trace("ffr")
                     << "bitsum: " << acc << " = " << coeff << " * bitsum(";
                 for (const auto& b : bits)
                 {
-                  Trace("ff::range") << b << ",";
+                  Trace("ffr") << b << ",";
                 }
-                Trace("ff::range") << ")" << std::endl;
+                Trace("ffr") << ")" << std::endl;
               }
               for (size_t i = 0; i < bits.size(); ++i)
               {
@@ -429,6 +427,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
   // z3::set_param("verbose", 20);
   z3::expr zero = ctx.int_val(0);
   z3::expr one = ctx.int_val(1);
+  z3::expr two = ctx.int_val(2);
   z3::expr p = ctx.int_val(size().d_val.toString().c_str());
   size_t fI = 0;
   std::unordered_map<Node, z3::expr> ints{};
@@ -444,7 +443,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
 
   for (const auto& f : facts)
   {
-    Trace("ff::range::debug") << "enc fact " << f << std::endl;
+    Trace("ffr::debug") << "enc fact " << f << std::endl;
     for (TNode current :
          NodeDfsIterable(f, VisitOrder::POSTORDER, [&ints](TNode nn) {
            return ints.count(nn) || !isFf(nn);
@@ -469,6 +468,16 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         for (const auto& child : current)
         {
           e = e + ints.at(child);
+        }
+      }
+      else if (current.getKind() == kind::FINITE_FIELD_BITSUM)
+      {
+        e = zero;
+        z3::expr k = one;
+        for (const auto& child : current)
+        {
+          e = e + k * ints.at(child);
+          k = k * two;
         }
       }
       else if (current.getKind() == kind::FINITE_FIELD_MULT)
@@ -513,14 +522,14 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         {
           // use range analysis to bound q tightly.
           auto diffRange = getRange(f[0]) - getRange(f[1]);
-          Trace("ff::range::debug")
+          Trace("ffr::debug")
               << "l range " << f[0] << ": " << getRange(f[0]) << std::endl;
-          Trace("ff::range::debug")
+          Trace("ffr::debug")
               << "r range " << f[1] << ": " << getRange(f[1]) << std::endl;
           auto qRange = diffRange.floorDivideQuotient(size());
-          Trace("ff::range") << "for eq " << f << std::endl;
-          Trace("ff::range") << "q range " << qRange.d_lo << " to "
-                             << qRange.d_hi << std::endl;
+          Trace("ffr") << "for eq " << f << std::endl;
+          Trace("ffr") << "q range " << qRange.d_lo << " to " << qRange.d_hi
+                       << std::endl;
           assertions.push_back(z3Range(q, qRange));
         }
       }
@@ -566,9 +575,9 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
             auto diffRange = getRange(e[0]) - getRange(e[1]);
             Range nRange(1, size());
             auto qRange = (diffRange - nRange).floorDivideQuotient(size());
-            Trace("ff::range") << "for diseq " << f << std::endl;
-            Trace("ff::range") << "q range " << qRange.d_lo << " to "
-                               << qRange.d_hi << std::endl;
+            Trace("ffr") << "for diseq " << f << std::endl;
+            Trace("ffr") << "q range " << qRange.d_lo << " to " << qRange.d_hi
+                         << std::endl;
             assertions.push_back(z3Range(q, qRange));
           }
         }
@@ -588,19 +597,18 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
     }
   }
 
-  Trace("ff::range::z3") << "z3 version: " << Z3_get_full_version()
-                         << std::endl;
+  Trace("ffr::z3") << "z3 version: " << Z3_get_full_version() << std::endl;
   // specify tactic manually.
   z3::solver s = z3::tactic(ctx, "qfnia").mk_solver();
   if (timeoutMs != 0)
   {
     s.set(":timeout", static_cast<uint32_t>(timeoutMs));
   }
-  if (TraceIsOn("ff::range::z3"))
+  if (TraceIsOn("ffr::z3"))
   {
     for (const auto& a : assertions)
     {
-      Trace("ff::range::z3") << "to z3: " << a << std::endl;
+      Trace("ffr::z3") << "to z3: " << a << std::endl;
     }
   }
   z3::check_result r = s.check(assertions.size(), &assertions[0]);
@@ -615,8 +623,8 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       {
         auto decl = z3model.get_const_decl(i);
         auto interp = z3model.get_const_interp(decl);
-        Trace("ff::range::z3")
-            << "z3 model " << decl.name() << " = " << interp << std::endl;
+        Trace("ffr::z3") << "z3 model " << decl.name() << " = " << interp
+                         << std::endl;
       }
       auto nm = NodeManager::currentNM();
       for (const auto& it : ints)
@@ -627,8 +635,8 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
           auto val = FiniteFieldValue(
               Integer(z3model.eval(ints.at(it.first)).get_decimal_string(0)),
               size());
-          Trace("ff::range::model") << "model " << it.first << ": "
-                                    << val.toSignedInteger() << std::endl;
+          Trace("ffr::model") << "model " << it.first << ": "
+                              << val.toSignedInteger() << std::endl;
           model.insert({it.first, val});
           modelAsNodes.insert({it.first, nm->mkConst(val)});
         }
@@ -640,7 +648,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         Assert(k.isConst()) << "non-const " << k << " for " << v << " in model";
         model.insert({v, k.getConst<FiniteFieldValue>()});
         modelAsNodes.insert({v, k});
-        Trace("ff::range::model")
+        Trace("ffr::model")
             << "model " << v << ": "
             << k.getConst<FiniteFieldValue>().toSignedInteger() << std::endl;
       }
@@ -649,7 +657,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         const auto& [cvcVar, bitI] = entry;
         bool bit = model.at(cvcVar).toInteger().isBitSet(bitI);
         auto val = FiniteFieldValue(bit, size());
-        Trace("ff::range::model")
+        Trace("ffr::model")
             << "model " << var << ": " << val.toSignedInteger() << std::endl;
         Assert(!model.count(var));
         model.insert({var, val});
@@ -660,12 +668,12 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
     }
     case z3::check_result::unsat:
     {
-      if (TraceIsOn("ff::range::core"))
+      if (TraceIsOn("ffr::core"))
       {
-        Trace("ff::range::core") << "Core:" << std::endl;
+        Trace("ffr::core") << "Core:" << std::endl;
         for (const auto& c : s.unsat_core())
         {
-          Trace("ff::range::core") << " " << c << std::endl;
+          Trace("ffr::core") << " " << c << std::endl;
         }
       }
       return {Result::UNSAT, {}};
@@ -706,6 +714,14 @@ Range RangeSolver::getRange(TNode term)
           Range(0),
           [this](Range acc, TNode child) { return acc + d_ranges.at(child); });
     }
+    else if (current.getKind() == kind::FINITE_FIELD_BITSUM)
+    {
+      r = Range(0);
+      for (size_t i = 0; i < current.getNumChildren(); ++i)
+      {
+        r = r + d_ranges.at(current[i]) * Integer(1).multiplyByPow2(i);
+      }
+    }
     else if (current.getKind() == kind::FINITE_FIELD_MULT)
     {
       r = std::accumulate(
@@ -726,7 +742,7 @@ Range RangeSolver::getRange(TNode term)
     {
       Unimplemented() << "Unsupported kind: " << current.getKind();
     }
-    Trace("ff::range::debug") << "range " << current << ": " << r << std::endl;
+    Trace("ffr::debug") << "range " << current << ": " << r << std::endl;
     d_ranges.insert({current, r});
   }
   return d_ranges.at(term);
@@ -762,6 +778,18 @@ Range Range::operator*(const Range& other) const
   Integer d = d_hi * other.d_hi;
   return Range(std::min(a, std::min(b, std::min(c, d))),
                std::max(a, std::max(b, std::max(c, d))));
+}
+
+Range Range::operator*(const Integer& other) const
+{
+  if (other >= 0)
+  {
+    return {d_hi * other, d_lo * other};
+  }
+  else
+  {
+    return {d_lo * other, d_hi * other};
+  }
 }
 
 Range Range::operator-() const { return Range(-d_hi, -d_lo); }

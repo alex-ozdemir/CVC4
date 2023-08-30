@@ -30,7 +30,7 @@ name   = "Finite Field Theory"
   category   = "expert"
   long       = "ff-bitsum"
   type       = "bool"
-  default    = "false"
+  default    = "true"
   help       = "parse bitsums"
 
 [[option]]
@@ -112,3 +112,11 @@ name   = "Finite Field Theory"
   type       = "uint64_t"
   default    = "10000"
   help       = "milliseconds for unsound (SAT only) solving; 0: no limit; 1: skip"
+
+[[option]]
+  name       = "fflGbTimeout"
+  category   = "expert"
+  long       = "ffl-gb-timeout=MS"
+  type       = "double"
+  default    = "10000.0"
+  help       = "milliseconds for GB construction in ffl solver; 0: no limit"

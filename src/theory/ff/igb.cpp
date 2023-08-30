@@ -18,6 +18,7 @@
 #include "theory/ff/igb.h"
 
 // external includes
+#include <CoCoA/CpuTimeLimit.H>
 #include <CoCoA/SparsePolyIter.H>
 #include <CoCoA/SparsePolyOps-RingElem.H>
 #include <CoCoA/SparsePolyOps-ideal.H>
@@ -29,15 +30,22 @@
 // internal includes
 #include "base/check.h"
 #include "base/output.h"
+#include "options/ff_options.h"
 
 namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-IncGb::IncGb(const std::string& name,
+IncGb::IncGb(Env& env,
+             const std::string& name,
              const CoCoA::ring& polyRing,
              const std::vector<CoCoA::RingElem>& gens)
-    : d_name(name), d_polyRing(polyRing), d_i(), d_newGens(gens), d_basis()
+    : EnvObj(env),
+      d_name(name),
+      d_polyRing(polyRing),
+      d_i(),
+      d_newGens(gens),
+      d_basis()
 {
 }
 
@@ -84,9 +92,9 @@ void IncGb::tracePreComputeBasis() const
                << " new gens" << std::endl;
 }
 
-void IncGb::computeBasis()
+bool IncGb::computeBasis()
 {
-  if (!hasNewGens()) return;
+  if (!hasNewGens()) return true;
   tracePreComputeBasis();
   if (d_i)
   {
@@ -96,9 +104,25 @@ void IncGb::computeBasis()
   {
     d_i = {CoCoA::ideal(d_newGens)};
   }
-  d_basis = CoCoA::ReducedGBasis(*d_i);
+  if (options().ff.fflGbTimeout == 0)
+  {
+    d_basis = CoCoA::ReducedGBasis(*d_i);
+  }
+  else
+  {
+    try
+    {
+      d_basis = CoCoA::GBasis(
+          *d_i, CoCoA::CpuTimeLimit(options().ff.fflGbTimeout / 1000));
+    }
+    catch (const CoCoA::TimeoutException&)
+    {
+      return false;
+    }
+  }
   d_newGens.clear();
   tracePostComputeBasis();
+  return true;
 }
 
 void IncGb::tracePostComputeBasis() const
@@ -126,10 +150,11 @@ const std::vector<CoCoA::RingElem>& IncGb::basis() const
   return d_basis;
 }
 
-SparseGb::SparseGb(const std::string& name,
+SparseGb::SparseGb(Env& env,
+                   const std::string& name,
                    const CoCoA::ring& polyRing,
                    const std::vector<CoCoA::RingElem>& gens)
-    : IncGb(name, polyRing, gens)
+    : IncGb(env, name, polyRing, gens)
 {
 }
 
@@ -138,10 +163,11 @@ bool SparseGb::canAdd(const CoCoA::RingElem& e) const
   return (CoCoA::deg(e) <= 1 && CoCoA::NumTerms(e) <= 2);
 }
 
-SimpleLinearGb::SimpleLinearGb(const std::string& name,
+SimpleLinearGb::SimpleLinearGb(Env& env,
+                               const std::string& name,
                                const CoCoA::ring& polyRing,
                                const std::vector<CoCoA::RingElem>& gens)
-    : IncGb(name, polyRing, gens)
+    : IncGb(env, name, polyRing, gens)
 {
 }
 
@@ -150,17 +176,18 @@ bool SimpleLinearGb::canAdd(const CoCoA::RingElem& e) const
   return CoCoA::deg(e) <= 1;
 }
 
-LinearGb::LinearGb(const std::string& name,
+LinearGb::LinearGb(Env& env,
+                   const std::string& name,
                    const CoCoA::ring& polyRing,
                    const std::vector<CoCoA::RingElem>& gens)
-    : IncGb(name, polyRing, gens),
+    : IncGb(env, name, polyRing, gens),
       d_mat(CoCoA::BaseRing(polyRing), CoCoA::NumIndets(polyRing) + 1, 1)
 {
 }
 
-void LinearGb::computeBasis()
+bool LinearGb::computeBasis()
 {
-  if (!hasNewGens()) return;
+  if (!hasNewGens()) return true;
   tracePreComputeBasis();
   for (const auto& p : d_newGens)
   {
@@ -178,6 +205,7 @@ void LinearGb::computeBasis()
   d_i = CoCoA::ideal(gens);
   d_basis = CoCoA::ReducedGBasis(*d_i);
   tracePostComputeBasis();
+  return true;
 }
 
 CoCoA::RingElem LinearGb::rowAsPoly(size_t r)

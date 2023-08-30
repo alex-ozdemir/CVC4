@@ -25,27 +25,32 @@
 #include <CoCoA/ring.H>
 
 // std includes
-#include <string>
 #include <optional>
+#include <string>
 
 // internal includes
+#include "smt/env_obj.h"
 #include "theory/ff/cocoa_gauss.h"
 
 namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-class IncGb
+class IncGb : EnvObj
 {
  public:
-  IncGb(const std::string& name, const CoCoA::ring& polyRing, const std::vector<CoCoA::RingElem>& gens);
+  IncGb(Env& env,
+        const std::string& name,
+        const CoCoA::ring& polyRing,
+        const std::vector<CoCoA::RingElem>& gens);
   virtual ~IncGb(){};
   virtual bool contains(const CoCoA::RingElem& e) const;
   CoCoA::RingElem reduce(const CoCoA::RingElem& e) const;
   virtual bool canAdd(const CoCoA::RingElem& e) const;
   virtual bool trivial() const;
   void add(const CoCoA::RingElem& e);
-  virtual void computeBasis();
+  // returns false if timeout
+  virtual bool computeBasis();
   const std::string& name() const;
   bool hasNewGens() const;
   const std::vector<CoCoA::RingElem>& basis() const;
@@ -53,7 +58,6 @@ class IncGb
  protected:
   void tracePostComputeBasis() const;
   void tracePreComputeBasis() const;
-
 
   std::string d_name;
   CoCoA::ring d_polyRing;
@@ -65,25 +69,35 @@ class IncGb
 class SparseGb : public IncGb
 {
  public:
-  SparseGb(const std::string& name, const CoCoA::ring& polyRing, const std::vector<CoCoA::RingElem>& gens);
+  SparseGb(Env& env,
+           const std::string& name,
+           const CoCoA::ring& polyRing,
+           const std::vector<CoCoA::RingElem>& gens);
   bool canAdd(const CoCoA::RingElem& e) const override;
 };
 
 class SimpleLinearGb : public IncGb
 {
  public:
-  SimpleLinearGb(const std::string& name, const CoCoA::ring& polyRing, const std::vector<CoCoA::RingElem>& gens);
+  SimpleLinearGb(Env& env,
+                 const std::string& name,
+                 const CoCoA::ring& polyRing,
+                 const std::vector<CoCoA::RingElem>& gens);
   bool canAdd(const CoCoA::RingElem& e) const override;
 };
 
 class LinearGb : public IncGb
 {
  public:
-  LinearGb(const std::string& name, const CoCoA::ring& polyRing, const std::vector<CoCoA::RingElem>& gens);
+  LinearGb(Env& env,
+           const std::string& name,
+           const CoCoA::ring& polyRing,
+           const std::vector<CoCoA::RingElem>& gens);
   bool canAdd(const CoCoA::RingElem& e) const override;
-  //bool contains(const CoCoA::RingElem& e) const override;
-  //bool trivial() const override;
-  void computeBasis() override;
+  // bool contains(const CoCoA::RingElem& e) const override;
+  // bool trivial() const override;
+  bool computeBasis() override;
+
  private:
   CoCoA::RingElem rowAsPoly(size_t r);
   void addPolyToMatrix(const CoCoA::RingElem& e);
