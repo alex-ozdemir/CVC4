@@ -30,24 +30,27 @@ name   = "Finite Field Theory"
   category   = "expert"
   long       = "ff-bitsum"
   type       = "bool"
-  default    = "true"
+  default    = "false"
   help       = "parse bitsums"
 
-[[option]]
-  name       = "ffl"
-  category   = "expert"
-  long       = "ffl"
-  type       = "bool"
-  default    = "false"
-  help       = "use the FF lazy solver"
 
 [[option]]
-  name       = "ffr"
+  name       = "ffSolver"
   category   = "expert"
-  long       = "ffr"
-  type       = "bool"
-  default    = "false"
-  help       = "use the FF range solver"
+  long       = "ff-solver=MODE"
+  type       = "FfSolver"
+  default    = "GB"
+  help       = "which field solver (default: 'gb'; see --ff-solver=help)"
+  help_mode  = "Which field solver"
+[[option.mode.GB]]
+  name = "gb"
+  help = "use a groebner basis for the whole system"
+[[option.mode.SPLIT_GB]]
+  name = "split"
+  help = "use multiple groebner bases for partitions of the system"
+[[option.mode.INT]]
+  name = "int"
+  help = "use integer reasoning (z3)"
 
 [[option]]
   name       = "ffrGauss"
