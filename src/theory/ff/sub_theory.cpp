@@ -83,13 +83,13 @@ std::string varNameToSymName(const std::string& varName)
 
 void SubTheory::notifyFact(TNode fact) { d_facts.emplace_back(fact); }
 
-void SubTheory::postCheck(Theory::Effort e)
+Result SubTheory::postCheck(Theory::Effort e)
 {
   d_conflict.clear();
   d_model.clear();
   if (e == Theory::EFFORT_FULL)
   {
-    if (d_facts.empty()) return;
+    if (d_facts.empty()) return Result::SAT;
     if (options().ff.ffSolver == options::FfSolver::SPLIT_GB)
     {
       LazySolver lazy(d_env, d_modulus);
@@ -124,7 +124,7 @@ void SubTheory::postCheck(Theory::Effort e)
       else
       {
         Trace("ff") << "ffl: UNKNOWN" << std::endl;
-        AlwaysAssert(false) << "unknown" << std::endl;
+        return Result::UNKNOWN;
       }
     }
     else if (options().ff.ffSolver == options::FfSolver::INT)
@@ -154,7 +154,7 @@ void SubTheory::postCheck(Theory::Effort e)
       else
       {
         Trace("ff") << "ffr: UNKNOWN" << std::endl;
-        AlwaysAssert(false) << "unknown" << std::endl;
+        return Result::UNKNOWN;
       }
     }
     else if (options().ff.ffSolver == options::FfSolver::GB)
@@ -396,8 +396,10 @@ void SubTheory::postCheck(Theory::Effort e)
     {
       Unreachable() << options().ff.ffSolver << std::endl;
     }
-    Assert((!d_conflict.empty() ^ !d_model.empty()) || d_facts.empty());
+    AlwaysAssert((!d_conflict.empty() ^ !d_model.empty()) || d_facts.empty());
+    return d_facts.empty() || d_conflict.empty() ? Result::SAT : Result::UNSAT;
   }
+  return Result::UNKNOWN;
 }
 
 void SubTheory::setTrivialConflict()

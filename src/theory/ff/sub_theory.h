@@ -30,6 +30,7 @@
 #include "expr/node.h"
 #include "smt/env_obj.h"
 #include "theory/ff/stats.h"
+#include "theory/ff/util.h"
 #include "theory/theory.h"
 #include "util/integer.h"
 
@@ -68,7 +69,7 @@ class SubTheory : protected EnvObj
   /**
    * Check the current facts.
    */
-  void postCheck(Theory::Effort);
+  Result postCheck(Theory::Effort);
 
   /**
    * Has a conflict been detected?
