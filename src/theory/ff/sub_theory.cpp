@@ -155,7 +155,7 @@ void SubTheory::postCheck(Theory::Effort e)
         Trace("ff") << "ffr: UNKNOWN" << std::endl;
       }
     }
-    else if (options().ff.ffSolver == options::FfSolver::INT)
+    else if (options().ff.ffSolver == options::FfSolver::GB)
     {
       // all theory leaves
       std::vector<Node> leaves{};
