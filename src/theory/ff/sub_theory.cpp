@@ -124,6 +124,7 @@ void SubTheory::postCheck(Theory::Effort e)
       else
       {
         Trace("ff") << "ffl: UNKNOWN" << std::endl;
+        AlwaysAssert(false) << "unknown" << std::endl;
       }
     }
     else if (options().ff.ffSolver == options::FfSolver::INT)
@@ -153,6 +154,7 @@ void SubTheory::postCheck(Theory::Effort e)
       else
       {
         Trace("ff") << "ffr: UNKNOWN" << std::endl;
+        AlwaysAssert(false) << "unknown" << std::endl;
       }
     }
     else if (options().ff.ffSolver == options::FfSolver::GB)
