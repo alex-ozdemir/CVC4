@@ -24,6 +24,7 @@
 // std includes
 
 // internal includes
+#include "options/ff_options.h"
 #include "theory/ff/cocoa.h"
 #include "theory/ff/igb.h"
 #include "theory/ff/parse.h"
@@ -85,8 +86,10 @@ void LazySolver::check()
     }
   }
   // LinearGb lIdeal(" lIdeal", enc.polyRing(), lGens);
-  SimpleLinearGb lIdeal(d_env, " lIdeal", enc.polyRing(), lGens);
-  SparseGb nlIdeal(d_env, "nlIdeal", enc.polyRing(), nlGens);
+  SimpleLinearGb lIdeal(
+      options().ff.fflGbTimeout, " lIdeal", enc.polyRing(), lGens);
+  SparseGb nlIdeal(
+      options().ff.fflGbTimeout, "nlIdeal", enc.polyRing(), nlGens);
   std::vector<IncGb*> ideals{};
   ideals.push_back(&nlIdeal);
   ideals.push_back(&lIdeal);

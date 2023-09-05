@@ -714,6 +714,8 @@ libcvc5_add_sources(
   theory/ff/parse.h
   theory/ff/range.cpp
   theory/ff/range.h
+  theory/ff/split_gb.cpp
+  theory/ff/split_gb.h
   theory/ff/stats.cpp
   theory/ff/stats.h
   theory/ff/sub_theory.cpp

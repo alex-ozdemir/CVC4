@@ -29,36 +29,46 @@
 #include <string>
 
 // internal includes
-#include "smt/env_obj.h"
 #include "theory/ff/cocoa_gauss.h"
 
 namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-class IncGb : EnvObj
+class IncGb
 {
  public:
-  IncGb(Env& env,
+  IncGb(double gbTimeout,
         const std::string& name,
         const CoCoA::ring& polyRing,
         const std::vector<CoCoA::RingElem>& gens);
   virtual ~IncGb(){};
+  const std::string& name() const;
+  const CoCoA::ring& polyRing() const;
+
+  // before computing a basis
+
+  virtual bool canAdd(const CoCoA::RingElem& e) const;
+  void add(const CoCoA::RingElem& e);
+  bool hasNewGens() const;
+
+  // computing a basis; returns false if timeout
+  virtual bool computeBasis();
+
+  // after computing a basis
+
+  const std::vector<CoCoA::RingElem>& basis() const;
+  bool zeroDimensional() const;
+  CoCoA::RingElem minimalPolynomial(size_t indetIdx) const;
+  virtual bool trivial() const;
   virtual bool contains(const CoCoA::RingElem& e) const;
   CoCoA::RingElem reduce(const CoCoA::RingElem& e) const;
-  virtual bool canAdd(const CoCoA::RingElem& e) const;
-  virtual bool trivial() const;
-  void add(const CoCoA::RingElem& e);
-  // returns false if timeout
-  virtual bool computeBasis();
-  const std::string& name() const;
-  bool hasNewGens() const;
-  const std::vector<CoCoA::RingElem>& basis() const;
 
  protected:
   void tracePostComputeBasis() const;
   void tracePreComputeBasis() const;
 
+  double d_gbTimeout;
   std::string d_name;
   CoCoA::ring d_polyRing;
   std::optional<CoCoA::ideal> d_i;
@@ -69,7 +79,7 @@ class IncGb : EnvObj
 class SparseGb : public IncGb
 {
  public:
-  SparseGb(Env& env,
+  SparseGb(double gbTimeout,
            const std::string& name,
            const CoCoA::ring& polyRing,
            const std::vector<CoCoA::RingElem>& gens);
@@ -79,7 +89,7 @@ class SparseGb : public IncGb
 class SimpleLinearGb : public IncGb
 {
  public:
-  SimpleLinearGb(Env& env,
+  SimpleLinearGb(double gbTimeout,
                  const std::string& name,
                  const CoCoA::ring& polyRing,
                  const std::vector<CoCoA::RingElem>& gens);
@@ -89,7 +99,7 @@ class SimpleLinearGb : public IncGb
 class LinearGb : public IncGb
 {
  public:
-  LinearGb(Env& env,
+  LinearGb(double gbTimeout,
            const std::string& name,
            const CoCoA::ring& polyRing,
            const std::vector<CoCoA::RingElem>& gens);
