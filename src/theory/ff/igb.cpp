@@ -50,6 +50,14 @@ IncGb::IncGb(double gbTimeout,
 {
 }
 
+std::unique_ptr<IncGb> IncGb::copy() const
+{
+  std::unique_ptr<IncGb> self =
+      std::make_unique<SparseGb>(d_gbTimeout, d_name, d_polyRing, d_basis);
+  self->computeBasis();
+  return self;
+}
+
 bool IncGb::contains(const CoCoA::RingElem& e) const
 {
   if (!d_i) return false;
@@ -175,6 +183,13 @@ SparseGb::SparseGb(double gbTimeout,
     : IncGb(gbTimeout, name, polyRing, gens)
 {
 }
+std::unique_ptr<IncGb> SparseGb::copy() const
+{
+  std::unique_ptr<SparseGb> self =
+      std::make_unique<SparseGb>(d_gbTimeout, d_name, d_polyRing, d_basis);
+  self->computeBasis();
+  return self;
+}
 
 bool SparseGb::canAdd(const CoCoA::RingElem& e) const
 {
@@ -187,6 +202,14 @@ SimpleLinearGb::SimpleLinearGb(double gbTimeout,
                                const std::vector<CoCoA::RingElem>& gens)
     : IncGb(gbTimeout, name, polyRing, gens)
 {
+}
+
+std::unique_ptr<IncGb> SimpleLinearGb::copy() const
+{
+  std::unique_ptr<SimpleLinearGb> self = std::make_unique<SimpleLinearGb>(
+      d_gbTimeout, d_name, d_polyRing, d_basis);
+  self->computeBasis();
+  return self;
 }
 
 bool SimpleLinearGb::canAdd(const CoCoA::RingElem& e) const
@@ -202,6 +225,8 @@ LinearGb::LinearGb(double gbTimeout,
       d_mat(CoCoA::BaseRing(polyRing), CoCoA::NumIndets(polyRing) + 1, 1)
 {
 }
+
+std::unique_ptr<IncGb> LinearGb::copy() const { Unimplemented(); }
 
 bool LinearGb::computeBasis()
 {

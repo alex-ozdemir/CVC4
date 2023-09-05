@@ -26,6 +26,7 @@
 
 // std includes
 #include <optional>
+#include <memory>
 #include <string>
 
 // internal includes
@@ -42,6 +43,9 @@ class IncGb
         const std::string& name,
         const CoCoA::ring& polyRing,
         const std::vector<CoCoA::RingElem>& gens);
+  IncGb(const IncGb& other) = delete;
+  IncGb& operator=(const IncGb& other) = delete;
+  virtual std::unique_ptr<IncGb> copy() const;
   virtual ~IncGb(){};
   const std::string& name() const;
   const CoCoA::ring& polyRing() const;
@@ -83,6 +87,7 @@ class SparseGb : public IncGb
            const std::string& name,
            const CoCoA::ring& polyRing,
            const std::vector<CoCoA::RingElem>& gens);
+  std::unique_ptr<IncGb> copy() const override;
   bool canAdd(const CoCoA::RingElem& e) const override;
 };
 
@@ -93,6 +98,7 @@ class SimpleLinearGb : public IncGb
                  const std::string& name,
                  const CoCoA::ring& polyRing,
                  const std::vector<CoCoA::RingElem>& gens);
+  std::unique_ptr<IncGb> copy() const override;
   bool canAdd(const CoCoA::RingElem& e) const override;
 };
 
@@ -103,6 +109,7 @@ class LinearGb : public IncGb
            const std::string& name,
            const CoCoA::ring& polyRing,
            const std::vector<CoCoA::RingElem>& gens);
+  std::unique_ptr<IncGb> copy() const override;
   bool canAdd(const CoCoA::RingElem& e) const override;
   // bool contains(const CoCoA::RingElem& e) const override;
   // bool trivial() const override;

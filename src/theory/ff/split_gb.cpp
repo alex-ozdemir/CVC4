@@ -44,15 +44,23 @@ std::unique_ptr<AssignmentEnumerator> applyRule(const IncGb& ideal,
 
 }  // namespace
 
-SplitGb::SplitGb(const std::vector<IncGb>&& bases) : d_bases(std::move(bases))
+SplitGb::SplitGb(std::vector<std::unique_ptr<IncGb>>&& bases) : d_bases(std::move(bases))
 {
   AlwaysAssert(d_bases.size());
+}
+
+SplitGb::SplitGb(const SplitGb& other) : d_bases()
+{
+  for (const auto& b : other.d_bases)
+  {
+    d_bases.push_back(b->copy());
+  }
 }
 
 bool SplitGb::trivial() const
 {
   return std::any_of(d_bases.begin(), d_bases.end(), [](const auto& b) {
-    return b.trivial();
+    return b->trivial();
   });
 }
 
@@ -61,32 +69,32 @@ std::vector<CoCoA::RingElem> SplitGb::gens() const
   std::vector<CoCoA::RingElem> out;
   for (const auto& b : d_bases)
   {
-    out.insert(out.end(), b.basis().begin(), b.basis().end());
+    out.insert(out.end(), b->basis().begin(), b->basis().end());
   }
   return out;
 }
 
-const CoCoA::ring& SplitGb::polyRing() const { return d_bases[0].polyRing(); }
+const CoCoA::ring& SplitGb::polyRing() const { return d_bases[0]->polyRing(); }
 
 bool SplitGb::containedIn(const CoCoA::RingElem& poly, size_t basisIdx) const
 {
-  return d_bases[basisIdx].contains(poly);
+  return d_bases[basisIdx]->contains(poly);
 }
 
 size_t SplitGb::numBases() const { return d_bases.size(); }
 
 const IncGb& SplitGb::operator[](size_t basisIdx) const
 {
-  return d_bases[basisIdx];
+  return *d_bases[basisIdx];
 }
 
-IncGb& SplitGb::operator[](size_t basisIdx) { return d_bases[basisIdx]; }
+IncGb& SplitGb::operator[](size_t basisIdx) { return *d_bases[basisIdx]; }
 
 void SplitGb::addPoly(const CoCoA::RingElem& poly)
 {
   for (auto& b : d_bases)
   {
-    b.add(poly);
+    b->add(poly);
   }
 }
 
@@ -94,7 +102,7 @@ void SplitGb::computeBasis()
 {
   for (auto& b : d_bases)
   {
-    b.computeBasis();
+    b->computeBasis();
   }
 }
 
@@ -149,6 +157,7 @@ std::unique_ptr<AssignmentEnumerator> applyRule(const IncGb& ideal,
         toGuess, ideal.polyRing()->myBaseRing());
   }
   Unreachable();
+  return nullptr;
 }
 
 }  // namespace
@@ -250,8 +259,8 @@ std::optional<std::vector<CoCoA::RingElem>> splitModelConstruct(
   {
     for (const auto& basis : origBases)
     {
-      Trace("ff::split::mc") << " basis " << basis.name() << std::endl;
-      for (const auto& g : basis.basis())
+      Trace("ff::split::mc") << " basis " << basis->name() << std::endl;
+      for (const auto& g : basis->basis())
       {
         Trace("ff::split::mc") << "  " << g << std::endl;
       }

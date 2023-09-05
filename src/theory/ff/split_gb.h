@@ -25,7 +25,7 @@
 #include <CoCoA/symbol.H>
 
 // std includes
-#include <map>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -39,7 +39,9 @@ namespace ff {
 class SplitGb
 {
  public:
-  SplitGb(const std::vector<IncGb>&& bases);
+  SplitGb(std::vector<std::unique_ptr<IncGb>>&& bases);
+  SplitGb(const SplitGb& other);
+  SplitGb& operator=(const SplitGb& other) = delete;
   bool trivial() const;
   std::vector<CoCoA::RingElem> gens() const;
   const CoCoA::ring& polyRing() const;
@@ -51,9 +53,9 @@ class SplitGb
   IncGb& operator[](size_t basisIdx);
 
   // iterator
-  using iterator = std::vector<IncGb>::iterator;
-  using const_iterator = std::vector<IncGb>::const_iterator;
-  using value_type = std::vector<IncGb>::value_type;
+  using iterator = std::vector<std::unique_ptr<IncGb>>::iterator;
+  using const_iterator = std::vector<std::unique_ptr<IncGb>>::const_iterator;
+  using value_type = std::vector<std::unique_ptr<IncGb>>::value_type;
   iterator begin() { return d_bases.begin(); }
   iterator end() { return d_bases.end(); }
   const_iterator begin() const { return d_bases.begin(); }
@@ -64,7 +66,7 @@ class SplitGb
   void computeBasis();
 
  private:
-  std::vector<IncGb> d_bases;
+  std::vector<std::unique_ptr<IncGb>> d_bases;
 };
 
 std::optional<std::vector<CoCoA::RingElem>> splitModelConstruct(
@@ -73,9 +75,12 @@ std::optional<std::vector<CoCoA::RingElem>> splitModelConstruct(
 void checkModel(const SplitGb& origBases,
                 const std::vector<CoCoA::RingElem>& model);
 
+/** partial evaluation of polynomials */
 std::optional<CoCoA::RingElem> cocoaEval(
     CoCoA::RingElem poly,
     const std::vector<std::optional<CoCoA::RingElem>>& values);
+
+/** total evaluation of polynomials */
 CoCoA::RingElem cocoaEval(CoCoA::RingElem poly,
                           const std::vector<CoCoA::RingElem>& values);
 

@@ -95,9 +95,13 @@ TEST_F(TestTheoryFfSplitGb, NoSplit)
     // single basis, SAT
     {
       // TraceChannel.on("ff::split::mc::debug");
-      ff::IncGb basis(0, "full", polyRing, {a - 0, b - 1, c - 3});
-      basis.computeBasis();
-      ff::SplitGb bases({basis});
+      std::vector<CoCoA::RingElem> gens = {a - 0, b - 1, c - 3};
+      std::unique_ptr<ff::IncGb> basis =
+          std::make_unique<ff::IncGb>(0, "full", polyRing, gens);
+      basis->computeBasis();
+      std::vector<std::unique_ptr<ff::IncGb>> toadd{};
+      toadd.push_back(std::move(basis));
+      ff::SplitGb bases(std::move(toadd));
       auto result = ff::splitModelConstruct(bases);
       ASSERT_TRUE(result.has_value());
       ff::checkModel(bases, *result);
@@ -109,9 +113,13 @@ TEST_F(TestTheoryFfSplitGb, NoSplit)
     // single basis, UNSAT
     {
       // TraceChannel.on("ff::split::mc::debug");
-      ff::IncGb basis(0, "full", polyRing, {a - 0, b - 1, c - 3, c * c - c});
-      basis.computeBasis();
-      ff::SplitGb bases({basis});
+      std::vector<CoCoA::RingElem> gens = {a - 0, b - 1, c - 3, c * c - c};
+      std::unique_ptr<ff::IncGb> basis =
+          std::make_unique<ff::IncGb>(0, "full", polyRing, gens);
+      basis->computeBasis();
+      std::vector<std::unique_ptr<ff::IncGb>> toadd{};
+      toadd.push_back(std::move(basis));
+      ff::SplitGb bases(std::move(toadd));
       auto result = ff::splitModelConstruct(bases);
       ASSERT_FALSE(result.has_value());
     }
@@ -130,11 +138,18 @@ TEST_F(TestTheoryFfSplitGb, TwoSplit)
     // two bases, SAT
     {
       // TraceChannel.on("ff::split::mc");
-      ff::IncGb basis1(0, "lin", polyRing, {a - b, b - c + 3});
-      basis1.computeBasis();
-      ff::IncGb basis2(0, "bit", polyRing, {c * (c - 2)});
-      basis2.computeBasis();
-      ff::SplitGb bases({basis1, basis2});
+      std::vector<CoCoA::RingElem> gens1 = {a - b, b - c + 3};
+      std::unique_ptr<ff::IncGb> basis1 =
+          std::make_unique<ff::IncGb>(0, "lin", polyRing, gens1);
+      basis1->computeBasis();
+      std::vector<CoCoA::RingElem> gens2 = {c * (c - 2)};
+      std::unique_ptr<ff::IncGb> basis2 =
+          std::make_unique<ff::IncGb>(0, "bit", polyRing, gens2);
+      basis2->computeBasis();
+      std::vector<std::unique_ptr<ff::IncGb>> toadd{};
+      toadd.push_back(std::move(basis1));
+      toadd.push_back(std::move(basis2));
+      ff::SplitGb bases(std::move(toadd));
       auto result = ff::splitModelConstruct(bases);
       ASSERT_TRUE(result.has_value());
       ff::checkModel(bases, *result);
@@ -143,11 +158,18 @@ TEST_F(TestTheoryFfSplitGb, TwoSplit)
     // two bases, UNSAT
     {
       // TraceChannel.on("ff::split::mc");
-      ff::IncGb basis1(0, "lin", polyRing, {a - b, b - c + 3});
-      basis1.computeBasis();
-      ff::IncGb basis2(0, "bit", polyRing, {a * a - a, c * (c - 2)});
-      basis2.computeBasis();
-      ff::SplitGb bases({basis1, basis2});
+      std::vector<CoCoA::RingElem> gens1 = {a - b, b - c + 3};
+      std::unique_ptr<ff::IncGb> basis1 =
+          std::make_unique<ff::IncGb>(0, "lin", polyRing, gens1);
+      basis1->computeBasis();
+      std::vector<CoCoA::RingElem> gens2 = {a * a - a, c * (c - 2)};
+      std::unique_ptr<ff::IncGb> basis2 =
+          std::make_unique<ff::IncGb>(0, "bit", polyRing, gens2);
+      basis2->computeBasis();
+      std::vector<std::unique_ptr<ff::IncGb>> toadd{};
+      toadd.push_back(std::move(basis1));
+      toadd.push_back(std::move(basis2));
+      ff::SplitGb bases(std::move(toadd));
       auto result = ff::splitModelConstruct(bases);
       ASSERT_FALSE(result.has_value());
     }
@@ -178,11 +200,11 @@ TEST_F(TestTheoryFfSplitGb, RandUnsat)
       size_t j = rand() % n_bases;
       gens[j].push_back(allGens.back());
     }
-    std::vector<ff::IncGb> bases;
+    std::vector<std::unique_ptr<ff::IncGb>> bases;
     for (size_t i = 0; i < n_bases; ++i)
     {
-      bases.emplace_back(
-          0, std::string("num") + std::to_string(i), polyRing, gens[i]);
+      bases.emplace_back(std::make_unique<ff::IncGb>(
+          0, std::string("num") + std::to_string(i), polyRing, gens[i]));
     }
     bool isSat = ff::commonRoot(CoCoA::ideal(allGens)).size();
     // TraceChannel.on("ff::split::mc");
@@ -226,11 +248,11 @@ TEST_F(TestTheoryFfSplitGb, RandSat)
       size_t j = rand() % n_bases;
       gens[j].push_back(allGens.back());
     }
-    std::vector<ff::IncGb> bases;
+    std::vector<std::unique_ptr<ff::IncGb>> bases;
     for (size_t i = 0; i < n_bases; ++i)
     {
-      bases.emplace_back(
-          0, std::string("num") + std::to_string(i), polyRing, gens[i]);
+      bases.emplace_back(std::make_unique<ff::IncGb>(
+          0, std::string("num") + std::to_string(i), polyRing, gens[i]));
     }
     bool isSat = ff::commonRoot(CoCoA::ideal(allGens)).size();
     // TraceChannel.on("ff::split::mc");
