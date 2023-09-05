@@ -217,6 +217,28 @@ const Node& CocoaEncoder::symNode(CoCoA::symbol s) const
   return d_symNodes.at(extractStr(s));
 }
 
+bool CocoaEncoder::hasNode(CoCoA::symbol s) const
+{
+  return d_symNodes.count(extractStr(s));
+}
+
+std::vector<std::pair<size_t, Node>> CocoaEncoder::nodeIndets() const
+{
+  std::vector<std::pair<size_t, Node>> out;
+  for (size_t i = 0; i < d_syms.size(); ++i)
+  {
+    if (hasNode(d_syms[i]))
+    {
+      Node n = symNode(d_syms[i]);
+      if (isFfLeaf(n))
+      {
+        out.emplace_back(i, n);
+      }
+    }
+  }
+  return out;
+}
+
 const CoCoA::RingElem& CocoaEncoder::symPoly(CoCoA::symbol s) const
 {
   Assert(d_symPolys.count(extractStr(s)));

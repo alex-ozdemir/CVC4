@@ -71,10 +71,12 @@ class CocoaEncoder : FieldObj
   }
   std::vector<Node> bitsums() const;
   const CoCoA::ring& polyRing() const { return d_polyRing.value(); }
+  std::vector<std::pair<size_t, Node>> nodeIndets() const;
 
  private:
   /** a bitsum or a var */
   const Node& symNode(CoCoA::symbol s) const;
+  bool hasNode(CoCoA::symbol s) const;
   const CoCoA::RingElem& symPoly(CoCoA::symbol s) const;
   void encodeTerm(const Node& t);
   void encodeFact(const Node& f);

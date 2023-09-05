@@ -28,6 +28,7 @@
 #include "theory/ff/cocoa.h"
 #include "theory/ff/igb.h"
 #include "theory/ff/parse.h"
+#include "theory/ff/split_gb.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -85,19 +86,18 @@ void LazySolver::check()
       lGens.push_back(p);
     }
   }
-  // LinearGb lIdeal(" lIdeal", enc.polyRing(), lGens);
-  SimpleLinearGb lIdeal(
-      options().ff.fflGbTimeout, " lIdeal", enc.polyRing(), lGens);
-  SparseGb nlIdeal(
-      options().ff.fflGbTimeout, "nlIdeal", enc.polyRing(), nlGens);
-  std::vector<IncGb*> ideals{};
-  ideals.push_back(&nlIdeal);
-  ideals.push_back(&lIdeal);
-  nlIdeal.computeBasis();
-  lIdeal.computeBasis();
+  std::vector<std::unique_ptr<IncGb>> ideals{};
+  ideals.push_back(std::make_unique<SparseGb>(
+      options().ff.fflGbTimeout, "nlIdeal", enc.polyRing(), nlGens));
+  ideals.push_back(std::make_unique<SimpleLinearGb>(
+      options().ff.fflGbTimeout, " lIdeal", enc.polyRing(), lGens));
+  IncGb* nlIdeal = &*ideals[0];
+  IncGb* lIdeal = &*ideals[1];
+  nlIdeal->computeBasis();
+  lIdeal->computeBasis();
   do
   {
-    for (IncGb* ideal : ideals)
+    for (const auto& ideal : ideals)
     {
       ideal->computeBasis();
       if (ideal->trivial())
@@ -109,7 +109,7 @@ void LazySolver::check()
 
       for (const auto& p : ideal->basis())
       {
-        for (IncGb* i : ideals)
+        for (const auto& i : ideals)
         {
           CoCoA::RingElem reducedP = p;
           {
@@ -118,7 +118,7 @@ void LazySolver::check()
             do
             {
               reducedP = newReducedP;
-              for (IncGb* ii : ideals)
+              for (const auto& ii : ideals)
               {
                 if (ii != i)
                 {
@@ -190,7 +190,7 @@ void LazySolver::check()
             {
               CoCoA::RingElem diff =
                   enc.getTermEncoding(a[k]) - enc.getTermEncoding(b[k]);
-              for (IncGb* ideal2 : ideals)
+              for (const auto& ideal2 : ideals)
               {
                 if (ideal2->canAdd(diff) && !ideal2->contains(diff))
                 {
@@ -207,7 +207,7 @@ void LazySolver::check()
               for (size_t k = min; k < max; ++k)
               {
                 CoCoA::RingElem isZero = enc.getTermEncoding(n[k]);
-                for (IncGb* ideal2 : ideals)
+                for (const auto& ideal2 : ideals)
                 {
                   if (ideal2->canAdd(isZero) && !ideal2->contains(isZero))
                   {
@@ -222,7 +222,32 @@ void LazySolver::check()
         }
       }
     }
-  } while (lIdeal.hasNewGens() || nlIdeal.hasNewGens());
+  } while (lIdeal->hasNewGens() || nlIdeal->hasNewGens());
+  // attempt model construction
+  if (d_result == Result::UNKNOWN)
+  {
+    SplitGb splitGb(std::move(ideals));
+    std::optional<std::vector<CoCoA::RingElem>> root =
+        splitModelConstruct(splitGb);
+    if (root.has_value())
+    {
+      d_result = Result::SAT;
+      for (const auto& [indetIdx, varNode] : enc.nodeIndets())
+      {
+        std::ostringstream valStr;
+        valStr << root.value()[indetIdx];
+        Integer integer(valStr.str(), 10);
+        FiniteFieldValue literal(integer, size());
+        Trace("ff::model") << "Model: " << varNode << " = " << literal
+                           << std::endl;
+        d_model.insert({varNode, literal});
+      }
+    }
+    else
+    {
+      d_result = Result::UNSAT;
+    }
+  }
 }
 
 void LazySolver::clear()
