@@ -87,12 +87,26 @@ void LazySolver::check()
     }
   }
   std::vector<std::unique_ptr<IncGb>> ideals{};
-  ideals.push_back(std::make_unique<SparseGb>(
-      options().ff.fflGbTimeout, "nlIdeal", enc.polyRing(), nlGens));
-  ideals.push_back(std::make_unique<SimpleLinearGb>(
-      options().ff.fflGbTimeout, " lIdeal", enc.polyRing(), lGens));
-  IncGb* nlIdeal = &*ideals[0];
-  IncGb* lIdeal = &*ideals[1];
+  IncGb* nlIdeal;
+  IncGb* lIdeal;
+  if (options().ff.fflMcLinear)
+  {
+    ideals.push_back(std::make_unique<SimpleLinearGb>(
+        options().ff.fflGbTimeout, " lIdeal", enc.polyRing(), lGens));
+    ideals.push_back(std::make_unique<SparseGb>(
+        options().ff.fflGbTimeout, "nlIdeal", enc.polyRing(), nlGens));
+    lIdeal = &*ideals[0];
+    nlIdeal = &*ideals[1];
+  }
+  else
+  {
+    ideals.push_back(std::make_unique<SparseGb>(
+        options().ff.fflGbTimeout, "nlIdeal", enc.polyRing(), nlGens));
+    ideals.push_back(std::make_unique<SimpleLinearGb>(
+        options().ff.fflGbTimeout, " lIdeal", enc.polyRing(), lGens));
+    nlIdeal = &*ideals[0];
+    lIdeal = &*ideals[1];
+  }
   nlIdeal->computeBasis();
   lIdeal->computeBasis();
   do
@@ -228,7 +242,7 @@ void LazySolver::check()
   {
     SplitGb splitGb(std::move(ideals));
     std::optional<std::vector<CoCoA::RingElem>> root =
-        splitModelConstruct(splitGb);
+        splitModelConstruct(splitGb, options().ff.fflMcCegar);
     if (root.has_value())
     {
       d_result = Result::SAT;

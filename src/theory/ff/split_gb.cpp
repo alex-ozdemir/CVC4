@@ -44,7 +44,8 @@ std::unique_ptr<AssignmentEnumerator> applyRule(const IncGb& ideal,
 
 }  // namespace
 
-SplitGb::SplitGb(std::vector<std::unique_ptr<IncGb>>&& bases) : d_bases(std::move(bases))
+SplitGb::SplitGb(std::vector<std::unique_ptr<IncGb>>&& bases)
+    : d_bases(std::move(bases))
 {
   AlwaysAssert(d_bases.size());
 }
@@ -252,7 +253,7 @@ splitModelExtend(const SplitGb& origBases,
 }
 
 std::optional<std::vector<CoCoA::RingElem>> splitModelConstruct(
-    const SplitGb& origBases)
+    const SplitGb& origBases, bool cegar)
 {
   Trace("ff::split::mc") << "start splitModelConstruct" << std::endl;
   if (TraceIsOn("ff::split::mc"))
@@ -294,9 +295,27 @@ std::optional<std::vector<CoCoA::RingElem>> splitModelConstruct(
       {
         CoCoA::RingElem newPoly = std::get<CoCoA::RingElem>(result);
         Trace("ff::split::mc") << "conflict " << newPoly << std::endl;
-        Assert(!bases[0].contains(newPoly));
-        bases[0].add(newPoly);
-        bases[0].computeBasis();
+        if (cegar)
+        {
+          Assert(!bases[0].contains(newPoly));
+          bases[0].add(newPoly);
+          bases[0].computeBasis();
+        }
+        else
+        {
+          bool found = false;
+          for (const auto& p : bases.gens())
+          {
+            if (!bases[0].contains(p))
+            {
+              bases[0].add(p);
+              bases[0].computeBasis();
+              found = true;
+              break;
+            }
+          }
+          Assert(found);
+        }
         break;
       }
       case 2:

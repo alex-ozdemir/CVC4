@@ -69,8 +69,14 @@ class SplitGb
   std::vector<std::unique_ptr<IncGb>> d_bases;
 };
 
+/**
+ * Construct a model.
+ *
+ * @param origBases the ideal to find a zero for
+ * @param cegar whether to use counter-examples to drive refinement.
+ */
 std::optional<std::vector<CoCoA::RingElem>> splitModelConstruct(
-    const SplitGb& origBases);
+    const SplitGb& origBases, bool cegar);
 
 void checkModel(const SplitGb& origBases,
                 const std::vector<CoCoA::RingElem>& model);

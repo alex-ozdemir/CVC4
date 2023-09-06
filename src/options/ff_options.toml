@@ -123,3 +123,19 @@ name   = "Finite Field Theory"
   type       = "double"
   default    = "10000.0"
   help       = "milliseconds for GB construction in ffl solver; 0: no limit"
+
+[[option]]
+  name       = "fflMcCegar"
+  category   = "expert"
+  long       = "ffl-mc-cegar"
+  type       = "bool"
+  default    = "true"
+  help       = "use counterexamples to guide MC abstraction refinement"
+
+[[option]]
+  name       = "fflMcLinear"
+  category   = "expert"
+  long       = "ffl-mc-linear"
+  type       = "bool"
+  default    = "true"
+  help       = "use the linear ideal to drive model construction"
