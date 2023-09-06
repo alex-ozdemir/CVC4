@@ -239,6 +239,15 @@ std::vector<std::pair<size_t, Node>> CocoaEncoder::nodeIndets() const
   return out;
 }
 
+FiniteFieldValue CocoaEncoder::cocoaFfToFfVal(const CoCoA::RingElem& elem)
+{
+  Assert(CoCoA::owner(elem) == d_coeffField);
+  std::ostringstream valStr;
+  valStr << elem;
+  Integer integer(valStr.str(), 10);
+  return {integer, size()};
+}
+
 const CoCoA::RingElem& CocoaEncoder::symPoly(CoCoA::symbol s) const
 {
   Assert(d_symPolys.count(extractStr(s)));

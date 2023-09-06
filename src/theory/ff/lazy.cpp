@@ -248,10 +248,7 @@ void LazySolver::check()
       d_result = Result::SAT;
       for (const auto& [indetIdx, varNode] : enc.nodeIndets())
       {
-        std::ostringstream valStr;
-        valStr << root.value()[indetIdx];
-        Integer integer(valStr.str(), 10);
-        FiniteFieldValue literal(integer, size());
+        FiniteFieldValue literal = enc.cocoaFfToFfVal(root.value()[indetIdx]);
         Trace("ff::model") << "Model: " << varNode << " = " << literal
                            << std::endl;
         d_model.insert({varNode, literal});

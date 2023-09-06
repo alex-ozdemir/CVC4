@@ -72,6 +72,7 @@ class CocoaEncoder : FieldObj
   std::vector<Node> bitsums() const;
   const CoCoA::ring& polyRing() const { return d_polyRing.value(); }
   std::vector<std::pair<size_t, Node>> nodeIndets() const;
+  FiniteFieldValue cocoaFfToFfVal(const CoCoA::RingElem& elem);
 
  private:
   /** a bitsum or a var */

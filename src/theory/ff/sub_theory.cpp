@@ -28,6 +28,7 @@
 #include "expr/node_traversal.h"
 #include "options/ff_options.h"
 #include "smt/env_obj.h"
+#include "theory/ff/cocoa.h"
 #include "theory/ff/core.h"
 #include "theory/ff/lazy.h"
 #include "theory/ff/multi_roots.h"
@@ -159,179 +160,32 @@ Result SubTheory::postCheck(Theory::Effort e)
     }
     else if (options().ff.ffSolver == options::FfSolver::GB)
     {
-      // all theory leaves
-      std::vector<Node> leaves{};
+      CocoaEncoder enc(d_modulus);
+      // collect leaves
+      for (const Node& node : d_facts)
       {
-        // get all descendents
-        std::unordered_set<Node> descendents{};
-        for (const Node& node : d_facts)
-        {
-          for (const auto& child : NodeDfsIterable(
-                   node, VisitOrder::POSTORDER, [&descendents](TNode nn) {
-                     return descendents.count(nn) > 0;
-                   }))
-          {
-            descendents.insert(child);
-          }
-        }
-        // save those that are leaves
-        std::copy_if(descendents.begin(),
-                     descendents.end(),
-                     std::back_inserter(leaves),
-                     [](const Node& n) {
-                       return Theory::isLeafOf(n, TheoryId::THEORY_FF)
-                              && n.getType().isFiniteField() && !n.isConst();
-                     });
+        enc.addFact(node);
       }
-
-      // symbols for all theory leaves, then one inverse for each !=
-      std::vector<CoCoA::symbol> symbols;
+      enc.endScan();
+      // assert facts
+      for (const Node& node : d_facts)
       {
-        // a symbol for each leaf
-        size_t leafNum = 0;
-        for (const auto& v : leaves)
-        {
-          std::string name;
-          if (v.isVar())
-          {
-            name = v.getName();
-          }
-          else
-          {
-            name = "leaf" + std::to_string(leafNum);
-            ++leafNum;
-          }
-          Trace("ff::trans") << "var " << name << ": " << v << std::endl;
-          symbols.push_back(CoCoA::symbol(varNameToSymName(name)));
-        }
-
-        // a symbol for each diseq
-        size_t numDisequalities = std::count_if(
-            d_facts.begin(), d_facts.end(), [&](const Node& node) {
-              return node.getKind() == Kind::NOT;
-            });
-        for (size_t i = 0; i < numDisequalities; ++i)
-        {
-          symbols.push_back(CoCoA::symbol("i", i));
-        }
-      }
-
-      // our polynomial ring
-      CoCoA::PolyRing polyRing = CoCoA::NewPolyRing(d_baseRing, symbols);
-      // map from nodes to the polynomials that represent them
-      std::unordered_map<Node, CoCoA::RingElem> nodeToCocoa{};
-      // map from the rings indeterminates (their indices) to the theory leaves
-      std::unordered_map<size_t, Node> symbolIdxToLeaves{};
-
-      {
-        // map CoCoA indeterminate numbers to leaves
-        size_t i = 0;
-        for (const auto& v : leaves)
-        {
-          nodeToCocoa.insert({v, CoCoA::indet(polyRing, i)});
-          symbolIdxToLeaves.insert({i, v});
-          ++i;
-        }
-      }
-
-      {
-        // populate nodeToCocoa
-        size_t disEqIdx = 0;
-        for (const Node& fact : d_facts)
-        {
-          // do a postorder traversal for each fact; skip if already in
-          // nodeToCocoa
-          for (const auto& node : NodeDfsIterable(
-                   fact, VisitOrder::POSTORDER, [&nodeToCocoa](TNode nn) {
-                     return nodeToCocoa.count(nn) > 0;
-                   }))
-          {
-            Trace("ff::trans") << "Translating " << node << std::endl;
-            Trace("ff::trans") << "size " << nodeToCocoa.size() << std::endl;
-            if (node.getType().isFiniteField() || node.getKind() == Kind::EQUAL
-                || node.getKind() == Kind::NOT)
-            {
-              CoCoA::RingElem poly;
-              std::vector<CoCoA::RingElem> subPolys;
-              std::transform(node.begin(),
-                             node.end(),
-                             std::back_inserter(subPolys),
-                             [&nodeToCocoa](Node n) { return nodeToCocoa[n]; });
-              switch (node.getKind())
-              {
-                // FF-term cases:
-                case Kind::FINITE_FIELD_ADD:
-                  poly =
-                      std::accumulate(subPolys.begin(),
-                                      subPolys.end(),
-                                      CoCoA::RingElem(polyRing->myZero()),
-                                      [](CoCoA::RingElem a, CoCoA::RingElem b) {
-                                        return a + b;
-                                      });
-                  break;
-                case Kind::FINITE_FIELD_NEG: poly = -subPolys[0]; break;
-                case Kind::FINITE_FIELD_MULT:
-                  poly =
-                      std::accumulate(subPolys.begin(),
-                                      subPolys.end(),
-                                      CoCoA::RingElem(polyRing->myOne()),
-                                      [](CoCoA::RingElem a, CoCoA::RingElem b) {
-                                        return a * b;
-                                      });
-                  break;
-                case Kind::CONST_FINITE_FIELD:
-                  poly = polyRing->myOne()
-                         * CoCoA::BigIntFromString(
-                             node.getConst<FiniteFieldValue>()
-                                 .getValue()
-                                 .toString());
-                  break;
-                // fact cases:
-                case Kind::EQUAL:
-                  Assert(node[0].getType().isFiniteField());
-                  poly = subPolys[0] - subPolys[1];
-                  break;
-                case Kind::NOT:
-                {
-                  Assert(node[0].getKind() == Kind::EQUAL);
-                  Assert(node[0][0].getType().isFiniteField());
-                  CoCoA::RingElem inverse =
-                      CoCoA::indet(polyRing, leaves.size() + disEqIdx);
-                  ++disEqIdx;
-                  poly = subPolys[0] * inverse - 1;
-                  break;
-                }
-                default:
-                  Unreachable()
-                      << "Invalid finite field kind: " << node.getKind();
-              }
-              Trace("ff::trans")
-                  << "Translated " << node << "\t-> " << poly << std::endl;
-              nodeToCocoa.emplace(node, poly);
-            }
-          }
-        }
+        enc.addFact(node);
       }
 
       // compute a GB
       std::vector<CoCoA::RingElem> generators;
-      std::transform(d_facts.begin(),
-                     d_facts.end(),
-                     std::back_inserter(generators),
-                     [&nodeToCocoa](const Node& fact) {
-                       const auto poly = nodeToCocoa.at(fact);
-                       Trace("ff::trans") << "Fact: " << fact << std::endl;
-                       Trace("ff::trans") << "Poly: " << poly << std::endl;
-                       return poly;
-                     });
+      generators.insert(
+          generators.end(), enc.polys().begin(), enc.polys().end());
+      generators.insert(
+          generators.end(), enc.bitsumPolys().begin(), enc.bitsumPolys().end());
       Tracer tracer(generators);
       if (options().ff.ffFieldPolys)
       {
-        for (const auto& var : CoCoA::indets(polyRing))
+        for (const auto& var : CoCoA::indets(enc.polyRing()))
         {
-          CoCoA::BigInt characteristic =
-              CoCoA::characteristic(polyRing->myBaseRing());
-          long power = CoCoA::LogCardinality(polyRing->myBaseRing());
+          CoCoA::BigInt characteristic = CoCoA::characteristic(d_baseRing);
+          long power = CoCoA::LogCardinality(d_baseRing);
           CoCoA::BigInt size = CoCoA::power(characteristic, power);
           generators.push_back(CoCoA::power(var, size) - var);
         }
@@ -378,16 +232,15 @@ Result SubTheory::postCheck(Theory::Effort e)
           // SAT: populate d_model from the root
           Assert(d_model.empty());
           const auto nm = NodeManager::currentNM();
-          for (const auto& idxAndLeaf : symbolIdxToLeaves)
+          for (const auto& [idx, node] : enc.nodeIndets())
           {
-            std::ostringstream valStr;
-            valStr << root[idxAndLeaf.first];
-            Integer integer(valStr.str(), 10);
-            FiniteFieldValue literal(integer, d_modulus);
-            Node value = nm->mkConst(literal);
-            Trace("ff::model") << "Model: " << idxAndLeaf.second << " = "
-                               << value << std::endl;
-            d_model.emplace(idxAndLeaf.second, value);
+            if (isFfLeaf(node))
+            {
+              Node value = nm->mkConst(enc.cocoaFfToFfVal(root[idx]));
+              Trace("ff::model")
+                  << "Model: " << node << " = " << value << std::endl;
+              d_model.emplace(node, value);
+            }
           }
         }
       }
