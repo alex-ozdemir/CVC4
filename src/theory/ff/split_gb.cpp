@@ -205,8 +205,41 @@ splitModelExtend(const SplitGb& origBases,
                  const PartialRoot&& curR,
                  bool prop)
 {
-  const SplitGb bases(std::move(curBases));
+  SplitGb bases(std::move(curBases));
   PartialRoot r(std::move(curR));
+  long nAssigned = std::count_if(
+      r.begin(), r.end(), [](const auto& v) { return v.has_value(); });
+  if (prop)
+  {
+    bool progress = true;
+    while (progress)
+    {
+      progress = false;
+      for (const auto& g : bases.gens())
+      {
+        if (CoCoA::deg(g) == 1)
+        {
+          long uniIndex = CoCoA::UnivariateIndetIndex(g);
+          if (uniIndex >= 0 && !r[uniIndex].has_value())
+          {
+            Assert(CoCoA::IsOne(CoCoA::LC(g)));
+            r[uniIndex] = {-CoCoA::ConstantCoeff(g)};
+            bases.addPoly(g);
+            Trace("ff::split::mc::debug")
+                << std::string(1 + nAssigned, ' ') << "->"
+                << CoCoA::indet(bases.polyRing(), uniIndex) << " = "
+                << *r[uniIndex] << std::endl;
+            ++nAssigned;
+            progress = true;
+          }
+        }
+      }
+      if (progress)
+      {
+        bases.computeBasis();
+      }
+    }
+  }
   if (bases.trivial())
   {
     for (const auto& gen : origBases.gens())
@@ -219,28 +252,6 @@ splitModelExtend(const SplitGb& origBases,
       }
     }
     return false;
-  }
-  long nAssigned = std::count_if(
-      r.begin(), r.end(), [](const auto& v) { return v.has_value(); });
-  if (prop)
-  {
-    for (const auto& g : origBases.gens())
-    {
-      if (CoCoA::deg(g) == 1)
-      {
-        long uniIndex = CoCoA::UnivariateIndetIndex(g);
-        if (uniIndex >= 0 && !r[uniIndex].has_value())
-        {
-          Assert(CoCoA::IsOne(CoCoA::LC(g)));
-          r[uniIndex] = {-CoCoA::ConstantCoeff(g)};
-          Trace("ff::split::mc::debug")
-              << std::string(1 + nAssigned, ' ') << "->"
-              << CoCoA::indet(bases.polyRing(), uniIndex) << " = "
-              << *r[uniIndex] << std::endl;
-          ++nAssigned;
-        }
-      }
-    }
   }
   if (nAssigned == CoCoA::NumIndets(origBases.polyRing()))
   {
@@ -295,8 +306,8 @@ std::optional<std::vector<CoCoA::RingElem>> splitModelConstruct(
   PartialRoot emptyAssignment(CoCoA::NumIndets(origBases[0].polyRing()));
   while (true)
   {
-    auto result =
-        splitModelExtend(bases, SplitGb(bases), PartialRoot(emptyAssignment), prop);
+    auto result = splitModelExtend(
+        bases, SplitGb(bases), PartialRoot(emptyAssignment), prop);
     switch (result.index())
     {
       case 0:

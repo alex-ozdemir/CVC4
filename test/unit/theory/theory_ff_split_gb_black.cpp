@@ -102,7 +102,7 @@ TEST_F(TestTheoryFfSplitGb, NoSplit)
       std::vector<std::unique_ptr<ff::IncGb>> toadd{};
       toadd.push_back(std::move(basis));
       ff::SplitGb bases(std::move(toadd));
-      auto result = ff::splitModelConstruct(bases);
+      auto result = ff::splitModelConstruct(bases, true, true);
       ASSERT_TRUE(result.has_value());
       ff::checkModel(bases, *result);
       ASSERT_EQ(result->at(0), 0);
@@ -120,7 +120,7 @@ TEST_F(TestTheoryFfSplitGb, NoSplit)
       std::vector<std::unique_ptr<ff::IncGb>> toadd{};
       toadd.push_back(std::move(basis));
       ff::SplitGb bases(std::move(toadd));
-      auto result = ff::splitModelConstruct(bases);
+      auto result = ff::splitModelConstruct(bases, true, true);
       ASSERT_FALSE(result.has_value());
     }
   }
@@ -150,7 +150,7 @@ TEST_F(TestTheoryFfSplitGb, TwoSplit)
       toadd.push_back(std::move(basis1));
       toadd.push_back(std::move(basis2));
       ff::SplitGb bases(std::move(toadd));
-      auto result = ff::splitModelConstruct(bases);
+      auto result = ff::splitModelConstruct(bases, true, true);
       ASSERT_TRUE(result.has_value());
       ff::checkModel(bases, *result);
     }
@@ -170,7 +170,7 @@ TEST_F(TestTheoryFfSplitGb, TwoSplit)
       toadd.push_back(std::move(basis1));
       toadd.push_back(std::move(basis2));
       ff::SplitGb bases(std::move(toadd));
-      auto result = ff::splitModelConstruct(bases);
+      auto result = ff::splitModelConstruct(bases, true, true);
       ASSERT_FALSE(result.has_value());
     }
   }
@@ -190,31 +190,37 @@ TEST_F(TestTheoryFfSplitGb, RandUnsat)
   std::vector<CoCoA::symbol> syms = CoCoA::SymbolRange("x", 0, n_vars - 1);
   CoCoA::PolyRing polyRing = CoCoA::NewPolyRing(ring, syms);
   srand(0);
-  for (size_t iter_i = 0; iter_i < n_iters; ++iter_i)
+  for (bool cegar : {false, true})
   {
-    std::vector<std::vector<CoCoA::RingElem>> gens(n_bases);
-    std::vector<CoCoA::RingElem> allGens;
-    for (size_t i = 0; i < n_eqns; ++i)
+    for (bool prop : {false, true})
     {
-      allGens.push_back(randPoly(polyRing, degree, n_terms));
-      size_t j = rand() % n_bases;
-      gens[j].push_back(allGens.back());
-    }
-    std::vector<std::unique_ptr<ff::IncGb>> bases;
-    for (size_t i = 0; i < n_bases; ++i)
-    {
-      bases.emplace_back(std::make_unique<ff::IncGb>(
-          0, std::string("num") + std::to_string(i), polyRing, gens[i]));
-    }
-    bool isSat = ff::commonRoot(CoCoA::ideal(allGens)).size();
-    // TraceChannel.on("ff::split::mc");
-    ff::SplitGb splitBases(std::move(bases));
-    splitBases.computeBasis();
-    auto result = ff::splitModelConstruct(splitBases);
-    ASSERT_EQ(result.has_value(), isSat);
-    if (result.has_value())
-    {
-      ff::checkModel(splitBases, *result);
+      for (size_t iter_i = 0; iter_i < n_iters; ++iter_i)
+      {
+        std::vector<std::vector<CoCoA::RingElem>> gens(n_bases);
+        std::vector<CoCoA::RingElem> allGens;
+        for (size_t i = 0; i < n_eqns; ++i)
+        {
+          allGens.push_back(randPoly(polyRing, degree, n_terms));
+          size_t j = rand() % n_bases;
+          gens[j].push_back(allGens.back());
+        }
+        std::vector<std::unique_ptr<ff::IncGb>> bases;
+        for (size_t i = 0; i < n_bases; ++i)
+        {
+          bases.emplace_back(std::make_unique<ff::IncGb>(
+              0, std::string("num") + std::to_string(i), polyRing, gens[i]));
+        }
+        bool isSat = ff::commonRoot(CoCoA::ideal(allGens)).size();
+        // TraceChannel.on("ff::split::mc");
+        ff::SplitGb splitBases(std::move(bases));
+        splitBases.computeBasis();
+        auto result = ff::splitModelConstruct(splitBases, cegar, prop);
+        ASSERT_EQ(result.has_value(), isSat);
+        if (result.has_value())
+        {
+          ff::checkModel(splitBases, *result);
+        }
+      }
     }
   }
 }
@@ -233,36 +239,43 @@ TEST_F(TestTheoryFfSplitGb, RandSat)
   std::vector<CoCoA::symbol> syms = CoCoA::SymbolRange("x", 0, n_vars - 1);
   CoCoA::PolyRing polyRing = CoCoA::NewPolyRing(ring, syms);
   srand(0);
-  for (size_t iter_i = 0; iter_i < n_iters; ++iter_i)
+  for (bool cegar : {false, true})
   {
-    std::vector<CoCoA::RingElem> solution{};
-    for (size_t i = 0; i < n_vars; ++i)
+    for (bool prop : {false, true})
     {
-      solution.push_back(randCoeff(polyRing));
-    }
-    std::vector<std::vector<CoCoA::RingElem>> gens(n_bases);
-    std::vector<CoCoA::RingElem> allGens;
-    for (size_t i = 0; i < n_eqns; ++i)
-    {
-      allGens.push_back(randPolyWithRoot(polyRing, degree, n_terms, solution));
-      size_t j = rand() % n_bases;
-      gens[j].push_back(allGens.back());
-    }
-    std::vector<std::unique_ptr<ff::IncGb>> bases;
-    for (size_t i = 0; i < n_bases; ++i)
-    {
-      bases.emplace_back(std::make_unique<ff::IncGb>(
-          0, std::string("num") + std::to_string(i), polyRing, gens[i]));
-    }
-    bool isSat = ff::commonRoot(CoCoA::ideal(allGens)).size();
-    // TraceChannel.on("ff::split::mc");
-    ff::SplitGb splitBases(std::move(bases));
-    splitBases.computeBasis();
-    auto result = ff::splitModelConstruct(splitBases);
-    ASSERT_EQ(result.has_value(), isSat);
-    if (result.has_value())
-    {
-      ff::checkModel(splitBases, *result);
+      for (size_t iter_i = 0; iter_i < n_iters; ++iter_i)
+      {
+        std::vector<CoCoA::RingElem> solution{};
+        for (size_t i = 0; i < n_vars; ++i)
+        {
+          solution.push_back(randCoeff(polyRing));
+        }
+        std::vector<std::vector<CoCoA::RingElem>> gens(n_bases);
+        std::vector<CoCoA::RingElem> allGens;
+        for (size_t i = 0; i < n_eqns; ++i)
+        {
+          allGens.push_back(
+              randPolyWithRoot(polyRing, degree, n_terms, solution));
+          size_t j = rand() % n_bases;
+          gens[j].push_back(allGens.back());
+        }
+        std::vector<std::unique_ptr<ff::IncGb>> bases;
+        for (size_t i = 0; i < n_bases; ++i)
+        {
+          bases.emplace_back(std::make_unique<ff::IncGb>(
+              0, std::string("num") + std::to_string(i), polyRing, gens[i]));
+        }
+        bool isSat = ff::commonRoot(CoCoA::ideal(allGens)).size();
+        // TraceChannel.on("ff::split::mc");
+        ff::SplitGb splitBases(std::move(bases));
+        splitBases.computeBasis();
+        auto result = ff::splitModelConstruct(splitBases, cegar, prop);
+        ASSERT_EQ(result.has_value(), isSat);
+        if (result.has_value())
+        {
+          ff::checkModel(splitBases, *result);
+        }
+      }
     }
   }
 }
