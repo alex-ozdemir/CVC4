@@ -321,7 +321,8 @@ bool ProcessAssertions::apply(AssertionPipeline& ap)
   if (!options().ff.ffDisjunctiveBit || options().ff.ffBitsum)
   {
     applyPass("ff-disjunctive-bit", ap);
-    if (options().ff.ffBitsum)
+    // int solver has custom bit parser
+    if (options().ff.ffBitsum && options().ff.ffSolver != options::FfSolver::INT)
     {
       applyPass("ff-bitsum", ap);
     }
