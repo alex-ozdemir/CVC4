@@ -121,7 +121,7 @@ name   = "Finite Field Theory"
   category   = "expert"
   long       = "ffl-gb-timeout=MS"
   type       = "double"
-  default    = "10000.0"
+  default    = "0.0"
   help       = "milliseconds for GB construction in ffl solver; 0: no limit"
 
 [[option]]

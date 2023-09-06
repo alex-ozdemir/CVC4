@@ -125,6 +125,7 @@ bool IncGb::computeBasis()
     }
     catch (const CoCoA::TimeoutException&)
     {
+      Trace("ffl") << " reduction timed out" << std::endl;
       return false;
     }
   }
