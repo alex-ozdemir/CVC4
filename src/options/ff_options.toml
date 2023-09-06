@@ -133,6 +133,14 @@ name   = "Finite Field Theory"
   help       = "use counterexamples to guide MC abstraction refinement"
 
 [[option]]
+  name       = "fflMcProp"
+  category   = "expert"
+  long       = "ffl-mc-prop"
+  type       = "bool"
+  default    = "true"
+  help       = "do recursion-free propagation in MC"
+
+[[option]]
   name       = "fflMcLinear"
   category   = "expert"
   long       = "ffl-mc-linear"

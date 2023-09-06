@@ -242,7 +242,7 @@ void LazySolver::check()
   {
     SplitGb splitGb(std::move(ideals));
     std::optional<std::vector<CoCoA::RingElem>> root =
-        splitModelConstruct(splitGb, options().ff.fflMcCegar);
+        splitModelConstruct(splitGb, options().ff.fflMcCegar, options().ff.fflMcProp);
     if (root.has_value())
     {
       d_result = Result::SAT;

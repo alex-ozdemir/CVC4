@@ -201,11 +201,12 @@ std::unique_ptr<AssignmentEnumerator> applyRule(const IncGb& ideal,
 // TODO: non-recursive (see above)
 std::variant<std::vector<CoCoA::RingElem>, CoCoA::RingElem, bool>
 splitModelExtend(const SplitGb& origBases,
-                 const SplitGb& bases,
-                 const PartialRoot& r)
+                 const SplitGb&& curBases,
+                 const PartialRoot&& curR,
+                 bool prop)
 {
-  long nAssigned = std::count_if(
-      r.begin(), r.end(), [](const auto& v) { return v.has_value(); });
+  const SplitGb bases(std::move(curBases));
+  PartialRoot r(std::move(curR));
   if (bases.trivial())
   {
     for (const auto& gen : origBases.gens())
@@ -218,6 +219,28 @@ splitModelExtend(const SplitGb& origBases,
       }
     }
     return false;
+  }
+  long nAssigned = std::count_if(
+      r.begin(), r.end(), [](const auto& v) { return v.has_value(); });
+  if (prop)
+  {
+    for (const auto& g : origBases.gens())
+    {
+      if (CoCoA::deg(g) == 1)
+      {
+        long uniIndex = CoCoA::UnivariateIndetIndex(g);
+        if (uniIndex >= 0 && !r[uniIndex].has_value())
+        {
+          Assert(CoCoA::IsOne(CoCoA::LC(g)));
+          r[uniIndex] = {-CoCoA::ConstantCoeff(g)};
+          Trace("ff::split::mc::debug")
+              << std::string(1 + nAssigned, ' ') << "->"
+              << CoCoA::indet(bases.polyRing(), uniIndex) << " = "
+              << *r[uniIndex] << std::endl;
+          ++nAssigned;
+        }
+      }
+    }
   }
   if (nAssigned == CoCoA::NumIndets(origBases.polyRing()))
   {
@@ -243,7 +266,8 @@ splitModelExtend(const SplitGb& origBases,
     SplitGb newBases = bases;
     newBases.addPoly(*next);
     newBases.computeBasis();
-    auto result = splitModelExtend(origBases, newBases, newR);
+    auto result =
+        splitModelExtend(origBases, std::move(newBases), std::move(newR), prop);
     if (!std::holds_alternative<bool>(result))
     {
       return result;
@@ -253,7 +277,7 @@ splitModelExtend(const SplitGb& origBases,
 }
 
 std::optional<std::vector<CoCoA::RingElem>> splitModelConstruct(
-    const SplitGb& origBases, bool cegar)
+    const SplitGb& origBases, bool cegar, bool prop)
 {
   Trace("ff::split::mc") << "start splitModelConstruct" << std::endl;
   if (TraceIsOn("ff::split::mc"))
@@ -271,7 +295,8 @@ std::optional<std::vector<CoCoA::RingElem>> splitModelConstruct(
   PartialRoot emptyAssignment(CoCoA::NumIndets(origBases[0].polyRing()));
   while (true)
   {
-    auto result = splitModelExtend(bases, bases, emptyAssignment);
+    auto result =
+        splitModelExtend(bases, SplitGb(bases), PartialRoot(emptyAssignment), prop);
     switch (result.index())
     {
       case 0:

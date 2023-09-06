@@ -74,9 +74,10 @@ class SplitGb
  *
  * @param origBases the ideal to find a zero for
  * @param cegar whether to use counter-examples to drive refinement.
+ * @param prop whether to use do recursion-free propagation.
  */
 std::optional<std::vector<CoCoA::RingElem>> splitModelConstruct(
-    const SplitGb& origBases, bool cegar);
+    const SplitGb& origBases, bool cegar, bool prop);
 
 void checkModel(const SplitGb& origBases,
                 const std::vector<CoCoA::RingElem>& model);
