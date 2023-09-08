@@ -79,8 +79,7 @@ CoCoA::symbol cocoaSym(const std::string& varName, std::optional<size_t> index)
   std::string s = o.str();
   if (!LETTER(s[0]))
   {
-    Unimplemented();
-    s.insert(0, "p__");
+    s.insert(0, "u__");
   }
   return index.has_value() ? CoCoA::symbol(s, *index) : CoCoA::symbol(s);
 }
