@@ -283,6 +283,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
   }
 
   std::unordered_map<Node, Node> gaussSubs{};
+  std::unordered_set<Node> gaussVars{};
   // do gaussian elimination
   if (options().ff.ffrGauss)
   {
@@ -300,6 +301,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         nodes.insert(current);
         if (current.isVar())
         {
+          gaussVars.insert(current);
           if (d_assertedRanges.count(current))
           {
             protVars.insert(current);
@@ -641,27 +643,38 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
           modelAsNodes.insert({it.first, nm->mkConst(val)});
         }
       }
+      FiniteFieldValue zeroFf(0, size());
+      for (const auto& v : gaussVars)
+      {
+        if (!gaussSubs.count(v))
+        {
+          model.insert({v, zeroFf});
+          modelAsNodes.insert({v, nm->mkConst(zeroFf)});
+          Trace("ffr::model") << "model " << v << ": "
+                              << model.at(v).toSignedInteger() << std::endl;
+        }
+      }
       for (const auto& [v, e] : gaussSubs)
       {
         Node k =
             rewrite(e.substitute(modelAsNodes.begin(), modelAsNodes.end()));
-        Assert(k.isConst()) << "non-const " << k << " for " << v << " in model";
+        Assert(k.isConst())
+            << "non-const " << k << "\nfor " << v << " in model;\nfrom " << e;
         model.insert({v, k.getConst<FiniteFieldValue>()});
         modelAsNodes.insert({v, k});
-        Trace("ffr::model")
-            << "model " << v << ": "
-            << k.getConst<FiniteFieldValue>().toSignedInteger() << std::endl;
+        Trace("ffr::model") << "model " << v << ": "
+                            << model.at(v).toSignedInteger() << std::endl;
       }
-      for (const auto& [var, entry] : varsToBits)
+      for (const auto& [v, entry] : varsToBits)
       {
         const auto& [cvcVar, bitI] = entry;
         bool bit = model.at(cvcVar).toInteger().isBitSet(bitI);
         auto val = FiniteFieldValue(bit, size());
-        Trace("ffr::model")
-            << "model " << var << ": " << val.toSignedInteger() << std::endl;
-        Assert(!model.count(var));
-        model.insert({var, val});
-        modelAsNodes.insert({var, nm->mkConst(val)});
+        Assert(!model.count(v));
+        model.insert({v, val});
+        modelAsNodes.insert({v, nm->mkConst(val)});
+        Trace("ffr::model") << "model " << v << ": "
+                            << model.at(v).toSignedInteger() << std::endl;
       }
 
       return {Result::SAT, std::move(model)};
