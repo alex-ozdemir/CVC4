@@ -106,7 +106,18 @@ z3::expr z3Range(const z3::expr& val, const Range& range)
 bool isFf(TNode n)
 {
   if (n.getType().isFiniteField()) return true;
-  if (n.getKind() == kind::EQUAL)
+  if (n.getKind() == kind::OR)
+  {
+    for (const auto& c : n)
+    {
+      if (!isFf(c))
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+  else if (n.getKind() == kind::EQUAL)
   {
     return n[0].getType().isFiniteField();
   }
@@ -279,6 +290,38 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         rws.insert({current, newCurrent});
       }
       f = rws.count(f) ? rws.at(f) : f;
+    }
+  }
+
+  if (options().ff.ffrOr)
+  {
+    for (auto& f : facts)
+    {
+      const auto r = parse::zeroProduct(f);
+      if (r.has_value())
+      {
+        const auto& [zero, product] = *r;
+        bool rewrite = true;
+        NodeBuilder orBuild(kind::OR);
+        for (const auto& t : product)
+        {
+          if (!getRange(t).floorDivideQuotient(size()).isZero())
+          {
+            rewrite = false;
+            Trace("ffr::debug")
+                << "no OR opt " << f << std::endl
+                << "because " << t << "has q range "
+                << getRange(t).floorDivideQuotient(size()) << std::endl;
+            break;
+          }
+          orBuild << zero.eqNode(t);
+        }
+        if (rewrite)
+        {
+          Trace("ffr::debug") << "OR opt " << product << std::endl;
+          f = orBuild.constructNode();
+        }
+      }
     }
   }
 
@@ -491,7 +534,8 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         }
       }
       else if (current.getKind() == kind::EQUAL
-               || current.getKind() == kind::NOT)
+               || current.getKind() == kind::NOT
+               || current.getKind() == kind::OR)
       {
         // pass
       }
@@ -536,6 +580,18 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         }
       }
     }
+    else if (f.getKind() == kind::OR)
+    {
+      // we already know all children are exact equalities
+      z3::expr_vector eqs(ctx);
+      for (const auto& c : f)
+      {
+        Assert(isFfZero(c[0]));
+        Assert(getRange(c[1]).floorDivideQuotient(size()).isZero());
+        eqs.push_back(ints.at(c[1]) == 0);
+      }
+      assertions.push_back(z3::mk_or(eqs));
+    }
     else if (f.getKind() == kind::CONST_BOOLEAN)
     {
       if (!f.getConst<bool>())
@@ -576,7 +632,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
             // use range analysis to bound q tightly.
             auto diffRange = getRange(e[0]) - getRange(e[1]);
             Range nRange(1, size());
-            auto qRange = (diffRange - nRange).floorDivideQuotient(size());
+            auto qRange = diffRange.floorDivideQuotient(size());
             Trace("ffr") << "for diseq " << f << std::endl;
             Trace("ffr") << "q range " << qRange.d_lo << " to " << qRange.d_hi
                          << std::endl;
@@ -831,6 +887,8 @@ bool Range::contains(const Range& other) const
 {
   return d_lo <= other.d_lo && d_hi >= other.d_hi;
 }
+
+bool Range::isZero() const { return d_lo == 0 && d_hi == 0; }
 
 Range Range::floorDivideQuotient(const Integer& q) const
 {

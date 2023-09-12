@@ -83,6 +83,13 @@ bool isFfFact(const Node& n)
              && n[0][0].getType().isFiniteField());
 }
 
+bool isFfZero(const Node& n)
+{
+  return n.isConst() && n.getType().isFiniteField()
+         && n.getConst<FiniteFieldValue>().isZero();
+}
+
+
 }  // namespace ff
 }  // namespace theory
 }  // namespace cvc5::internal

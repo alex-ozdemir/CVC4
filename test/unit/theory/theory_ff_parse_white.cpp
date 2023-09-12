@@ -712,5 +712,22 @@ TEST_F(TestFfNodeParser, bitSumsSimple)
   }
 }
 
+TEST_F(TestFfNodeParser, zeroProduct)
+{
+  {
+    doCommand("(define-sort F () (_ FiniteField 103))");
+    doCommand("(declare-const x F)");
+    doCommand("(declare-const y F)");
+    Node x = parseNode("b0");
+    Node y = parseNode("b1");
+    EXPECT_TRUE(parse::zeroProduct(parseNode("(= (as ff0 F) (ff.mul x y))")));
+    EXPECT_TRUE(parse::zeroProduct(parseNode("(= (as ff0 F) (ff.mul x x y))")));
+    EXPECT_TRUE(parse::zeroProduct(parseNode("(= (ff.mul x x y) (as ff0 F))")));
+    EXPECT_TRUE(parse::zeroProduct(parseNode("(= (ff.mul x y) (as ff0 F))")));
+    EXPECT_FALSE(parse::zeroProduct(parseNode("(= (ff.add x y) (as ff0 F))")));
+    EXPECT_FALSE(parse::zeroProduct(parseNode("(= x (as ff0 F))")));
+  }
+}
+
 }  // namespace test
 }  // namespace cvc5::internal

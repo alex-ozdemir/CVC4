@@ -24,6 +24,7 @@
 #include <unordered_set>
 
 // internal includes
+#include "theory/ff/util.h"
 #include "theory/theory.h"
 
 namespace cvc5::internal {
@@ -589,8 +590,7 @@ bitSums(const Node& t, std::unordered_set<Node> isBit)
         << "bitMonomial " << coeff << " " << var << std::endl;
     if (it == bitMonomials.end())
     {
-      Trace("ff::parse::debug")
-          << " fresh bit" << var << std::endl;
+      Trace("ff::parse::debug") << " fresh bit" << var << std::endl;
       bitMonomials.insert(it, {coeff, var});
       q.emplace(-coeff.toSignedInteger().abs(), coeff);
     }
@@ -675,6 +675,26 @@ std::optional<Node> disjunctiveBitConstraint(const Node& t)
     }
   }
   return {};
+}
+
+std::optional<std::pair<Node, Node>> zeroProduct(const Node& f)
+{
+  if (f.getKind() != kind::EQUAL)
+  {
+    return {};
+  }
+  if (isFfZero(f[0]) && f[1].getKind() == kind::FINITE_FIELD_MULT)
+  {
+    return {{f[0], f[1]}};
+  }
+  else if (isFfZero(f[1]) && f[0].getKind() == kind::FINITE_FIELD_MULT)
+  {
+    return {{f[1], f[0]}};
+  }
+  else
+  {
+    return {};
+  }
 }
 
 }  // namespace parse

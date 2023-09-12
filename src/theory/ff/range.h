@@ -49,6 +49,7 @@ struct Range
   bool operator!=(const Range& other) const;
   Range intersect(const Range& other) const;
   bool contains(const Range& other) const;
+  bool isZero() const;
   /** the quotient of this range by `other`, rounded down */
   Range floorDivideQuotient(const Integer& other) const;
 

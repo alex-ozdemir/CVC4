@@ -61,6 +61,14 @@ name   = "Finite Field Theory"
   help       = "do gaussian elimination in the range solver"
 
 [[option]]
+  name       = "ffrOr"
+  category   = "expert"
+  long       = "ffr-or"
+  type       = "bool"
+  default    = "true"
+  help       = "encode ab=0 as a=0 OR b=0 for z3"
+
+[[option]]
   name       = "ffrBoundQuotient"
   category   = "expert"
   long       = "ffr-bound-quotient"

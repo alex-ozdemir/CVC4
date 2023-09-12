@@ -59,6 +59,7 @@ class FieldObj
 bool isFfLeaf(const Node& n);
 bool isFfTerm(const Node& n);
 bool isFfFact(const Node& n);
+bool isFfZero(const Node& n);
 
 }  // namespace ff
 }  // namespace theory

@@ -341,6 +341,14 @@ bitSums(const Node& t, std::unordered_set<Node> isBit);
  */
 std::optional<Node> disjunctiveBitConstraint(const Node& t);
 
+/**
+ * Is this a product equal to zero?
+ *
+ * @param f a fact
+ * @return optionally, (zero, product)
+ */
+std::optional<std::pair<Node, Node>> zeroProduct(const Node& f);
+
 }  // namespace parse
 
 }  // namespace ff
