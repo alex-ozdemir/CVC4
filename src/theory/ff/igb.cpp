@@ -87,15 +87,43 @@ void IncGb::add(const CoCoA::RingElem& e)
   d_newGens.push_back(e);
 }
 
+void printPolySequence(std::ostream& out,
+                       const std::string& header,
+                       const std::vector<CoCoA::RingElem>& ps)
+{
+  out << header << ":" << std::endl;
+  for (const auto& p : ps)
+  {
+    out << "  " << p << std::endl;
+  }
+}
+
+void printPolyMonomialSequence(std::ostream& out,
+                               const std::string& header,
+                               const std::vector<CoCoA::RingElem>& ps)
+{
+  out << header << ":" << std::endl;
+  for (const auto& p : ps)
+  {
+    out << " ";
+    for (auto it = CoCoA::BeginIter(p), end = CoCoA::EndIter(p); it != end;
+         ++it)
+    {
+      out << " " << CoCoA::PP(it);
+    }
+    out << std::endl;
+  }
+}
+
 void IncGb::tracePreComputeBasis() const
 {
   if (TraceIsOn("ffl::gb"))
   {
-    Trace("ffl::gb") << d_name << " new gens:" << std::endl;
-    for (const auto& p : d_newGens)
-    {
-      Trace("ffl::gb") << " " << p << std::endl;
-    }
+    printPolySequence(Trace("ffl::gb"), d_name + " new gens", d_newGens);
+  }
+  if (TraceIsOn("ffl::monomials"))
+  {
+    printPolyMonomialSequence(Trace("ffl::gb"), d_name + " new gen monomials", d_newGens);
   }
   Trace("ffl") << "reducing " << d_name << " with " << d_newGens.size()
                << " new gens" << std::endl;
@@ -139,11 +167,11 @@ void IncGb::tracePostComputeBasis() const
   Trace("ffl") << d_name << " GB has size " << d_basis.size() << std::endl;
   if (TraceIsOn("ffl::gb"))
   {
-    Trace("ffl::gb") << d_name << " GB:" << std::endl;
-    for (const auto& p : d_basis)
-    {
-      Trace("ffl::gb") << " " << p << std::endl;
-    }
+    printPolySequence(Trace("ffl::gb"), d_name + " GB", d_basis);
+  }
+  if (TraceIsOn("ffl::monomials"))
+  {
+    printPolyMonomialSequence(Trace("ffl::monomials"), d_name + " GB monomials", d_basis);
   }
 }
 

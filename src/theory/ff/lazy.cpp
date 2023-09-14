@@ -92,7 +92,7 @@ void LazySolver::check()
   if (options().ff.fflMcLinear)
   {
     ideals.push_back(std::make_unique<SimpleLinearGb>(
-        options().ff.fflGbTimeout, " lIdeal", enc.polyRing(), lGens));
+        options().ff.fflGbTimeout, "lIdeal ", enc.polyRing(), lGens));
     ideals.push_back(std::make_unique<SparseGb>(
         options().ff.fflGbTimeout, "nlIdeal", enc.polyRing(), nlGens));
     lIdeal = &*ideals[0];
@@ -126,9 +126,13 @@ void LazySolver::check()
         for (const auto& i : ideals)
         {
           CoCoA::RingElem reducedP = p;
+          std::vector<std::pair<CoCoA::RingElem, std::string>> steps;
+          if (TraceIsOn("ffl::gb"))
+          {
+            steps.emplace_back(reducedP, ideal->name());
+          }
           {
             CoCoA::RingElem newReducedP = p;
-
             do
             {
               reducedP = newReducedP;
@@ -137,6 +141,10 @@ void LazySolver::check()
                 if (ii != i)
                 {
                   newReducedP = ii->reduce(newReducedP);
+                  if (TraceIsOn("ffl::gb") && newReducedP != reducedP)
+                  {
+                    steps.emplace_back(newReducedP, ii->name());
+                  }
                 }
               }
             } while (newReducedP != reducedP);
@@ -145,7 +153,16 @@ void LazySolver::check()
           if (!CoCoA::IsZero(reducedP) && i->canAdd(reducedP)
               && !i->contains(reducedP))
           {
-            Trace("ffl::gb") << i->name() << " += " << reducedP << std::endl;
+            if (TraceIsOn("ffl::gb"))
+            {
+              Trace("ffl::gb") << i->name() << " += " << reducedP << std::endl
+                               << "  from " << std::endl;
+              for (const auto& [pstep, istep] : steps)
+              {
+                Trace("ffl::gb")
+                    << "    " << pstep << " (" << istep << ")" << std::endl;
+              }
+            }
             i->add(reducedP);
           }
         }
@@ -237,12 +254,13 @@ void LazySolver::check()
       }
     }
   } while (lIdeal->hasNewGens() || nlIdeal->hasNewGens());
+  Trace("ffl") << "start model construction" << std::endl;
   // attempt model construction
   if (d_result == Result::UNKNOWN)
   {
     SplitGb splitGb(std::move(ideals));
-    std::optional<std::vector<CoCoA::RingElem>> root =
-        splitModelConstruct(splitGb, options().ff.fflMcCegar, options().ff.fflMcProp);
+    std::optional<std::vector<CoCoA::RingElem>> root = splitModelConstruct(
+        splitGb, options().ff.fflMcCegar, options().ff.fflMcProp);
     if (root.has_value())
     {
       d_result = Result::SAT;
