@@ -168,83 +168,86 @@ void LazySolver::check()
         }
       }
 
-      for (size_t i = 0; i < bitsums.size(); ++i)
+      if (options().ff.fflBitProp)
       {
-        for (size_t j = 0; j < i; ++j)
+        for (size_t i = 0; i < bitsums.size(); ++i)
         {
-          Node a = bitsums[i];
-          Node b = bitsums[j];
-          CoCoA::RingElem bsDiff =
-              enc.getTermEncoding(a) - enc.getTermEncoding(b);
-          if (ideal->contains(bsDiff))
+          for (size_t j = 0; j < i; ++j)
           {
-            Trace("ffl::bitprop")
-                << " (= " << a << "\n    " << b << ")" << std::endl;
-            size_t min = std::min(a.getNumChildren(), b.getNumChildren());
-            size_t max = std::max(a.getNumChildren(), b.getNumChildren());
-            if (max > size().d_val.length())
+            Node a = bitsums[i];
+            Node b = bitsums[j];
+            CoCoA::RingElem bsDiff =
+                enc.getTermEncoding(a) - enc.getTermEncoding(b);
+            if (ideal->contains(bsDiff))
             {
-              Trace("ffl::bitprop") << " bitsum overflow" << std::endl;
-              continue;
-            }
-            bool allBits = true;
-            for (const auto& sum : {a, b})
-            {
-              for (const auto& c : sum)
+              Trace("ffl::bitprop")
+                  << " (= " << a << "\n    " << b << ")" << std::endl;
+              size_t min = std::min(a.getNumChildren(), b.getNumChildren());
+              size_t max = std::max(a.getNumChildren(), b.getNumChildren());
+              if (max > size().d_val.length())
               {
-                if (!bits.count(c))
+                Trace("ffl::bitprop") << " bitsum overflow" << std::endl;
+                continue;
+              }
+              bool allBits = true;
+              for (const auto& sum : {a, b})
+              {
+                for (const auto& c : sum)
                 {
-                  CoCoA::RingElem p = enc.getTermEncoding(c);
-                  CoCoA::RingElem bitConstraint = p * p - p;
-                  if (std::any_of(ideals.begin(),
-                                  ideals.end(),
-                                  [&bitConstraint](const auto& ii) {
-                                    return ii->contains(bitConstraint);
-                                  }))
+                  if (!bits.count(c))
                   {
-                    Trace("ffl::bitprop")
-                        << " bit through GB " << c << std::endl;
-                    bits.insert(c);
+                    CoCoA::RingElem p = enc.getTermEncoding(c);
+                    CoCoA::RingElem bitConstraint = p * p - p;
+                    if (std::any_of(ideals.begin(),
+                                    ideals.end(),
+                                    [&bitConstraint](const auto& ii) {
+                                      return ii->contains(bitConstraint);
+                                    }))
+                    {
+                      Trace("ffl::bitprop")
+                          << " bit through GB " << c << std::endl;
+                      bits.insert(c);
+                    }
+                  }
+                  if (!bits.count(c))
+                  {
+                    Trace("ffl::bitprop") << " non-bit " << c << std::endl;
+                    allBits = false;
                   }
                 }
-                if (!bits.count(c))
-                {
-                  Trace("ffl::bitprop") << " non-bit " << c << std::endl;
-                  allBits = false;
-                }
               }
-            }
 
-            if (!allBits) continue;
+              if (!allBits) continue;
 
-            for (size_t k = 0; k < min; ++k)
-            {
-              CoCoA::RingElem diff =
-                  enc.getTermEncoding(a[k]) - enc.getTermEncoding(b[k]);
-              for (const auto& ideal2 : ideals)
+              for (size_t k = 0; k < min; ++k)
               {
-                if (ideal2->canAdd(diff) && !ideal2->contains(diff))
-                {
-                  Trace("ffl::bitprop")
-                      << ideal2->name() << " += " << diff << std::endl;
-                  ideal2->add(diff);
-                }
-              }
-            }
-
-            if (a.getNumChildren() != min || b.getNumChildren() != min)
-            {
-              Node n = b.getNumChildren() > min ? b : a;
-              for (size_t k = min; k < max; ++k)
-              {
-                CoCoA::RingElem isZero = enc.getTermEncoding(n[k]);
+                CoCoA::RingElem diff =
+                    enc.getTermEncoding(a[k]) - enc.getTermEncoding(b[k]);
                 for (const auto& ideal2 : ideals)
                 {
-                  if (ideal2->canAdd(isZero) && !ideal2->contains(isZero))
+                  if (ideal2->canAdd(diff) && !ideal2->contains(diff))
                   {
                     Trace("ffl::bitprop")
-                        << ideal2->name() << " += " << isZero << std::endl;
-                    ideal2->add(isZero);
+                        << ideal2->name() << " += " << diff << std::endl;
+                    ideal2->add(diff);
+                  }
+                }
+              }
+
+              if (a.getNumChildren() != min || b.getNumChildren() != min)
+              {
+                Node n = b.getNumChildren() > min ? b : a;
+                for (size_t k = min; k < max; ++k)
+                {
+                  CoCoA::RingElem isZero = enc.getTermEncoding(n[k]);
+                  for (const auto& ideal2 : ideals)
+                  {
+                    if (ideal2->canAdd(isZero) && !ideal2->contains(isZero))
+                    {
+                      Trace("ffl::bitprop")
+                          << ideal2->name() << " += " << isZero << std::endl;
+                      ideal2->add(isZero);
+                    }
                   }
                 }
               }

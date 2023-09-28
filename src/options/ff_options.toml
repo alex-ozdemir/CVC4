@@ -125,6 +125,14 @@ name   = "Finite Field Theory"
   help       = "milliseconds for unsound (SAT only) solving; 0: no limit; 1: skip"
 
 [[option]]
+  name       = "fflBitProp"
+  category   = "expert"
+  long       = "ffl-bit-prop"
+  type       = "bool"
+  default    = "true"
+  help       = "propagate bit congruence"
+
+[[option]]
   name       = "fflGbTimeout"
   category   = "expert"
   long       = "ffl-gb-timeout=MS"
