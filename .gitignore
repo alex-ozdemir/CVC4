@@ -21,3 +21,4 @@ zkorca
 compile_commands.json
 /*.smt2
 .ccls-cache
+.vscode
