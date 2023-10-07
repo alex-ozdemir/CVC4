@@ -163,3 +163,11 @@ name   = "Finite Field Theory"
   type       = "bool"
   default    = "true"
   help       = "use the linear ideal to drive model construction"
+
+[[option]]
+  name       = "fflLinearGauss"
+  category   = "expert"
+  long       = "ffl-linear-gauss"
+  type       = "bool"
+  default    = "true"
+  help       = "for the linear ideal, initially use gaussian elimination"

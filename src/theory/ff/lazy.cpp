@@ -89,10 +89,20 @@ void LazySolver::check()
   std::vector<std::unique_ptr<IncGb>> ideals{};
   IncGb* nlIdeal;
   IncGb* lIdeal;
+  Trace("ffl") << "using gaussian linear ideal: " << std::boolalpha
+               << options().ff.fflLinearGauss << std::endl;
   if (options().ff.fflMcLinear)
   {
-    ideals.push_back(std::make_unique<SimpleLinearGb>(
-        options().ff.fflGbTimeout, "lIdeal ", enc.polyRing(), lGens));
+    if (options().ff.fflLinearGauss)
+    {
+      ideals.push_back(std::make_unique<LinearGb>(
+          options().ff.fflGbTimeout, "lIdeal ", enc.polyRing(), lGens));
+    }
+    else
+    {
+      ideals.push_back(std::make_unique<SimpleLinearGb>(
+          options().ff.fflGbTimeout, "lIdeal ", enc.polyRing(), lGens));
+    }
     ideals.push_back(std::make_unique<SparseGb>(
         options().ff.fflGbTimeout, "nlIdeal", enc.polyRing(), nlGens));
     lIdeal = &*ideals[0];
@@ -102,8 +112,16 @@ void LazySolver::check()
   {
     ideals.push_back(std::make_unique<SparseGb>(
         options().ff.fflGbTimeout, "nlIdeal", enc.polyRing(), nlGens));
-    ideals.push_back(std::make_unique<SimpleLinearGb>(
-        options().ff.fflGbTimeout, " lIdeal", enc.polyRing(), lGens));
+    if (options().ff.fflLinearGauss)
+    {
+      ideals.push_back(std::make_unique<LinearGb>(
+          options().ff.fflGbTimeout, "lIdeal ", enc.polyRing(), lGens));
+    }
+    else
+    {
+      ideals.push_back(std::make_unique<SimpleLinearGb>(
+          options().ff.fflGbTimeout, "lIdeal ", enc.polyRing(), lGens));
+    }
     nlIdeal = &*ideals[0];
     lIdeal = &*ideals[1];
   }
@@ -261,6 +279,21 @@ void LazySolver::check()
   // attempt model construction
   if (d_result == Result::UNKNOWN)
   {
+    size_t linearIdx = options().ff.fflMcLinear ? 0 : 1;
+    if (options().ff.fflLinearGauss)
+    {
+      Trace("ffl") << "switching out linear ideal engine "
+                   << ideals[linearIdx]->basis().size() << std::endl;
+      // can handle non-linear polys which may arise.
+      std::unique_ptr<IncGb> simpleLinear =
+          std::make_unique<SimpleLinearGb>(options().ff.fflGbTimeout,
+                                           "lIdeal ",
+                                           enc.polyRing(),
+                                           ideals[linearIdx]->basis());
+      simpleLinear->computeBasis();
+      ideals[linearIdx] = std::move(simpleLinear);
+    }
+
     SplitGb splitGb(std::move(ideals));
     std::optional<std::vector<CoCoA::RingElem>> root = splitModelConstruct(
         splitGb, options().ff.fflMcCegar, options().ff.fflMcProp);
