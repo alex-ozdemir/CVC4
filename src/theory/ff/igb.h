@@ -62,7 +62,7 @@ class IncGb
   // after computing a basis
 
   const std::vector<CoCoA::RingElem>& basis() const;
-  const CoCoA::ideal& ideal() const;
+  CoCoA::RingElem normalize(CoCoA::RingElem f) const;
   bool zeroDimensional() const;
   CoCoA::RingElem minimalPolynomial(size_t indetIdx) const;
   virtual bool trivial() const;

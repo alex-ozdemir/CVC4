@@ -285,7 +285,7 @@ void LazySolver::check()
       std::remove_if(vars.begin(),
                      vars.end(),
                      [&lIdeal, &nlIdeal](const CoCoA::RingElem& var) {
-                       auto normalForm = CoCoA::NF(var, lIdeal->ideal());
+                       auto normalForm = lIdeal->normalize(var);
                        if (CoCoA::IsConstant(normalForm))
                        {
                          auto assigment = var - normalForm;

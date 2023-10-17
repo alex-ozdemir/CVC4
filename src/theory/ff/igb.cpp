@@ -188,11 +188,11 @@ const std::vector<CoCoA::RingElem>& IncGb::basis() const
   return d_basis;
 }
 
-const CoCoA::ideal& IncGb::ideal() const
+CoCoA::RingElem IncGb::normalize(CoCoA::RingElem f) const
 {
-  Assert(d_i);
+  if (!d_i) return f;
   Assert(CoCoA::HasGBasis(*d_i));
-  return d_i.value();
+  return CoCoA::NF(f, *d_i);
 }
 
 bool IncGb::zeroDimensional() const
