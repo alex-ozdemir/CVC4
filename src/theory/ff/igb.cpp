@@ -188,6 +188,13 @@ const std::vector<CoCoA::RingElem>& IncGb::basis() const
   return d_basis;
 }
 
+const CoCoA::ideal& IncGb::ideal() const
+{
+  Assert(d_i);
+  Assert(CoCoA::HasGBasis(*d_i));
+  return d_i.value();
+}
+
 bool IncGb::zeroDimensional() const
 {
   if (!d_i) return CoCoA::NumIndets(d_polyRing) == 0;

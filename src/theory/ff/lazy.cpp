@@ -139,49 +139,52 @@ void LazySolver::check()
         return;
       }
 
-      for (const auto& p : ideal->basis())
+      if (options().ff.fflShare)
       {
-        for (const auto& i : ideals)
+        for (const auto& p : ideal->basis())
         {
-          CoCoA::RingElem reducedP = p;
-          std::vector<std::pair<CoCoA::RingElem, std::string>> steps;
-          if (TraceIsOn("ffl::gb"))
+          for (const auto& i : ideals)
           {
-            steps.emplace_back(reducedP, ideal->name());
-          }
-          {
-            CoCoA::RingElem newReducedP = p;
-            do
-            {
-              reducedP = newReducedP;
-              for (const auto& ii : ideals)
-              {
-                if (ii != i)
-                {
-                  newReducedP = ii->reduce(newReducedP);
-                  if (TraceIsOn("ffl::gb") && newReducedP != reducedP)
-                  {
-                    steps.emplace_back(newReducedP, ii->name());
-                  }
-                }
-              }
-            } while (newReducedP != reducedP);
-          }
-
-          if (!CoCoA::IsZero(reducedP) && i->canAdd(reducedP)
-              && !i->contains(reducedP))
-          {
+            CoCoA::RingElem reducedP = p;
+            std::vector<std::pair<CoCoA::RingElem, std::string>> steps;
             if (TraceIsOn("ffl::gb"))
             {
-              Trace("ffl::gb") << i->name() << " += " << reducedP << std::endl
-                               << "  from " << std::endl;
-              for (const auto& [pstep, istep] : steps)
-              {
-                Trace("ffl::gb")
-                    << "    " << pstep << " (" << istep << ")" << std::endl;
-              }
+              steps.emplace_back(reducedP, ideal->name());
             }
-            i->add(reducedP);
+            {
+              CoCoA::RingElem newReducedP = p;
+              do
+              {
+                reducedP = newReducedP;
+                for (const auto& ii : ideals)
+                {
+                  if (ii != i)
+                  {
+                    newReducedP = ii->reduce(newReducedP);
+                    if (TraceIsOn("ffl::gb") && newReducedP != reducedP)
+                    {
+                      steps.emplace_back(newReducedP, ii->name());
+                    }
+                  }
+                }
+              } while (newReducedP != reducedP);
+            }
+
+            if (!CoCoA::IsZero(reducedP) && i->canAdd(reducedP)
+                && !i->contains(reducedP))
+            {
+              if (TraceIsOn("ffl::gb"))
+              {
+                Trace("ffl::gb") << i->name() << " += " << reducedP << std::endl
+                                 << "  from " << std::endl;
+                for (const auto& [pstep, istep] : steps)
+                {
+                  Trace("ffl::gb")
+                      << "    " << pstep << " (" << istep << ")" << std::endl;
+                }
+              }
+              i->add(reducedP);
+            }
           }
         }
       }
@@ -270,6 +273,41 @@ void LazySolver::check()
                 }
               }
             }
+          }
+        }
+      }
+    }
+    if (options().ff.fflCompleteShare)
+    {
+      auto vars = CoCoA::indets(enc.polyRing());
+      std::unordered_set<size_t> constantVars{};
+      // if a var is constant in lIdeal, prop that and drop the var
+      std::remove_if(vars.begin(),
+                     vars.end(),
+                     [&lIdeal, &nlIdeal](const CoCoA::RingElem& var) {
+                       auto normalForm = CoCoA::NF(var, lIdeal->ideal());
+                       if (CoCoA::IsConstant(normalForm))
+                       {
+                         auto assigment = var - normalForm;
+                         if (!nlIdeal->contains(assigment))
+                         {
+                           nlIdeal->add(assigment);
+                           // toAdd.push_back(assigment);
+                         }
+                         return true;
+                       }
+                       return false;
+                     });
+      // only the non-constant vars remain
+      // try all pairwise equalities
+      for (size_t i = 0, end = vars.size(); i < end; ++i)
+      {
+        for (size_t j = 0; j < i; ++j)
+        {
+          auto equal = vars[i] - vars[j];
+          if (lIdeal->contains(equal) && !nlIdeal->contains(equal))
+          {
+            nlIdeal->add(equal);
           }
         }
       }

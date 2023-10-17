@@ -125,6 +125,22 @@ name   = "Finite Field Theory"
   help       = "milliseconds for unsound (SAT only) solving; 0: no limit; 1: skip"
 
 [[option]]
+  name       = "fflCompleteShare"
+  category   = "expert"
+  long       = "ffl-complete-share"
+  type       = "bool"
+  default    = "false"
+  help       = "make linear to sparse sharing complete"
+
+[[option]]
+  name       = "fflShare"
+  category   = "expert"
+  long       = "ffl-share"
+  type       = "bool"
+  default    = "true"
+  help       = "share polynomials between ideals"
+
+[[option]]
   name       = "fflBitProp"
   category   = "expert"
   long       = "ffl-bit-prop"
