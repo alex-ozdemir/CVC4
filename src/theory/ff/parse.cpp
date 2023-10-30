@@ -35,6 +35,14 @@ namespace parse {
 
 bool add_overflows(uint8_t x, uint8_t y) { return x + y < x; }
 
+/**
+ * Given spectra for f and g, compute an (optional) spectrum for f @ g, where @ is point-wise operation
+ * @param a spectrum for f
+ * @param b spectrum for g
+ * @param fOp the binary point-wise operator @
+ * @param dOp binary operator on uint8_t for computing the degree of f @ g
+ *
+ * */
 template <typename DegreeOp, typename FieldOp>
 SpectrumOpt helperResultOp(SpectrumOpt&& a,
                            SpectrumOpt&& b,

@@ -37,7 +37,12 @@ namespace ff {
 
 namespace parse {
 
-/** Characterization of a univariate, degree <= 2 polynomial */
+/**
+ * Characterization of a univariate, degree <= 2 polynomial.
+ * The members uniquely determine such a polynomial, up to its leading coefficient.
+ *
+ * This is a helper class for parsing terms that constrain a variable to be: 0, 1, or both.
+ */
 struct Spectrum
 {
   /** the variable; ignore if degree is 0 */
@@ -53,11 +58,11 @@ struct Spectrum
 using SpectrumOpt = std::optional<Spectrum>;
 
 /**
- * Perform computations needed to check whether t is part of a bit-constraint.
+ * Attempt to compute a Spectrum for the polynomial defined by t.
+ *
  * @param t a field term
- * @param depth how deep to search in term before concluding that this is not a
- * bit-constraint
- * @return none if t is too deep or mulitvariate, otherwise, a Spectrum.
+ * @param depth how deep to search in term before giving up
+ * @return none if t is too deep or mulitvariate or has degreee > 2; otherwise, a Spectrum.
  */
 SpectrumOpt spectrum(const Node& t, uint8_t depth = 5);
 
