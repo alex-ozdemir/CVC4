@@ -350,7 +350,7 @@ std::optional<std::vector<CoCoA::RingElem>> splitModelConstruct(
               break;
             }
           }
-          Assert(found);
+          AlwaysAssert(found);
         }
         break;
       }
