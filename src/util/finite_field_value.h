@@ -31,6 +31,7 @@
 
 namespace cvc5::internal {
 
+/** Stores a field size that have been validated to be prime */
 struct FfSize
 {
   FfSize(Integer size) : d_val(size)
