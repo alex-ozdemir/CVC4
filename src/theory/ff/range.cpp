@@ -106,7 +106,7 @@ z3::expr z3Range(const z3::expr& val, const Range& range)
 bool isFf(TNode n)
 {
   if (n.getType().isFiniteField()) return true;
-  if (n.getKind() == kind::OR)
+  if (n.getKind() == Kind::OR)
   {
     for (const auto& c : n)
     {
@@ -117,13 +117,13 @@ bool isFf(TNode n)
     }
     return true;
   }
-  else if (n.getKind() == kind::EQUAL)
+  else if (n.getKind() == Kind::EQUAL)
   {
     return n[0].getType().isFiniteField();
   }
-  else if (n.getKind() == kind::NOT)
+  else if (n.getKind() == Kind::NOT)
   {
-    return n[0].getKind() == kind::EQUAL && n[0][0].getType().isFiniteField();
+    return n[0].getKind() == Kind::EQUAL && n[0][0].getType().isFiniteField();
   }
   return false;
 }
@@ -155,12 +155,12 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
   Node andFacts = NodeManager::currentNM()->mkAnd(facts);
   if (options().ff.ffrCse)
   {
-    Node result = util::greedyCse(andFacts, kind::FINITE_FIELD_ADD);
+    Node result = util::greedyCse(andFacts, Kind::FINITE_FIELD_ADD);
     Assert(result.getNumChildren() == andFacts.getNumChildren());
     Assert(rewrite(result) == andFacts);
 
     facts.clear();
-    if (result.getKind() == kind::AND)
+    if (result.getKind() == Kind::AND)
     {
       facts.insert(facts.begin(), result.begin(), result.end());
     }
@@ -220,7 +220,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         }
 
         NodeBuilder builder(current.getKind());
-        if (current.getMetaKind() == kind::metakind::PARAMETERIZED)
+        if (current.getMetaKind() == kind::MetaKind::PARAMETERIZED)
         {
           builder << current.getOperator();
         }
@@ -230,7 +230,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         }
         Node newCurrent = builder.constructNode();
 
-        if (newCurrent.getKind() == kind::FINITE_FIELD_ADD)
+        if (newCurrent.getKind() == Kind::FINITE_FIELD_ADD)
         {
           // look for bit-sums in the addition; replace them with ranges.
           auto res = parse::bitSums(
@@ -256,7 +256,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
               d_assertedRanges.emplace(
                   acc, Range(0, Integer(2).pow(bits.size()) - 1));
               Node summand = coeff.isOne() ? acc
-                                           : nm->mkNode(kind::FINITE_FIELD_MULT,
+                                           : nm->mkNode(Kind::FINITE_FIELD_MULT,
                                                         nm->mkConst(coeff),
                                                         acc);
               summands.push_back(summand);
@@ -278,7 +278,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
             }
             if (summands.size() > 1)
             {
-              newCurrent = nm->mkNode(kind::FINITE_FIELD_ADD, summands);
+              newCurrent = nm->mkNode(Kind::FINITE_FIELD_ADD, summands);
             }
             else
             {
@@ -302,7 +302,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       {
         const auto& [zero, product] = *r;
         bool rewrite = true;
-        NodeBuilder orBuild(kind::OR);
+        NodeBuilder orBuild(Kind::OR);
         for (const auto& t : product)
         {
           if (!getRange(t).floorDivideQuotient(size()).isZero())
@@ -422,7 +422,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       for (const auto& [col, coeff] : subExpr)
       {
         Node summand = col == constCol ? nm->mkConst(coeff)
-                                       : nm->mkNode(kind::FINITE_FIELD_MULT,
+                                       : nm->mkNode(Kind::FINITE_FIELD_MULT,
                                                     iToVar[col],
                                                     nm->mkConst(coeff));
         summands.push_back(summand);
@@ -441,7 +441,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       for (const auto& [col, coeff] : eqn)
       {
         summands.push_back(nm->mkNode(
-            kind::FINITE_FIELD_MULT, iToVar[col], nm->mkConst(coeff)));
+            Kind::FINITE_FIELD_MULT, iToVar[col], nm->mkConst(coeff)));
       }
       facts.push_back(rewrite(zero.eqNode(mkAdd(std::move(summands)))));
       Trace("ff::gauss::debug")
@@ -450,7 +450,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
     Node factsAnd = nm->mkAnd(facts);
     Node factsAndSub = factsAnd.substitute(gaussSubs.begin(), gaussSubs.end());
     facts.clear();
-    if (factsAnd.getKind() == kind::AND)
+    if (factsAnd.getKind() == Kind::AND)
     {
       Assert(factsAnd.getNumChildren() == factsAndSub.getNumChildren());
       for (const auto& c : factsAndSub)
@@ -507,7 +507,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
                             .toString()
                             .c_str());
       }
-      else if (current.getKind() == kind::FINITE_FIELD_ADD)
+      else if (current.getKind() == Kind::FINITE_FIELD_ADD)
       {
         e = zero;
         for (const auto& child : current)
@@ -515,7 +515,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
           e = e + ints.at(child);
         }
       }
-      else if (current.getKind() == kind::FINITE_FIELD_BITSUM)
+      else if (current.getKind() == Kind::FINITE_FIELD_BITSUM)
       {
         e = zero;
         z3::expr k = one;
@@ -525,7 +525,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
           k = k * two;
         }
       }
-      else if (current.getKind() == kind::FINITE_FIELD_MULT)
+      else if (current.getKind() == Kind::FINITE_FIELD_MULT)
       {
         e = ints.at(current[0]);
         for (size_t i = 1; i < current.getNumChildren(); ++i)
@@ -533,9 +533,9 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
           e = e * ints.at(current[i]);
         }
       }
-      else if (current.getKind() == kind::EQUAL
-               || current.getKind() == kind::NOT
-               || current.getKind() == kind::OR)
+      else if (current.getKind() == Kind::EQUAL
+               || current.getKind() == Kind::NOT
+               || current.getKind() == Kind::OR)
       {
         // pass
       }
@@ -546,7 +546,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       ints.insert({current, e});
     }
 
-    if (f.getKind() == kind::EQUAL)
+    if (f.getKind() == Kind::EQUAL)
     {
       if (unsound)
       {
@@ -580,7 +580,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         }
       }
     }
-    else if (f.getKind() == kind::OR)
+    else if (f.getKind() == Kind::OR)
     {
       // we already know all children are exact equalities
       z3::expr_vector eqs(ctx);
@@ -592,7 +592,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       }
       assertions.push_back(z3::mk_or(eqs));
     }
-    else if (f.getKind() == kind::CONST_BOOLEAN)
+    else if (f.getKind() == Kind::CONST_BOOLEAN)
     {
       if (!f.getConst<bool>())
       {
@@ -601,7 +601,7 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
     }
     else
     {
-      Assert(f.getKind() == kind::NOT && f[0].getKind() == kind::EQUAL) << f;
+      Assert(f.getKind() == Kind::NOT && f[0].getKind() == Kind::EQUAL) << f;
       Node e = f[0];
       z3::expr diff = ints.at(e[0]) - ints.at(e[1]);
       if (unsound)
@@ -775,7 +775,7 @@ Range RangeSolver::getRange(TNode term)
     {
       r = Range(current.getConst<FiniteFieldValue>().toSignedInteger());
     }
-    else if (current.getKind() == kind::FINITE_FIELD_ADD)
+    else if (current.getKind() == Kind::FINITE_FIELD_ADD)
     {
       r = std::accumulate(
           current.begin(),
@@ -783,7 +783,7 @@ Range RangeSolver::getRange(TNode term)
           Range(0),
           [this](Range acc, TNode child) { return acc + d_ranges.at(child); });
     }
-    else if (current.getKind() == kind::FINITE_FIELD_BITSUM)
+    else if (current.getKind() == Kind::FINITE_FIELD_BITSUM)
     {
       r = Range(0);
       for (size_t i = 0; i < current.getNumChildren(); ++i)
@@ -791,7 +791,7 @@ Range RangeSolver::getRange(TNode term)
         r = r + d_ranges.at(current[i]) * Integer(1).multiplyByPow2(i);
       }
     }
-    else if (current.getKind() == kind::FINITE_FIELD_MULT)
+    else if (current.getKind() == Kind::FINITE_FIELD_MULT)
     {
       r = std::accumulate(
           current.begin(),
@@ -799,11 +799,11 @@ Range RangeSolver::getRange(TNode term)
           Range(1),
           [this](Range acc, TNode child) { return acc * d_ranges.at(child); });
     }
-    else if (current.getKind() == kind::FINITE_FIELD_NEG)
+    else if (current.getKind() == Kind::FINITE_FIELD_NEG)
     {
       r = -d_ranges.at(current[0]);
     }
-    else if (current.isVar() || current.getKind() == kind::APPLY_UF)
+    else if (current.isVar() || current.getKind() == Kind::APPLY_UF)
     {
       r = Range(0, size().d_val - 1);
     }

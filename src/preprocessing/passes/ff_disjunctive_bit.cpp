@@ -44,8 +44,8 @@ PreprocessingPassResult FfDisjunctiveBit::applyInternal(
     {
       Trace("ff::disjunctive-bit")
           << "rw bit constraint on: " << *var << std::endl;
-      Node var2 = nm->mkNode(kind::FINITE_FIELD_MULT, *var, *var);
-      assertionsToPreprocess->replace(i, nm->mkNode(kind::EQUAL, var2, *var));
+      Node var2 = nm->mkNode(Kind::FINITE_FIELD_MULT, *var, *var);
+      assertionsToPreprocess->replace(i, nm->mkNode(Kind::EQUAL, var2, *var));
     }
   }
   return PreprocessingPassResult::NO_CONFLICT;

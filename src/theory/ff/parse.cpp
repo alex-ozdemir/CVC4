@@ -109,11 +109,11 @@ SpectrumOpt helperResultMul(SpectrumOpt&& a, SpectrumOpt&& b)
 
 SpectrumOpt spectrum(const Node& t, uint8_t depth)
 {
-  if (t.getKind() == kind::NOT)
+  if (t.getKind() == Kind::NOT)
   {
     return {};
   }
-  Assert(t.getType().isFiniteField() || t.getKind() == kind::EQUAL) << t;
+  Assert(t.getType().isFiniteField() || t.getKind() == Kind::EQUAL) << t;
   if (Theory::isLeafOf(t, THEORY_FF))
   {
     if (t.isConst())
@@ -129,7 +129,7 @@ SpectrumOpt spectrum(const Node& t, uint8_t depth)
   }
   switch (t.getKind())
   {
-    case kind::FINITE_FIELD_ADD:
+    case Kind::FINITE_FIELD_ADD:
     {
       SpectrumOpt acc = spectrum(t[0], depth - 1);
       for (size_t i = 1; i < t.getNumChildren(); ++i)
@@ -138,12 +138,12 @@ SpectrumOpt spectrum(const Node& t, uint8_t depth)
       }
       return acc;
     }
-    case kind::EQUAL:
+    case Kind::EQUAL:
     {
       return helperResultSub(spectrum(t[0], depth - 1),
                              spectrum(t[1], depth - 1));
     }
-    case kind::FINITE_FIELD_MULT:
+    case Kind::FINITE_FIELD_MULT:
     {
       SpectrumOpt acc = spectrum(t[0], depth - 1);
       for (size_t i = 1; i < t.getNumChildren(); ++i)
@@ -152,7 +152,7 @@ SpectrumOpt spectrum(const Node& t, uint8_t depth)
       }
       return acc;
     }
-    case kind::FINITE_FIELD_BITSUM:
+    case Kind::FINITE_FIELD_BITSUM:
     {
       return {};
     }
@@ -186,7 +186,7 @@ std::optional<Node> bitConstraint(const Node& fact)
 
 std::optional<std::pair<Node, FiniteFieldValue>> varNeValue(const Node& fact)
 {
-  if (fact.getKind() == kind::NOT && fact[0].getKind() == kind::EQUAL
+  if (fact.getKind() == Kind::NOT && fact[0].getKind() == Kind::EQUAL
       && fact[0][0].getType().isFiniteField())
   {
     if (fact[0][0].isVar() && fact[0][1].isConst())
@@ -217,13 +217,13 @@ std::optional<std::pair<Node, FiniteFieldValue>> linearMonomial(const Node& t)
   }
 
   // (ff.neg X)
-  if (t.getKind() == kind::FINITE_FIELD_NEG && t[0].isVar())
+  if (t.getKind() == Kind::FINITE_FIELD_NEG && t[0].isVar())
   {
     return {{t[0], FiniteFieldValue(-1, p)}};
   }
 
   // (ff.mul ? ?)
-  if (t.getKind() == kind::FINITE_FIELD_MULT && t.getNumChildren() == 2)
+  if (t.getKind() == Kind::FINITE_FIELD_MULT && t.getNumChildren() == 2)
   {
     // (ff.mul k X)
     if (t[0].isConst() && t[1].isVar())
@@ -279,7 +279,7 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> sumLinearMonomial(
     return std::move(sum);
   }
 
-  if (t.getKind() == kind::FINITE_FIELD_ADD)
+  if (t.getKind() == Kind::FINITE_FIELD_ADD)
   {
     // a sum
     for (const auto& child : t)
@@ -327,7 +327,7 @@ sumAffineMonomial(const Node& t)
   {
     k = t.getConst<FiniteFieldValue>();
   }
-  else if (t.getKind() == kind::FINITE_FIELD_ADD)
+  else if (t.getKind() == Kind::FINITE_FIELD_ADD)
   {
     // a sum
     for (const auto& child : t)
@@ -359,7 +359,7 @@ sumAffineMonomial(const Node& t)
 std::optional<std::unordered_map<Node, FiniteFieldValue>> linearEq(
     const Node& t)
 {
-  if (t.getKind() == kind::EQUAL && t[0].getType().isFiniteField())
+  if (t.getKind() == Kind::EQUAL && t[0].getType().isFiniteField())
   {
     std::optional<std::unordered_map<Node, FiniteFieldValue>> left =
         sumLinearMonomial(t[0]);
@@ -384,7 +384,7 @@ std::optional<
     std::pair<FiniteFieldValue, std::unordered_map<Node, FiniteFieldValue>>>
 affineEq(const Node& t)
 {
-  if (t.getKind() == kind::EQUAL && t[0].getType().isFiniteField())
+  if (t.getKind() == Kind::EQUAL && t[0].getType().isFiniteField())
   {
     std::optional<
         std::pair<FiniteFieldValue, std::unordered_map<Node, FiniteFieldValue>>>
@@ -542,7 +542,7 @@ extractLinearMonomials(const Node& t)
   {
     return {};
   }
-  if (t.getKind() != kind::FINITE_FIELD_ADD)
+  if (t.getKind() != Kind::FINITE_FIELD_ADD)
   {
     return {};
   }
@@ -608,7 +608,7 @@ bitSums(const Node& t, std::unordered_set<Node> isBit)
       Trace("ff::parse::debug")
           << " " << var << " evicts " << it->second << std::endl;
       rest.push_back(
-          nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), it->second));
+          nm->mkNode(Kind::FINITE_FIELD_MULT, nm->mkConst(coeff), it->second));
       it->second = var;
     }
     else
@@ -618,7 +618,7 @@ bitSums(const Node& t, std::unordered_set<Node> isBit)
       Trace("ff::parse::debug")
           << "  isBit: " << std::boolalpha << !!isBit.count(var) << std::endl;
       rest.push_back(
-          nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
+          nm->mkNode(Kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
     }
   }
 
@@ -638,7 +638,7 @@ bitSums(const Node& t, std::unordered_set<Node> isBit)
       auto var = bitMonomials.at(acc);
       bits.push_back(var);
       erasedSummands.push_back(
-          nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(acc), var));
+          nm->mkNode(Kind::FINITE_FIELD_MULT, nm->mkConst(acc), var));
       bitMonomials.erase(acc);
       acc *= two;
     }
@@ -662,15 +662,15 @@ bitSums(const Node& t, std::unordered_set<Node> isBit)
   for (const auto& [coeff, var] : bitMonomials)
   {
     rest.push_back(
-        nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
+        nm->mkNode(Kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
   }
   return {{std::move(bitSums), std::move(rest)}};
 }
 
 std::optional<Node> disjunctiveBitConstraint(const Node& t)
 {
-  if (t.getKind() == kind::OR && t.getNumChildren() == 2
-      && t[0].getKind() == kind::EQUAL && t[1].getKind() == kind::EQUAL
+  if (t.getKind() == Kind::OR && t.getNumChildren() == 2
+      && t[0].getKind() == Kind::EQUAL && t[1].getKind() == Kind::EQUAL
       && t[0][1].getType().isFiniteField() && t[1][0].getType().isFiniteField())
   {
     using theory::ff::parse::oneConstraint;
@@ -687,15 +687,15 @@ std::optional<Node> disjunctiveBitConstraint(const Node& t)
 
 std::optional<std::pair<Node, Node>> zeroProduct(const Node& f)
 {
-  if (f.getKind() != kind::EQUAL)
+  if (f.getKind() != Kind::EQUAL)
   {
     return {};
   }
-  if (isFfZero(f[0]) && f[1].getKind() == kind::FINITE_FIELD_MULT)
+  if (isFfZero(f[0]) && f[1].getKind() == Kind::FINITE_FIELD_MULT)
   {
     return {{f[0], f[1]}};
   }
-  else if (isFfZero(f[1]) && f[0].getKind() == kind::FINITE_FIELD_MULT)
+  else if (isFfZero(f[1]) && f[0].getKind() == Kind::FINITE_FIELD_MULT)
   {
     return {{f[1], f[0]}};
   }

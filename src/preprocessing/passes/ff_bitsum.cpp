@@ -44,7 +44,7 @@ Node mkAdd(std::vector<Node>&& children)
   }
   else
   {
-    return NodeManager::currentNM()->mkNode(kind::FINITE_FIELD_ADD,
+    return NodeManager::currentNM()->mkNode(Kind::FINITE_FIELD_ADD,
                                             std::move(children));
   }
 }
@@ -58,10 +58,10 @@ PreprocessingPassResult FfBitsum::applyInternal(
   {
     std::vector<TNode> anded{};
     TNode assertion = (*assertionsToPreprocess)[i];
-    expr::algorithm::flatten(assertion, anded, kind::AND);
+    expr::algorithm::flatten(assertion, anded, Kind::AND);
     for (const auto& fact : anded)
     {
-      if (fact.getKind() == kind::EQUAL && fact[0].getType().isFiniteField())
+      if (fact.getKind() == Kind::EQUAL && fact[0].getType().isFiniteField())
       {
         auto bitOpt = theory::ff::parse::bitConstraint(fact);
         if (bitOpt.has_value())
@@ -91,9 +91,9 @@ PreprocessingPassResult FfBitsum::applyInternal(
       }
       else
       {
-        kind::Kind_t oldKind = current.getKind();
+        Kind oldKind = current.getKind();
         NodeBuilder builder(oldKind);
-        if (current.getMetaKind() == kind::metakind::PARAMETERIZED)
+        if (current.getMetaKind() == kind::MetaKind::PARAMETERIZED)
         {
           builder << current.getOperator();
         }
@@ -102,7 +102,7 @@ PreprocessingPassResult FfBitsum::applyInternal(
           builder << cache.at(c);
         }
         translation = builder;
-        if (translation.getKind() == kind::FINITE_FIELD_ADD)
+        if (translation.getKind() == Kind::FINITE_FIELD_ADD)
         {
           auto bs = theory::ff::parse::bitSums(translation, bits);
           if (bs.has_value() && bs->first.size() > 0)
@@ -110,10 +110,10 @@ PreprocessingPassResult FfBitsum::applyInternal(
             for (const auto& [multiplier, bitSeq] : bs->first)
             {
               Assert(bitSeq.size() > 1);
-              Node bitsum = nm->mkNode(kind::FINITE_FIELD_BITSUM, bitSeq);
+              Node bitsum = nm->mkNode(Kind::FINITE_FIELD_BITSUM, bitSeq);
               Node scaled = multiplier.isOne()
                                 ? bitsum
-                                : nm->mkNode(kind::FINITE_FIELD_MULT,
+                                : nm->mkNode(Kind::FINITE_FIELD_MULT,
                                              nm->mkConst(multiplier),
                                              bitsum);
               Trace("ff::bitsum") << "found " << scaled << std::endl;

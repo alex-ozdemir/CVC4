@@ -187,7 +187,7 @@ affineSum(const Node& t, HasOtherUses hasOtherUses)
   {
     return {};
   }
-  if (t.getKind() != kind::FINITE_FIELD_ADD)
+  if (t.getKind() != Kind::FINITE_FIELD_ADD)
   {
     return {};
   }
@@ -256,7 +256,7 @@ bitSums(const Node& t, IsBit isBit, HasOtherUses hasOtherUses)
     if (!inBitMonomialMap)
     {
       rest.push_back(
-          nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
+          nm->mkNode(Kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
     }
     else
     {
@@ -282,7 +282,7 @@ bitSums(const Node& t, IsBit isBit, HasOtherUses hasOtherUses)
       auto var = bitMonomials.at(acc);
       bits.push_back(var);
       erasedSummands.push_back(
-          nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(acc), var));
+          nm->mkNode(Kind::FINITE_FIELD_MULT, nm->mkConst(acc), var));
       bitMonomials.erase(acc);
       acc *= two;
     }
@@ -306,7 +306,7 @@ bitSums(const Node& t, IsBit isBit, HasOtherUses hasOtherUses)
   for (const auto& [coeff, var] : bitMonomials)
   {
     rest.push_back(
-        nm->mkNode(kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
+        nm->mkNode(Kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
   }
   return {{std::move(bitSums), std::move(rest)}};
 }

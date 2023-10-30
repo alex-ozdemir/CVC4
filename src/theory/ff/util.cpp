@@ -46,7 +46,7 @@ Node FieldObj::mkAdd(std::vector<Node>&& summands)
   }
   else
   {
-    return d_nm->mkNode(kind::FINITE_FIELD_ADD, std::move(summands));
+    return d_nm->mkNode(Kind::FINITE_FIELD_ADD, std::move(summands));
   }
 }
 
@@ -62,7 +62,7 @@ Node FieldObj::mkMul(std::vector<Node>&& factors)
   }
   else
   {
-    return d_nm->mkNode(kind::FINITE_FIELD_MULT, std::move(factors));
+    return d_nm->mkNode(Kind::FINITE_FIELD_MULT, std::move(factors));
   }
 }
 
@@ -78,8 +78,8 @@ bool isFfTerm(const Node& n)
 
 bool isFfFact(const Node& n)
 {
-  return (n.getKind() == kind::EQUAL && n[0].getType().isFiniteField())
-         || (n.getKind() == kind::NOT && n[0].getKind() == kind::EQUAL
+  return (n.getKind() == Kind::EQUAL && n[0].getType().isFiniteField())
+         || (n.getKind() == Kind::NOT && n[0].getKind() == Kind::EQUAL
              && n[0][0].getType().isFiniteField());
 }
 

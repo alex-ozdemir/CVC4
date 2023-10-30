@@ -159,12 +159,12 @@ void CocoaEncoder::addFact(const Node& fact)
         d_varSyms.insert({node, sym});
         d_symNodes.insert({extractStr(sym), node});
       }
-      else if (node.getKind() == kind::NOT && isFfFact(node))
+      else if (node.getKind() == Kind::NOT && isFfFact(node))
       {
         CoCoA::symbol sym = freshSym("diseq", d_diseqSyms.size());
         d_diseqSyms.insert({node, sym});
       }
-      else if (node.getKind() == kind::FINITE_FIELD_BITSUM)
+      else if (node.getKind() == Kind::FINITE_FIELD_BITSUM)
       {
         CoCoA::symbol sym = freshSym("bitsum", d_bitsumSyms.size());
         d_bitsumSyms.insert({node, sym});
@@ -271,7 +271,7 @@ void CocoaEncoder::encodeTerm(const Node& t)
     {
       switch (node.getKind())
       {
-        case kind::FINITE_FIELD_ADD:
+        case Kind::FINITE_FIELD_ADD:
         {
           elem = CoCoA::zero(*d_polyRing);
           for (const auto& c : node)
@@ -280,7 +280,7 @@ void CocoaEncoder::encodeTerm(const Node& t)
           }
           break;
         }
-        case kind::FINITE_FIELD_MULT:
+        case Kind::FINITE_FIELD_MULT:
         {
           elem = CoCoA::one(*d_polyRing);
           for (const auto& c : node)
@@ -289,7 +289,7 @@ void CocoaEncoder::encodeTerm(const Node& t)
           }
           break;
         }
-        case kind::FINITE_FIELD_BITSUM:
+        case Kind::FINITE_FIELD_BITSUM:
         {
           CoCoA::RingElem sum = CoCoA::zero(*d_polyRing);
           CoCoA::RingElem two = CoCoA::one(*d_polyRing) * 2;
@@ -304,7 +304,7 @@ void CocoaEncoder::encodeTerm(const Node& t)
           d_bitsumPolys.push_back(sum);
           break;
         }
-        case kind::CONST_FINITE_FIELD:
+        case Kind::CONST_FINITE_FIELD:
         {
           elem = CoCoA::one(*d_polyRing)
                  * CoCoA::BigIntFromString(
@@ -322,7 +322,7 @@ void CocoaEncoder::encodeFact(const Node& f)
 {
   Assert(d_stage == Stage::Encode);
   Assert(isFfFact(f));
-  if (f.getKind() == kind::EQUAL)
+  if (f.getKind() == Kind::EQUAL)
   {
     // ==
     encodeTerm(f[0]);

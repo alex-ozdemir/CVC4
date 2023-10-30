@@ -47,9 +47,9 @@ Node ToInt::toInt(Node n,
     Node var = toInt(bitConstrainedVar.value(), lemmas, skolems);
     Node zero = d_nm->mkConstInt(0);
     Node one = d_nm->mkConstInt(1);
-    Node lower = d_nm->mkNode(kind::LEQ, zero, var);
-    Node upper = d_nm->mkNode(kind::LEQ, var, one);
-    Node range = d_nm->mkNode(kind::AND, lower, upper);
+    Node lower = d_nm->mkNode(Kind::LEQ, zero, var);
+    Node upper = d_nm->mkNode(Kind::LEQ, var, one);
+    Node range = d_nm->mkNode(Kind::AND, lower, upper);
     Trace("ff::to-int") << "node: " << n << std::endl
                         << "; translated to a bit constraint: " << range
                         << std::endl;
@@ -102,43 +102,43 @@ Node ToInt::translateWithChildren(Node original,
   // Translate according to the kind of the original node.
   switch (original.getKind())
   {
-    case kind::FINITE_FIELD_ADD:
+    case Kind::FINITE_FIELD_ADD:
     {
-      translation = d_nm->mkNode(kind::ADD, translatedChildren);
+      translation = d_nm->mkNode(Kind::ADD, translatedChildren);
       break;
     }
-    case kind::FINITE_FIELD_NEG:
+    case Kind::FINITE_FIELD_NEG:
     {
-      translation = d_nm->mkNode(kind::NEG, translatedChildren);
+      translation = d_nm->mkNode(Kind::NEG, translatedChildren);
       break;
     }
-    case kind::FINITE_FIELD_MULT:
+    case Kind::FINITE_FIELD_MULT:
     {
-      translation = d_nm->mkNode(kind::MULT, translatedChildren);
+      translation = d_nm->mkNode(Kind::MULT, translatedChildren);
       break;
     }
-    case kind::EQUAL:
+    case Kind::EQUAL:
     {
       if (original[0].getType().isFiniteField())
       {
         // Field equalities are existential
         Node q = d_nm->mkBoundVar("q", d_nm->integerType());
-        Node diff = d_nm->mkNode(kind::SUB, translatedChildren);
+        Node diff = d_nm->mkNode(Kind::SUB, translatedChildren);
         Node p = d_nm->mkConstInt(original[0].getType().getFfSize());
-        Node prod = d_nm->mkNode(kind::MULT, q, p);
-        Node vars = d_nm->mkNode(kind::BOUND_VAR_LIST, q);
-        translation = d_nm->mkNode(kind::EXISTS, vars, diff.eqNode(prod));
+        Node prod = d_nm->mkNode(Kind::MULT, q, p);
+        Node vars = d_nm->mkNode(Kind::BOUND_VAR_LIST, q);
+        translation = d_nm->mkNode(Kind::EXISTS, vars, diff.eqNode(prod));
       }
       else
       {
         // Other equalities are untouched.
-        translation = d_nm->mkNode(kind::EQUAL, translatedChildren);
+        translation = d_nm->mkNode(Kind::EQUAL, translatedChildren);
       }
       break;
     }
-    case kind::ITE:
+    case Kind::ITE:
     {
-      translation = d_nm->mkNode(kind::ITE, translatedChildren);
+      translation = d_nm->mkNode(Kind::ITE, translatedChildren);
       break;
     }
     default:
@@ -181,7 +181,7 @@ Node ToInt::translateNoChildren(Node original,
     if (ty.isFiniteField())
     {
       // For bit-vector variables, we create fresh integer variables.
-      if (original.getKind() == kind::BOUND_VARIABLE)
+      if (original.getKind() == Kind::BOUND_VARIABLE)
       {
         Unimplemented();
       }
@@ -193,9 +193,9 @@ Node ToInt::translateNoChildren(Node original,
         // add range constraints
         Node zero = d_nm->mkConstInt(0);
         Node p = d_nm->mkConstInt(original.getType().getFfSize());
-        Node lower = d_nm->mkNode(kind::LEQ, zero, translation);
-        Node upper = d_nm->mkNode(kind::LT, translation, p);
-        Node range = d_nm->mkNode(kind::AND, lower, upper);
+        Node lower = d_nm->mkNode(Kind::LEQ, zero, translation);
+        Node upper = d_nm->mkNode(Kind::LT, translation, p);
+        Node range = d_nm->mkNode(Kind::AND, lower, upper);
         range = rewrite(range);
         lemmas.push_back(range);
         // express the old variable in terms of the new one
@@ -217,7 +217,7 @@ Node ToInt::translateNoChildren(Node original,
   else
   {
     // original is a constant (value)
-    if (original.getKind() == kind::CONST_FINITE_FIELD)
+    if (original.getKind() == Kind::CONST_FINITE_FIELD)
     {
       // field element constants are transformed into their integer value.
       translation =
@@ -239,9 +239,9 @@ Node ToInt::reconstructNode(Node originalNode,
 {
   // first, we adjust the children of the node as needed.
   // re-construct the term with the adjusted children.
-  kind::Kind_t oldKind = originalNode.getKind();
+  Kind oldKind = originalNode.getKind();
   NodeBuilder builder(oldKind);
-  if (originalNode.getMetaKind() == kind::metakind::PARAMETERIZED)
+  if (originalNode.getMetaKind() == kind::MetaKind::PARAMETERIZED)
   {
     builder << originalNode.getOperator();
   }
@@ -283,7 +283,7 @@ Node ToInt::castToType(Node n, TypeNode tn)
   // casting finite-field to ingers
   Assert(n.getType().isFiniteField());
   Assert(tn.isInteger());
-  return d_nm->mkNode(kind::FINITEFIELD_TO_NAT, n);
+  return d_nm->mkNode(Kind::FINITEFIELD_TO_NAT, n);
 }
 
 
