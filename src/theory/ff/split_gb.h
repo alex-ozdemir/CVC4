@@ -21,15 +21,19 @@
 #define CVC5__THEORY__FF__SPLIT_GB_H
 
 // external includes
+#include <CoCoA/ideal.H>
 #include <CoCoA/ring.H>
 #include <CoCoA/symbol.H>
 
 // std includes
 #include <memory>
 #include <optional>
+#include <unordered_set>
 #include <vector>
+#include <variant>
 
 // internal includes
+#include "theory/ff/cocoa.h"
 #include "theory/ff/igb.h"
 
 namespace cvc5::internal {
@@ -90,6 +94,59 @@ std::optional<CoCoA::RingElem> cocoaEval(
 /** total evaluation of polynomials */
 CoCoA::RingElem cocoaEval(CoCoA::RingElem poly,
                           const std::vector<CoCoA::RingElem>& values);
+
+/** Wraps a CoCoA GBasis, but supports an empty basis. */
+class Gb
+{
+ public:
+  Gb();
+  Gb(const std::vector<CoCoA::RingElem>& generators);
+  bool contains(const CoCoA::RingElem& p) const;
+  bool isWholeRing() const;
+  CoCoA::RingElem reduce(const CoCoA::RingElem& p) const;
+  bool zeroDimensional() const;
+  CoCoA::RingElem minimalPolynomial(const CoCoA::RingElem& p) const;
+  const std::vector<CoCoA::RingElem>& basis() const;
+ private:
+  std::optional<CoCoA::ideal> d_ideal;
+  std::vector<CoCoA::RingElem> d_basis;
+};
+
+class BitProp
+{
+ public:
+  BitProp(const std::vector<Node>& facts, CocoaEncoder& encoder);
+  std::vector<CoCoA::RingElem> getBitEqualities(
+      const std::vector<Gb>& splitBasis);
+
+ private:
+  std::unordered_set<Node> d_bits;
+  std::vector<Node> d_bitsums;
+  CocoaEncoder& d_enc;
+};
+
+bool admit(size_t i, const CoCoA::RingElem& p);
+
+std::vector<Gb> splitGb(
+    const std::vector<std::vector<CoCoA::RingElem>>& generatorSets,
+    BitProp& bitProp);
+
+using PartialRoot = std::vector<std::optional<CoCoA::RingElem>>;
+using Root = std::vector<CoCoA::RingElem>;
+using SplitGb2 = std::vector<Gb>;
+
+std::variant<std::vector<CoCoA::RingElem>, CoCoA::RingElem, bool>
+splitZeroExtend(const std::vector<CoCoA::RingElem>& origPolys,
+                const SplitGb2&& curBases,
+                const PartialRoot&& curR,
+                const BitProp& bitProp);
+
+std::optional<std::vector<CoCoA::RingElem>>
+splitFindZero(const SplitGb2&& splitBasis,
+              const BitProp& bitProp);
+
+std::optional<std::unordered_map<Node, FiniteFieldValue>>
+splitFindZero(const std::vector<Node>& facts);
 
 }  // namespace ff
 }  // namespace theory

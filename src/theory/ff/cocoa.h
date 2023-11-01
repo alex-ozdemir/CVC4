@@ -42,7 +42,7 @@ namespace ff {
 CoCoA::symbol cocoaSym(const std::string& varName,
                        std::optional<size_t> index = {});
 
-class CocoaEncoder : FieldObj
+class CocoaEncoder : public FieldObj
 {
   enum class Stage
   {
