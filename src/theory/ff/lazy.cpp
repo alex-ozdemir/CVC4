@@ -28,7 +28,7 @@
 #include "theory/ff/cocoa.h"
 #include "theory/ff/igb.h"
 #include "theory/ff/parse.h"
-#include "theory/ff/split_gb.h"
+#include "theory/ff/split_gb_old.h"
 
 namespace cvc5::internal {
 namespace theory {

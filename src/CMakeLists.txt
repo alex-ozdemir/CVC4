@@ -709,6 +709,8 @@ libcvc5_add_sources(
   theory/ff/cocoa.h
   theory/ff/cocoa_gauss.cpp
   theory/ff/cocoa_gauss.h
+  theory/ff/cocoa_util.cpp
+  theory/ff/cocoa_util.h
   theory/ff/core.cpp
   theory/ff/core.h
   theory/ff/gauss.cpp
@@ -725,6 +727,8 @@ libcvc5_add_sources(
   theory/ff/range.h
   theory/ff/split_gb.cpp
   theory/ff/split_gb.h
+  theory/ff/split_gb_old.cpp
+  theory/ff/split_gb_old.h
   theory/ff/stats.cpp
   theory/ff/stats.h
   theory/ff/sub_theory.cpp
