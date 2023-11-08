@@ -56,9 +56,13 @@ class FieldObj
   Node d_one;
 };
 
+/** Is this a field term with non-field kind? */
 bool isFfLeaf(const Node& n);
+/** Is this a field term? */
 bool isFfTerm(const Node& n);
+/** Is this a field fact (equality of disequality)? */
 bool isFfFact(const Node& n);
+/** Is this zero? */
 bool isFfZero(const Node& n);
 
 }  // namespace ff

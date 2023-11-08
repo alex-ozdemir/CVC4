@@ -68,13 +68,14 @@ Node FieldObj::mkMul(std::vector<Node>&& factors)
 
 bool isFfLeaf(const Node& n)
 {
-  return Theory::isLeafOf(n, THEORY_FF);
+  return n.getType().isFiniteField()
+         && !(n.getKind() == Kind::FINITE_FIELD_ADD
+              || n.getKind() == Kind::FINITE_FIELD_MULT
+              || n.getKind() == Kind::FINITE_FIELD_NEG
+              || n.getKind() == Kind::FINITE_FIELD_BITSUM);
 }
 
-bool isFfTerm(const Node& n)
-{
-  return n.getType().isFiniteField();
-}
+bool isFfTerm(const Node& n) { return n.getType().isFiniteField(); }
 
 bool isFfFact(const Node& n)
 {
@@ -88,7 +89,6 @@ bool isFfZero(const Node& n)
   return n.isConst() && n.getType().isFiniteField()
          && n.getConst<FiniteFieldValue>().isZero();
 }
-
 
 }  // namespace ff
 }  // namespace theory

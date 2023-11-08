@@ -63,8 +63,6 @@ class CocoaEncoder : public FieldObj
   {
     return d_bitsumPolys;
   }
-  std::optional<std::pair<Node, Node>> parseEquality(
-      const CoCoA::RingElem& poly) const;
   const CoCoA::RingElem& getTermEncoding(const Node& t) const
   {
     return d_cache.at(t);

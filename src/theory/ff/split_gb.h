@@ -147,7 +147,7 @@ std::optional<std::vector<CoCoA::RingElem>> splitFindZero(
     SplitGb2&& splitBasis, CoCoA::ring polyRing, BitProp& bitProp);
 
 std::optional<std::unordered_map<Node, FiniteFieldValue>> splitFindZero(
-    const std::vector<Node>& facts);
+    const std::vector<Node>& facts, const FfSize& size);
 
 void checkModel(const SplitGb2& origBases,
                 const std::vector<CoCoA::RingElem>& model);

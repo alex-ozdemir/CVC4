@@ -48,6 +48,9 @@ name   = "Finite Field Theory"
 [[option.mode.SPLIT_GB]]
   name = "split"
   help = "use multiple groebner bases for partitions of the system"
+[[option.mode.LAZY]]
+  name = "lazy"
+  help = "weird solver"
 [[option.mode.INT]]
   name = "int"
   help = "use integer reasoning (z3)"

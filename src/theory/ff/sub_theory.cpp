@@ -33,6 +33,7 @@
 #include "theory/ff/lazy.h"
 #include "theory/ff/multi_roots.h"
 #include "theory/ff/range.h"
+#include "theory/ff/split_gb.h"
 #include "util/cocoa_globals.h"
 #include "util/finite_field_value.h"
 
@@ -92,6 +93,27 @@ Result SubTheory::postCheck(Theory::Effort e)
   {
     if (d_facts.empty()) return Result::SAT;
     if (options().ff.ffSolver == options::FfSolver::SPLIT_GB)
+    {
+      std::vector<Node> facts{};
+      std::copy(d_facts.begin(), d_facts.end(), std::back_inserter(facts));
+      auto result = splitFindZero(facts, d_modulus);
+      if (result.has_value())
+      {
+        const auto nm = NodeManager::currentNM();
+        for (const auto& [var, val] : result.value())
+        {
+          d_model.insert({var, nm->mkConst<FiniteFieldValue>(val)});
+        }
+        return Result::SAT;
+      }
+      else
+      {
+        std::copy(
+            d_facts.begin(), d_facts.end(), std::back_inserter(d_conflict));
+        return Result::UNSAT;
+      }
+    }
+    else if (options().ff.ffSolver == options::FfSolver::LAZY)
     {
       LazySolver lazy(d_env, d_modulus);
       for (const Node& node : d_facts)
