@@ -35,18 +35,18 @@ TEST_F(TestCse, noOps)
 
   {
     Node x = parseNode("(+ x x)");
-    EXPECT_EQ(greedyCse(x, kind::ADD), x);
+    EXPECT_EQ(greedyCse(x, Kind::ADD), x);
   }
 
   {
     Node x = parseNode("(+ x (+ x x) x)");
-    EXPECT_EQ(greedyCse(x, kind::ADD), x);
+    EXPECT_EQ(greedyCse(x, Kind::ADD), x);
   }
 
   {
     // + would CSE, but * does not
     Node x = parseNode("(+ x (+ x x x) x x x)");
-    EXPECT_EQ(greedyCse(x, kind::MULT), x);
+    EXPECT_EQ(greedyCse(x, Kind::MULT), x);
   }
 }
 
@@ -80,25 +80,25 @@ TEST_F(TestCse, simple)
   {
     Node x = parseNode("(= (+ x x y) (+ y x x))");
     Node y = parseNode("(= (+ (+ x x) y) (+ y (+ x x)))");
-    EXPECT_EQ(greedyCse(x, kind::ADD), y);
+    EXPECT_EQ(greedyCse(x, Kind::ADD), y);
   }
 
   {
     Node x = parseNode("(= (+ x x y y y) (+ y y y x x))");
     Node y = parseNode("(= (+ (+ x x) (+ y y y)) (+ (+ y y y) (+ x x)))");
-    EXPECT_EQ(greedyCse(x, kind::ADD), y);
+    EXPECT_EQ(greedyCse(x, Kind::ADD), y);
   }
 
   {
     Node x = parseNode("(= (+ x x z) (+ (+ x x y) (+ x x a)))");
     Node y = parseNode("(= (+ (+ x x) z) (+ (+ (+ x x) y) (+ (+ x x) a)))");
-    EXPECT_EQ(greedyCse(x, kind::ADD), y);
+    EXPECT_EQ(greedyCse(x, Kind::ADD), y);
   }
 
   {
     Node x = parseNode("(= (+ x x z) (+ (+ x x y y) (+ x x y a)))");
     Node y = parseNode("(= (+ (+ x x) z) (+ (+ (+ (+ x x) y) y) (+ (+ (+ x x) y) a)))");
-    EXPECT_EQ(greedyCse(x, kind::ADD), y);
+    EXPECT_EQ(greedyCse(x, Kind::ADD), y);
   }
 }
 

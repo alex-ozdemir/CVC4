@@ -497,7 +497,7 @@ SplitGb2 splitGb(const std::vector<std::vector<CoCoA::RingElem>>& generatorSets,
                  BitProp& bitProp)
 {
   size_t k = generatorSets.size();
-  std::vector<std::vector<CoCoA::RingElem>> newPolys(k);
+  std::vector<std::vector<CoCoA::RingElem>> newPolys(generatorSets);
   SplitGb2 splitBasis(k);
   do
   {
@@ -616,7 +616,7 @@ splitZeroExtend(const std::vector<CoCoA::RingElem>& origPolys,
 }
 
 std::optional<std::vector<CoCoA::RingElem>> splitFindZero(
-    SplitGb2&& splitBasisIn, BitProp& bitProp)
+    SplitGb2&& splitBasisIn, CoCoA::ring polyRing, BitProp& bitProp)
 {
   SplitGb2 splitBasis = std::move(splitBasisIn);
   while (true)
@@ -627,7 +627,9 @@ std::optional<std::vector<CoCoA::RingElem>> splitFindZero(
       std::copy(
           b.basis().begin(), b.basis().end(), std::back_inserter(allGens));
     }
-    auto result = splitZeroExtend(allGens, SplitGb2(splitBasis), {}, bitProp);
+    PartialRoot nullPartialRoot(CoCoA::NumIndets(polyRing));
+    auto result = splitZeroExtend(
+        allGens, SplitGb2(splitBasis), std::move(nullPartialRoot), bitProp);
     if (std::holds_alternative<CoCoA::RingElem>(result))
     {
       auto conflict = std::get<CoCoA::RingElem>(result);
@@ -684,7 +686,7 @@ CoCoA::RingElem Gb::minimalPolynomial(const CoCoA::RingElem& var) const
 const std::vector<CoCoA::RingElem>& Gb::basis() const { return d_basis; }
 
 BitProp::BitProp(const std::vector<Node>& facts, CocoaEncoder& encoder)
-    : d_bits(), d_bitsums(encoder.bitsums()), d_enc(encoder)
+    : d_bits(), d_bitsums(encoder.bitsums()), d_enc(&encoder)
 {
   for (const auto& fact : facts)
   {
@@ -695,6 +697,8 @@ BitProp::BitProp(const std::vector<Node>& facts, CocoaEncoder& encoder)
     }
   }
 }
+
+BitProp::BitProp() : d_bits(), d_bitsums(), d_enc(nullptr) {}
 
 std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
     const std::vector<Gb>& splitBasis)
@@ -707,21 +711,21 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
     bool isConst = false;
     for (const auto& b : splitBasis)
     {
-      CoCoA::RingElem normal = b.reduce(d_enc.getTermEncoding(bitsum));
+      CoCoA::RingElem normal = b.reduce(d_enc->getTermEncoding(bitsum));
       if (CoCoA::IsConstant(normal))
       {
-        Integer val = d_enc.cocoaFfToFfVal(normal).getValue();
+        Integer val = d_enc->cocoaFfToFfVal(normal).getValue();
         if (val >= Integer(2).pow(bitsum.getNumChildren()))
         {
           output.clear();
-          output.push_back(CoCoA::one(d_enc.polyRing()));
+          output.push_back(CoCoA::one(d_enc->polyRing()));
           return output;
         }
         for (size_t i = 0; i < bitsum.getNumChildren(); ++i)
         {
-          auto bit = val.isBitSet(i) ? CoCoA::one(d_enc.polyRing())
-                                     : CoCoA::zero(d_enc.polyRing());
-          output.push_back(d_enc.getTermEncoding(bitsum[i]) - bit);
+          auto bit = val.isBitSet(i) ? CoCoA::one(d_enc->polyRing())
+                                     : CoCoA::zero(d_enc->polyRing());
+          output.push_back(d_enc->getTermEncoding(bitsum[i]) - bit);
         }
         isConst = true;
         break;
@@ -740,7 +744,7 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
       Node a = nonConstantBitsums[i];
       Node b = nonConstantBitsums[j];
       CoCoA::RingElem bsDiff =
-          d_enc.getTermEncoding(a) - d_enc.getTermEncoding(b);
+          d_enc->getTermEncoding(a) - d_enc->getTermEncoding(b);
       if (std::any_of(
               splitBasis.begin(), splitBasis.end(), [&bsDiff](const auto& ii) {
                 return ii.contains(bsDiff);
@@ -750,7 +754,7 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
             << " (= " << a << "\n    " << b << ")" << std::endl;
         size_t min = std::min(a.getNumChildren(), b.getNumChildren());
         size_t max = std::max(a.getNumChildren(), b.getNumChildren());
-        if (max > d_enc.size().d_val.length())
+        if (max > d_enc->size().d_val.length())
         {
           Trace("ffl::bitprop") << " bitsum overflow" << std::endl;
           continue;
@@ -762,7 +766,7 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
           {
             if (!d_bits.count(c))
             {
-              CoCoA::RingElem p = d_enc.getTermEncoding(c);
+              CoCoA::RingElem p = d_enc->getTermEncoding(c);
               CoCoA::RingElem bitConstraint = p * p - p;
               if (std::any_of(splitBasis.begin(),
                               splitBasis.end(),
@@ -787,7 +791,7 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
         for (size_t k = 0; k < min; ++k)
         {
           CoCoA::RingElem diff =
-              d_enc.getTermEncoding(a[k]) - d_enc.getTermEncoding(b[k]);
+              d_enc->getTermEncoding(a[k]) - d_enc->getTermEncoding(b[k]);
           output.push_back(diff);
         }
 
@@ -796,7 +800,7 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
           Node n = b.getNumChildren() > min ? b : a;
           for (size_t k = min; k < max; ++k)
           {
-            CoCoA::RingElem isZero = d_enc.getTermEncoding(n[k]);
+            CoCoA::RingElem isZero = d_enc->getTermEncoding(n[k]);
             output.push_back(isZero);
           }
         }
@@ -849,7 +853,7 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> splitFindZero(
   }
 
   std::optional<std::vector<CoCoA::RingElem>> root =
-      splitFindZero(std::move(splitBasis), bitProp);
+      splitFindZero(std::move(splitBasis), enc.polyRing(), bitProp);
   if (root.has_value())
   {
     std::unordered_map<Node, FiniteFieldValue> model;
@@ -866,6 +870,34 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> splitFindZero(
   {
     return {};
   }
+}
+
+void checkModel(const SplitGb2& origBases,
+                const std::vector<CoCoA::RingElem>& model)
+{
+#ifdef CVC5_ASSERTIONS
+  for (const auto& b : origBases)
+  {
+    for (const auto& gen : b.basis())
+    {
+      auto value = cocoaEval(gen, model);
+      if (!CoCoA::IsZero(value))
+      {
+        std::stringstream o;
+        o << "Bad model!" << std::endl
+          << "Generator " << gen << std::endl
+          << "evaluated to " << value << std::endl
+          << "under model: " << std::endl;
+        for (size_t i = 0; i < model.size(); ++i)
+        {
+          o << " " << CoCoA::indet(CoCoA::owner(gen), i) << " -> " << model[i]
+            << std::endl;
+        }
+        Assert(CoCoA::IsZero(value)) << o.str();
+      }
+    }
+  }
+#endif  // CVC5_ASSERTIONS
 }
 
 }  // namespace ff

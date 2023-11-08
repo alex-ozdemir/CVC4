@@ -17,12 +17,12 @@
 #define CVC5__TEST__UNIT__TEST_API_H
 
 #include <cvc5/cvc5.h>
+#include <cvc5/cvc5_parser.h>
 
 #include "gtest/gtest.h"
 
 #include "expr/node.h"
-#include "parser/api/cpp/symbol_manager.h"
-#include "parser/api/cpp/input_parser.h"
+#include "test.h"
 
 namespace cvc5::internal {
 namespace test {
@@ -32,17 +32,19 @@ namespace test {
  *
  * The parser is set to logic ALL.
  */
-class TestWithParser : public ::testing::Test
+class TestWithParser : public TestInternal
 {
  protected:
 
   void SetUp() override
   {
-    d_ip = cvc5::parser::InputParser(&d_solver);
+    d_solver.reset(new cvc5::Solver());
+    d_symman.reset(new parser::SymbolManager(d_solver.get()));
+    d_ip.reset(new parser::InputParser(d_solver.get(), d_symman.get()));
   }
-
-  cvc5::Solver d_solver;
-  std::optional<cvc5::parser::InputParser> d_ip;
+  std::unique_ptr<cvc5::Solver> d_solver;
+  std::unique_ptr<parser::SymbolManager> d_symman;
+  std::unique_ptr<cvc5::parser::InputParser> d_ip;
 
  public:
 
@@ -51,11 +53,11 @@ class TestWithParser : public ::testing::Test
    */
   void doCommand(const std::string& s)
   {
-    d_ip->setIncrementalStringInput("LANG_SMTLIB_V2_6", "temp");
-    d_ip->setLogic("ALL");
+    d_ip->setIncrementalStringInput(modes::InputLanguage::SMT_LIB_2_6, "temp");
+    //d_ip->setLogic("ALL");
     d_ip->appendIncrementalStringInput(s);
     auto command = d_ip->nextCommand();
-    command->invoke(&d_solver, d_ip->getSymbolManager());
+    command.invoke(d_solver.get(), d_symman.get(), std::cout);
   }
 
   /**
@@ -63,10 +65,10 @@ class TestWithParser : public ::testing::Test
    */
   Node parseNode(const std::string& s)
   {
-    d_ip->setIncrementalStringInput("LANG_SMTLIB_V2_6", "temp");
-    d_ip->setLogic("ALL");
+    d_ip->setIncrementalStringInput(modes::InputLanguage::SMT_LIB_2_6, "temp");
+    //d_ip->setLogic("ALL");
     d_ip->appendIncrementalStringInput(s);
-    return *d_ip->nextExpression().d_node;
+    return *d_ip->nextTerm().d_node;
   }
 
 };

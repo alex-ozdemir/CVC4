@@ -280,6 +280,98 @@ TEST_F(TestTheoryFfSplitGb, RandSat)
   }
 }
 
+TEST_F(TestTheoryFfSplitGb, RandSat2)
+{
+  // TraceChannel.on("ff::split::mc");
+  // TraceChannel.on("ff::split::mc::debug");
+  // two bases, random, always SAT
+  size_t n_vars = 6;
+  size_t degree = 2;
+  size_t n_bases = 2;
+  size_t n_terms = 2;
+  size_t n_eqns = 1.5 * static_cast<double>(n_vars);
+  size_t n_iters = 50;
+  size_t modulus = 11;
+  CoCoA::ring ring = CoCoA::NewZZmod(modulus);
+  std::vector<CoCoA::symbol> syms = CoCoA::SymbolRange("x", 0, n_vars - 1);
+  CoCoA::PolyRing polyRing = CoCoA::NewPolyRing(ring, syms);
+  srand(0);
+  for (size_t iter_i = 0; iter_i < n_iters; ++iter_i)
+  {
+    std::vector<CoCoA::RingElem> solution{};
+    for (size_t i = 0; i < n_vars; ++i)
+    {
+      solution.push_back(randCoeff(polyRing));
+    }
+    std::vector<std::vector<CoCoA::RingElem>> gens(n_bases);
+    std::vector<CoCoA::RingElem> allGens;
+    for (size_t i = 0; i < n_eqns; ++i)
+    {
+      allGens.push_back(randPolyWithRoot(polyRing, degree, n_terms, solution));
+      size_t j = rand() % n_bases;
+      gens[j].push_back(allGens.back());
+    }
+    std::vector<ff::Gb> bases;
+    for (size_t i = 0; i < n_bases; ++i)
+    {
+      bases.emplace_back(gens[i]);
+    }
+    ff::BitProp nullBitProp{};
+    bool isSat = ff::commonRoot(CoCoA::ideal(allGens)).size();
+    // TraceChannel.on("ff::split::mc");
+    ff::SplitGb2 splitBases(bases);
+    auto result =
+        ff::splitFindZero(std::move(splitBases), polyRing, nullBitProp);
+    ASSERT_EQ(result.has_value(), isSat);
+    if (result.has_value())
+    {
+      ff::checkModel(bases, *result);
+    }
+  }
+}
+
+TEST_F(TestTheoryFfSplitGb, RandUnsat2)
+{
+  size_t n_vars = 6;
+  size_t degree = 2;
+  size_t n_bases = 2;
+  size_t n_terms = 1;
+  size_t n_eqns = 1.5 * static_cast<double>(n_vars);
+  size_t n_iters = 40;
+  size_t modulus = 11;
+  CoCoA::ring ring = CoCoA::NewZZmod(modulus);
+  std::vector<CoCoA::symbol> syms = CoCoA::SymbolRange("x", 0, n_vars - 1);
+  CoCoA::PolyRing polyRing = CoCoA::NewPolyRing(ring, syms);
+  srand(0);
+  for (size_t iter_i = 0; iter_i < n_iters; ++iter_i)
+  {
+    std::vector<std::vector<CoCoA::RingElem>> gens(n_bases);
+    std::vector<CoCoA::RingElem> allGens;
+    for (size_t i = 0; i < n_eqns; ++i)
+    {
+      allGens.push_back(randPoly(polyRing, degree, n_terms));
+      size_t j = rand() % n_bases;
+      gens[j].push_back(allGens.back());
+    }
+    std::vector<ff::Gb> bases;
+    for (size_t i = 0; i < n_bases; ++i)
+    {
+      bases.emplace_back(gens[i]);
+    }
+    ff::BitProp nullBitProp{};
+    bool isSat = ff::commonRoot(CoCoA::ideal(allGens)).size();
+    // TraceChannel.on("ff::split::mc");
+    ff::SplitGb2 splitBases(bases);
+    auto result =
+        ff::splitFindZero(std::move(splitBases), polyRing, nullBitProp);
+    ASSERT_EQ(result.has_value(), isSat);
+    if (result.has_value())
+    {
+      ff::checkModel(bases, *result);
+    }
+  }
+}
+
 }  // namespace test
 }  // namespace cvc5::internal
 #endif  // CVC5_USE_COCOA
