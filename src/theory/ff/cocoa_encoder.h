@@ -88,7 +88,7 @@ class CocoaEncoder : public FieldObj
    */
   const CoCoA::ring& polyRing() const { return d_polyRing.value(); }
   /**
-   * The poly ring we've encoded into.
+   * A list of (indeterminant num, Node) pairs. Useful for extracting a model.
    * Available in Stage::Encode.
    */
   std::vector<std::pair<size_t, Node>> nodeIndets() const;

@@ -129,10 +129,9 @@ void CocoaEncoder::endScan()
 
 void CocoaEncoder::addFact(const Node& fact)
 {
+  Assert(isFfFact(fact));
   if (d_stage == Stage::Scan)
   {
-    Trace("ff::cocoa") << "CoCoA fact " << fact << std::endl;
-    Assert(isFfFact(fact));
     for (const auto& node :
          NodeDfsIterable(fact, VisitOrder::POSTORDER, [this](TNode nn) {
            return d_scanned.count(nn);
@@ -144,21 +143,22 @@ void CocoaEncoder::addFact(const Node& fact)
       }
       if (isFfLeaf(node) && !node.isConst())
       {
+        Trace("ff::cocoa") << "CoCoA var sym for " << node << std::endl;
         CoCoA::symbol sym = freshSym(node.getName());
         Assert(!d_varSyms.count(node));
         Assert(!d_symNodes.count(extractStr(sym)));
-        Trace("ff::cocoa") << "CoCoA sym for " << node << std::endl;
         d_varSyms.insert({node, sym});
         d_symNodes.insert({extractStr(sym), node});
       }
       else if (node.getKind() == Kind::NOT && isFfFact(node))
       {
-        CoCoA::symbol sym = freshSym("diseq", d_diseqSyms.size());
         Trace("ff::cocoa") << "CoCoA != sym for " << node << std::endl;
+        CoCoA::symbol sym = freshSym("diseq", d_diseqSyms.size());
         d_diseqSyms.insert({node, sym});
       }
       else if (node.getKind() == Kind::FINITE_FIELD_BITSUM)
       {
+        Trace("ff::cocoa") << "CoCoA bitsum sym for " << node << std::endl;
         CoCoA::symbol sym = freshSym("bitsum", d_bitsumSyms.size());
         d_bitsumSyms.insert({node, sym});
         d_symNodes.insert({extractStr(sym), node});
@@ -202,6 +202,7 @@ std::vector<std::pair<size_t, Node>> CocoaEncoder::nodeIndets() const
     if (hasNode(d_syms[i]))
     {
       Node n = symNode(d_syms[i]);
+      // skip indets for !=
       if (isFfLeaf(n))
       {
         out.emplace_back(i, n);
@@ -227,18 +228,23 @@ void CocoaEncoder::encodeTerm(const Node& t)
 {
   Assert(d_stage == Stage::Encode);
 
+  // for all un-encoded descendents:
   for (const auto& node :
        NodeDfsIterable(t, VisitOrder::POSTORDER, [this](TNode nn) {
          return d_cache.count(nn);
        }))
   {
+    // a rule must put the encoding here
     Poly elem;
     if (isFfFact(node) || isFfTerm(node))
     {
+      Trace("ff::cocoa::enc") << "Encode " << node;
+      // ff leaf
       if (isFfLeaf(node) && !node.isConst())
       {
         elem = symPoly(d_varSyms.at(node));
       }
+      // ff.add
       else if (node.getKind() == Kind::FINITE_FIELD_ADD)
       {
         elem = CoCoA::zero(*d_polyRing);
@@ -246,8 +252,8 @@ void CocoaEncoder::encodeTerm(const Node& t)
         {
           elem += d_cache[c];
         }
-        break;
       }
+      // ff.mul
       else if (node.getKind() == Kind::FINITE_FIELD_MULT)
       {
         elem = CoCoA::one(*d_polyRing);
@@ -255,8 +261,8 @@ void CocoaEncoder::encodeTerm(const Node& t)
         {
           elem *= d_cache[c];
         }
-        break;
       }
+      // ff.bitsum
       else if (node.getKind() == Kind::FINITE_FIELD_BITSUM)
       {
         Poly sum = CoCoA::zero(*d_polyRing);
@@ -269,19 +275,20 @@ void CocoaEncoder::encodeTerm(const Node& t)
         }
         elem = symPoly(d_bitsumSyms.at(node));
         d_bitsumPolys.push_back(sum - elem);
-        break;
       }
+      // ff constant
       else if (node.getKind() == Kind::CONST_FINITE_FIELD)
       {
         elem = CoCoA::one(*d_polyRing)
                * intToCocoa(node.getConst<FiniteFieldValue>().getValue());
-        break;
       }
+      // !!
       else
       {
         Unimplemented() << node;
       }
     }
+    // cache the encoding
     d_cache.insert({node, elem});
   }
 }
