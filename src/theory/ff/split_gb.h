@@ -10,7 +10,16 @@
  * directory for licensing information.
  * ****************************************************************************
  *
- * a split groebner basis
+ * Finding common zeros using split groebner bases.
+ *
+ * The following procedures are from the paper:
+ * * split: Split
+ * * splitFindZero: SplitFindZero
+ * * splitZeroExtend: SplitZeroExtend
+ * * splitGb: SplitGb
+ * * applyRule: ApplyRule
+ * * admit: admit
+ * * BitProp::getBitEqualities: extraProp
  */
 
 #ifdef CVC5_USE_COCOA
@@ -35,10 +44,50 @@
 // internal includes
 #include "theory/ff/cocoa_encoder.h"
 #include "theory/ff/cocoa_util.h"
+#include "theory/ff/multi_roots.h"
 
 namespace cvc5::internal {
 namespace theory {
 namespace ff {
+
+/** defined below */
+class Gb;
+/** defined below */
+class BitProp;
+
+/** A split GB. */
+using SplitGb = std::vector<Gb>;
+
+/** Find a model for these facts */
+std::optional<FfModel> split(const std::vector<Node>& facts,
+                             const FfSize& size);
+
+/** Compute a split Gb. */
+std::vector<Gb> splitGb(const std::vector<std::vector<Poly>>& generatorSets,
+                        BitProp& bitProp);
+
+/** Whether to admit p into ideal i. */
+bool admit(size_t i, const Poly& p);
+
+/** Find a zero for this split Gb */
+std::optional<Point> splitFindZero(SplitGb&& splitBasis,
+                                   CoCoA::ring polyRing,
+                                   BitProp& bitProp);
+
+/** Extend curR into a zero for this split Gb. */
+std::variant<Point, Poly, bool> splitZeroExtend(
+    const std::vector<Poly>& origPolys,
+    const SplitGb&& curBases,
+    const PartialPoint&& curR,
+    const BitProp& bitProp);
+
+/** Apply a branching rule. */
+std::unique_ptr<AssignmentEnumerator> applyRule(const Gb& gb,
+                                                const CoCoA::ring& polyRing,
+                                                const PartialPoint& r);
+
+/** Check wether this point is a zero. */
+void checkZero(const SplitGb& origBases, const Point& zero);
 
 /** Wraps a CoCoA GBasis, but supports an empty basis. */
 class Gb
@@ -58,9 +107,6 @@ class Gb
   std::vector<Poly> d_basis;
 };
 
-/** A split GB. */
-using SplitGb = std::vector<Gb>;
-
 /** Propagator for bit equalities from bitsum equalities. */
 class BitProp
 {
@@ -78,28 +124,6 @@ class BitProp
   /** the ambiant encoding of terms into Cocoa */
   CocoaEncoder* d_enc;
 };
-
-/** Whether to admit p into ideal i. */
-bool admit(size_t i, const Poly& p);
-
-/** Compute a split Gb. */
-std::vector<Gb> splitGb(const std::vector<std::vector<Poly>>& generatorSets,
-                        BitProp& bitProp);
-
-std::variant<Point, Poly, bool> splitZeroExtend(
-    const std::vector<Poly>& origPolys,
-    const SplitGb&& curBases,
-    const PartialPoint&& curR,
-    const BitProp& bitProp);
-
-std::optional<Point> splitFindZero(SplitGb&& splitBasis,
-                                       CoCoA::ring polyRing,
-                                       BitProp& bitProp);
-
-std::optional<FfModel> splitFindZero(const std::vector<Node>& facts,
-                                     const FfSize& size);
-
-void checkModel(const SplitGb& origBases, const std::vector<Scalar>& model);
 
 }  // namespace ff
 }  // namespace theory

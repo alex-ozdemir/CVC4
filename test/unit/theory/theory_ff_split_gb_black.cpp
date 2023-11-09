@@ -127,7 +127,7 @@ TEST_F(TestTheoryFfSplitGb, RandSat)
     ASSERT_EQ(result.has_value(), isSat);
     if (result.has_value())
     {
-      ff::checkModel(bases, *result);
+      ff::checkZero(bases, *result);
     }
   }
 }
@@ -169,7 +169,7 @@ TEST_F(TestTheoryFfSplitGb, RandUnsat)
     ASSERT_EQ(result.has_value(), isSat);
     if (result.has_value())
     {
-      ff::checkModel(bases, *result);
+      ff::checkZero(bases, *result);
     }
   }
 }

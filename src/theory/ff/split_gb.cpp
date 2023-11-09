@@ -30,69 +30,67 @@
 
 // internal includes
 #include "base/output.h"
-#include "theory/ff/multi_roots.h"
 #include "theory/ff/parse.h"
 
 namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-namespace {
-
-std::unique_ptr<AssignmentEnumerator> applyRule(const Gb& gb,
-                                                const CoCoA::ring& polyRing,
-                                                const PartialPoint& r)
+std::optional<std::unordered_map<Node, FiniteFieldValue>> split(
+    const std::vector<Node>& facts, const FfSize& size)
 {
-  Assert(static_cast<long>(r.size()) == CoCoA::NumIndets(polyRing));
-  Assert(std::any_of(
-      r.begin(), r.end(), [](const auto& v) { return !v.has_value(); }));
-  // (1) are the any polynomials that are univariate in an unassigned variable?
-  const auto& gens = gb.basis();
-  for (const auto& p : gens)
+  std::unordered_set<Node> bits{};
+  CocoaEncoder enc(size);
+  for (const auto& fact : facts)
   {
-    int varNumber = CoCoA::UnivariateIndetIndex(p);
-    if (varNumber >= 0 && !r[varNumber].has_value())
+    enc.addFact(fact);
+  }
+  enc.endScan();
+  for (const auto& fact : facts)
+  {
+    enc.addFact(fact);
+  }
+
+  Polys nlGens = enc.polys();
+  Polys lGens = enc.bitsumPolys();
+  for (const auto& p : enc.polys())
+  {
+    if (CoCoA::deg(p) <= 1)
     {
-      return factorEnumerator(p);
+      lGens.push_back(p);
     }
   }
-  // (2) if dimension 0, then compute such a polynomial
-  if (gb.zeroDimensional())
+
+  BitProp bitProp(facts, enc);
+
+  std::vector<Polys> splitGens = {lGens, nlGens};
+  SplitGb splitBasis = splitGb(splitGens, bitProp);
+  if (std::any_of(splitBasis.begin(), splitBasis.end(), [](const auto& b) {
+        return b.isWholeRing();
+      }))
   {
-    // If zero-dimensional, we compute a minimal polynomial in some unset
-    // variable.
-    for (size_t i = 0; i < r.size(); ++i)
+    return {};
+  }
+
+  std::optional<Point> root =
+      splitFindZero(std::move(splitBasis), enc.polyRing(), bitProp);
+  if (root.has_value())
+  {
+    std::unordered_map<Node, FiniteFieldValue> model;
+    for (const auto& [indetIdx, varNode] : enc.nodeIndets())
     {
-      if (!r[i].has_value())
-      {
-        Poly minPoly = gb.minimalPolynomial(CoCoA::indet(polyRing, i));
-        return factorEnumerator(minPoly);
-      }
+      FiniteFieldValue literal = enc.cocoaFfToFfVal(root.value()[indetIdx]);
+      Trace("ff::model") << "Model: " << varNode << " = " << literal
+                         << std::endl;
+      model.insert({varNode, literal});
     }
-    Unreachable() << "There should be some unset var";
+    return model;
   }
   else
   {
-    // If positive dimension, we make a list of unset variables and
-    // round-robin guess.
-    //
-    // TODO(aozdemir): better model construction (cvc5-wishues/issues/138)
-    Polys toGuess{};
-    for (size_t i = 0; i < r.size(); ++i)
-    {
-      if (!r[i].has_value())
-      {
-        toGuess.push_back(CoCoA::indet(polyRing, i));
-      }
-    }
-    return std::make_unique<RoundRobinEnumerator>(toGuess,
-                                                  polyRing->myBaseRing());
+    return {};
   }
-  Unreachable();
-  return nullptr;
 }
-
-}  // namespace
 
 SplitGb splitGb(const std::vector<Polys>& generatorSets, BitProp& bitProp)
 {
@@ -144,6 +142,53 @@ SplitGb splitGb(const std::vector<Polys>& generatorSets, BitProp& bitProp)
     return s.size();
   }));
   return splitBasis;
+}
+
+bool admit(size_t i, const Poly& p)
+{
+  Assert(i < 2);
+  return CoCoA::deg(p) <= 1 && (i == 0 || CoCoA::NumTerms(p) <= 2);
+}
+
+std::optional<Point> splitFindZero(SplitGb&& splitBasisIn,
+                                   CoCoA::ring polyRing,
+                                   BitProp& bitProp)
+{
+  SplitGb splitBasis = std::move(splitBasisIn);
+  while (true)
+  {
+    Polys allGens{};
+    for (const auto& b : splitBasis)
+    {
+      std::copy(
+          b.basis().begin(), b.basis().end(), std::back_inserter(allGens));
+    }
+    PartialPoint nullPartialRoot(CoCoA::NumIndets(polyRing));
+    auto result = splitZeroExtend(
+        allGens, SplitGb(splitBasis), std::move(nullPartialRoot), bitProp);
+    if (std::holds_alternative<Poly>(result))
+    {
+      auto conflict = std::get<Poly>(result);
+      std::vector<Polys> gens{};
+      for (auto& b : splitBasis)
+      {
+        gens.push_back({});
+        std::copy(b.basis().begin(),
+                  b.basis().end(),
+                  std::back_inserter(gens.back()));
+        gens.back().push_back(conflict);
+      }
+      splitBasis = splitGb(gens, bitProp);
+    }
+    else if (std::holds_alternative<bool>(result))
+    {
+      return {};
+    }
+    else
+    {
+      return {std::get<Point>(result)};
+    }
+  }
 }
 
 std::variant<Point, Poly, bool> splitZeroExtend(const Polys& origPolys,
@@ -214,45 +259,84 @@ std::variant<Point, Poly, bool> splitZeroExtend(const Polys& origPolys,
   return false;
 }
 
-std::optional<Point> splitFindZero(SplitGb&& splitBasisIn,
-                                   CoCoA::ring polyRing,
-                                   BitProp& bitProp)
+std::unique_ptr<AssignmentEnumerator> applyRule(const Gb& gb,
+                                                const CoCoA::ring& polyRing,
+                                                const PartialPoint& r)
 {
-  SplitGb splitBasis = std::move(splitBasisIn);
-  while (true)
+  Assert(static_cast<long>(r.size()) == CoCoA::NumIndets(polyRing));
+  Assert(std::any_of(
+      r.begin(), r.end(), [](const auto& v) { return !v.has_value(); }));
+  // (1) are the any polynomials that are univariate in an unassigned variable?
+  const auto& gens = gb.basis();
+  for (const auto& p : gens)
   {
-    Polys allGens{};
-    for (const auto& b : splitBasis)
+    int varNumber = CoCoA::UnivariateIndetIndex(p);
+    if (varNumber >= 0 && !r[varNumber].has_value())
     {
-      std::copy(
-          b.basis().begin(), b.basis().end(), std::back_inserter(allGens));
-    }
-    PartialPoint nullPartialRoot(CoCoA::NumIndets(polyRing));
-    auto result = splitZeroExtend(
-        allGens, SplitGb(splitBasis), std::move(nullPartialRoot), bitProp);
-    if (std::holds_alternative<Poly>(result))
-    {
-      auto conflict = std::get<Poly>(result);
-      std::vector<Polys> gens{};
-      for (auto& b : splitBasis)
-      {
-        gens.push_back({});
-        std::copy(b.basis().begin(),
-                  b.basis().end(),
-                  std::back_inserter(gens.back()));
-        gens.back().push_back(conflict);
-      }
-      splitBasis = splitGb(gens, bitProp);
-    }
-    else if (std::holds_alternative<bool>(result))
-    {
-      return {};
-    }
-    else
-    {
-      return {std::get<Point>(result)};
+      return factorEnumerator(p);
     }
   }
+  // (2) if dimension 0, then compute such a polynomial
+  if (gb.zeroDimensional())
+  {
+    // If zero-dimensional, we compute a minimal polynomial in some unset
+    // variable.
+    for (size_t i = 0; i < r.size(); ++i)
+    {
+      if (!r[i].has_value())
+      {
+        Poly minPoly = gb.minimalPolynomial(CoCoA::indet(polyRing, i));
+        return factorEnumerator(minPoly);
+      }
+    }
+    Unreachable() << "There should be some unset var";
+  }
+  else
+  {
+    // If positive dimension, we make a list of unset variables and
+    // round-robin guess.
+    //
+    // TODO(aozdemir): better model construction (cvc5-wishues/issues/138)
+    Polys toGuess{};
+    for (size_t i = 0; i < r.size(); ++i)
+    {
+      if (!r[i].has_value())
+      {
+        toGuess.push_back(CoCoA::indet(polyRing, i));
+      }
+    }
+    return std::make_unique<RoundRobinEnumerator>(toGuess,
+                                                  polyRing->myBaseRing());
+  }
+  Unreachable();
+  return nullptr;
+}
+
+void checkZero(const SplitGb& origBases, const Point& zero)
+{
+#ifdef CVC5_ASSERTIONS
+  for (const auto& b : origBases)
+  {
+    for (const auto& gen : b.basis())
+    {
+      auto value = cocoaEval(gen, zero);
+      if (!CoCoA::IsZero(value))
+      {
+        std::stringstream o;
+        o << "Bad zero!" << std::endl
+          << "Generator " << gen << std::endl
+          << "evaluated to " << value << std::endl
+          << "under point: " << std::endl;
+        for (size_t i = 0; i < zero.size(); ++i)
+        {
+          o << " " << CoCoA::indet(CoCoA::owner(gen), i) << " -> " << zero[i]
+            << std::endl;
+        }
+        Assert(CoCoA::IsZero(value)) << o.str();
+      }
+    }
+  }
+#endif  // CVC5_ASSERTIONS
 }
 
 Gb::Gb() : d_ideal(), d_basis(){};
@@ -412,95 +496,6 @@ Polys BitProp::getBitEqualities(const SplitGb& splitBasis)
     }
   }
   return output;
-}
-
-bool admit(size_t i, const Poly& p)
-{
-  Assert(i < 2);
-  return CoCoA::deg(p) <= 1 && (i == 0 || CoCoA::NumTerms(p) <= 2);
-}
-
-std::optional<std::unordered_map<Node, FiniteFieldValue>> splitFindZero(
-    const std::vector<Node>& facts, const FfSize& size)
-{
-  std::unordered_set<Node> bits{};
-  CocoaEncoder enc(size);
-  for (const auto& fact : facts)
-  {
-    enc.addFact(fact);
-  }
-  enc.endScan();
-  for (const auto& fact : facts)
-  {
-    enc.addFact(fact);
-  }
-
-  Polys nlGens = enc.polys();
-  Polys lGens = enc.bitsumPolys();
-  for (const auto& p : enc.polys())
-  {
-    if (CoCoA::deg(p) <= 1)
-    {
-      lGens.push_back(p);
-    }
-  }
-
-  BitProp bitProp(facts, enc);
-
-  std::vector<Polys> splitGens = {lGens, nlGens};
-  SplitGb splitBasis = splitGb(splitGens, bitProp);
-  if (std::any_of(splitBasis.begin(), splitBasis.end(), [](const auto& b) {
-        return b.isWholeRing();
-      }))
-  {
-    return {};
-  }
-
-  std::optional<Point> root =
-      splitFindZero(std::move(splitBasis), enc.polyRing(), bitProp);
-  if (root.has_value())
-  {
-    std::unordered_map<Node, FiniteFieldValue> model;
-    for (const auto& [indetIdx, varNode] : enc.nodeIndets())
-    {
-      FiniteFieldValue literal = enc.cocoaFfToFfVal(root.value()[indetIdx]);
-      Trace("ff::model") << "Model: " << varNode << " = " << literal
-                         << std::endl;
-      model.insert({varNode, literal});
-    }
-    return model;
-  }
-  else
-  {
-    return {};
-  }
-}
-
-void checkModel(const SplitGb& origBases, const Point& model)
-{
-#ifdef CVC5_ASSERTIONS
-  for (const auto& b : origBases)
-  {
-    for (const auto& gen : b.basis())
-    {
-      auto value = cocoaEval(gen, model);
-      if (!CoCoA::IsZero(value))
-      {
-        std::stringstream o;
-        o << "Bad model!" << std::endl
-          << "Generator " << gen << std::endl
-          << "evaluated to " << value << std::endl
-          << "under model: " << std::endl;
-        for (size_t i = 0; i < model.size(); ++i)
-        {
-          o << " " << CoCoA::indet(CoCoA::owner(gen), i) << " -> " << model[i]
-            << std::endl;
-        }
-        Assert(CoCoA::IsZero(value)) << o.str();
-      }
-    }
-  }
-#endif  // CVC5_ASSERTIONS
 }
 
 }  // namespace ff
