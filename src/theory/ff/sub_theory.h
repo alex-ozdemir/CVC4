@@ -50,7 +50,7 @@ namespace ff {
  *
  * For now, our implementation assumes that the finite field has prime order.
  */
-class SubTheory : protected EnvObj
+class SubTheory : protected EnvObj, public FieldObj
 {
  public:
   /**
@@ -119,19 +119,6 @@ class SubTheory : protected EnvObj
    * Statistics shared among all finite-field sub-theories.
    */
   FfStatistics* d_stats;
-  /**
-   * The base field of the multivariate polynomial ring.
-   *
-   * That is, the field that the polynomial coefficients live in/the
-   * finite-field constants live in.
-   *
-   * For now, we assume this is a prime-order finite-field.
-   */
-  CoCoA::ring d_baseRing;
-  /**
-   * The prime modulus for the base field.
-   */
-  Integer d_modulus;
 };
 
 }  // namespace ff

@@ -77,10 +77,7 @@ CoCoA::symbol cocoaSym(const std::string& varName, std::optional<size_t> index)
   return index.has_value() ? CoCoA::symbol(s, *index) : CoCoA::symbol(s);
 }
 
-CocoaEncoder::CocoaEncoder(const FfSize& size)
-    : FieldObj(size), d_coeffField(CoCoA::NewZZmod(intToCocoa(size)))
-{
-}
+CocoaEncoder::CocoaEncoder(const FfSize& size) : FieldObj(size) {}
 
 CoCoA::symbol CocoaEncoder::freshSym(const std::string& varName,
                                      std::optional<size_t> index)
@@ -120,7 +117,7 @@ void CocoaEncoder::endScan()
 {
   Assert(d_stage == Stage::Scan);
   d_stage = Stage::Encode;
-  d_polyRing = CoCoA::NewPolyRing(d_coeffField, d_syms);
+  d_polyRing = CoCoA::NewPolyRing(coeffRing(), d_syms);
   for (size_t i = 0; i < d_syms.size(); ++i)
   {
     d_symPolys.insert({extractStr(d_syms[i]), CoCoA::indet(*d_polyRing, i)});
@@ -214,7 +211,7 @@ std::vector<std::pair<size_t, Node>> CocoaEncoder::nodeIndets() const
 
 FiniteFieldValue CocoaEncoder::cocoaFfToFfVal(const Scalar& elem)
 {
-  Assert(CoCoA::owner(elem) == d_coeffField);
+  Assert(CoCoA::owner(elem) == coeffRing());
   return ff::cocoaFfToFfVal(elem, size());
 }
 

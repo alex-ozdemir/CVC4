@@ -19,6 +19,9 @@
 #define CVC5__THEORY__FF__UTIL_H
 
 // external includes
+#ifdef CVC5_USE_COCOA
+#include <CoCoA/ring.H>
+#endif /* CVC5_USE_COCOA */
 
 // std includes
 #include <unordered_map>
@@ -54,12 +57,18 @@ class FieldObj
   const Node& one() { return d_one; }
   const Node& zero() { return d_zero; }
   const FfSize& size() { return d_size; }
+#ifdef CVC5_USE_COCOA
+  const CoCoA::ring& coeffRing() { return d_coeffRing; }
+#endif /* CVC5_USE_COCOA */
 
  private:
   FfSize d_size;
   NodeManager* d_nm;
   Node d_zero;
   Node d_one;
+#ifdef CVC5_USE_COCOA
+  CoCoA::ring d_coeffRing;
+#endif /* CVC5_USE_COCOA */
 };
 
 /** Is this a field term with non-field kind? */

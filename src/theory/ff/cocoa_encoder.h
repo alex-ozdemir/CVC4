@@ -126,8 +126,6 @@ class CocoaEncoder : public FieldObj
 
   // configuration
 
-  /** the coefficient field */
-  CoCoA::ring d_coeffField;
   /** the stage that we're in; initially scanning */
   Stage d_stage{Stage::Scan};
 

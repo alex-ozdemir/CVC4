@@ -40,11 +40,7 @@ namespace theory {
 namespace ff {
 
 SubTheory::SubTheory(Env& env, FfStatistics* stats, Integer modulus)
-    : EnvObj(env),
-      d_facts(context()),
-      d_stats(stats),
-      d_baseRing(CoCoA::NewZZmod(intToCocoa(modulus))),
-      d_modulus(modulus)
+    : EnvObj(env), FieldObj(modulus), d_facts(context()), d_stats(stats)
 {
   AlwaysAssert(modulus.isProbablePrime()) << "non-prime fields are unsupported";
   // must be initialized before using CoCoA.
@@ -64,7 +60,7 @@ Result SubTheory::postCheck(Theory::Effort e)
     {
       std::vector<Node> facts{};
       std::copy(d_facts.begin(), d_facts.end(), std::back_inserter(facts));
-      auto result = splitFindZero(facts, d_modulus);
+      auto result = splitFindZero(facts, size());
       if (result.has_value())
       {
         const auto nm = NodeManager::currentNM();
@@ -83,7 +79,7 @@ Result SubTheory::postCheck(Theory::Effort e)
     }
     else if (options().ff.ffSolver == options::FfSolver::GB)
     {
-      CocoaEncoder enc(d_modulus);
+      CocoaEncoder enc(size());
       // collect leaves
       for (const Node& node : d_facts)
       {
@@ -107,8 +103,8 @@ Result SubTheory::postCheck(Theory::Effort e)
       {
         for (const auto& var : CoCoA::indets(enc.polyRing()))
         {
-          CoCoA::BigInt characteristic = CoCoA::characteristic(d_baseRing);
-          long power = CoCoA::LogCardinality(d_baseRing);
+          CoCoA::BigInt characteristic = CoCoA::characteristic(coeffRing());
+          long power = CoCoA::LogCardinality(coeffRing());
           CoCoA::BigInt size = CoCoA::power(characteristic, power);
           generators.push_back(CoCoA::power(var, size) - var);
         }
