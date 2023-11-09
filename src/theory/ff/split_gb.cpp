@@ -260,9 +260,15 @@ std::optional<std::vector<CoCoA::RingElem>> splitFindZero(
 
 Gb::Gb() : d_ideal(), d_basis(){};
 Gb::Gb(const std::vector<CoCoA::RingElem>& generators)
-    : d_ideal(CoCoA::ideal(generators)), d_basis(CoCoA::GBasis(d_ideal.value()))
+    : d_ideal(), d_basis()
 {
+  if (generators.size())
+  {
+    d_ideal.emplace(CoCoA::ideal(generators));
+    d_basis = CoCoA::GBasis(d_ideal.value());
+  }
 }
+
 bool Gb::contains(const CoCoA::RingElem& p) const
 {
   return d_ideal.has_value() && CoCoA::IsElem(p, d_ideal.value());

@@ -174,6 +174,70 @@ TEST_F(TestTheoryFfSplitGb, RandUnsat)
   }
 }
 
+TEST_F(TestTheoryFfSplitGb, GbEmpty)
+{
+  size_t n_vars = 6;
+  size_t modulus = 7;
+  CoCoA::ring ring = CoCoA::NewZZmod(modulus);
+  std::vector<CoCoA::symbol> syms = CoCoA::SymbolRange("x", 0, n_vars - 1);
+  CoCoA::PolyRing polyRing = CoCoA::NewPolyRing(ring, syms);
+
+  // empty vector
+  ff::Gb gb{std::vector<CoCoA::RingElem>()};
+  ASSERT_FALSE(gb.isWholeRing());
+  ASSERT_FALSE(gb.zeroDimensional());
+  ASSERT_EQ(gb.basis().size(), 0);
+  for (size_t i = 0; i < n_vars; ++i)
+  {
+    ASSERT_FALSE(gb.contains(CoCoA::indet(polyRing, i)));
+  }
+
+  // no args
+  ff::Gb gb2{};
+  ASSERT_FALSE(gb2.isWholeRing());
+  ASSERT_FALSE(gb2.zeroDimensional());
+  ASSERT_EQ(gb2.basis().size(), 0);
+  for (size_t i = 0; i < n_vars; ++i)
+  {
+    ASSERT_FALSE(gb2.contains(CoCoA::indet(polyRing, i)));
+  }
+}
+
+TEST_F(TestTheoryFfSplitGb, GbRand)
+{
+  size_t n_vars = 6;
+  size_t degree = 2;
+  size_t n_terms = 2;
+  size_t n_eqns = 4;
+  size_t n_iters = 200;
+  size_t modulus = 11;
+  CoCoA::ring ring = CoCoA::NewZZmod(modulus);
+  std::vector<CoCoA::symbol> syms = CoCoA::SymbolRange("x", 0, n_vars - 1);
+  CoCoA::PolyRing polyRing = CoCoA::NewPolyRing(ring, syms);
+  srand(0);
+  for (size_t iter_i = 0; iter_i < n_iters; ++iter_i)
+  {
+    std::vector<CoCoA::RingElem> gens;
+    for (size_t i = 0; i < n_eqns; ++i)
+    {
+      gens.push_back(randPoly(polyRing, degree, n_terms));
+    }
+    CoCoA::ideal i(gens);
+    ff::Gb gb(gens);
+    ASSERT_EQ(gb.isWholeRing(), CoCoA::IsZero(i));
+    ASSERT_EQ(gb.zeroDimensional(), CoCoA::IsZeroDim(i));
+    ASSERT_EQ(gb.basis().size(), CoCoA::GBasis(i).size());
+    for (const auto& p : gb.basis())
+    {
+      ASSERT_TRUE(CoCoA::IsElem(p, i));
+    }
+    for (const auto& p : CoCoA::GBasis(i))
+    {
+      ASSERT_TRUE(gb.contains(p));
+    }
+  }
+}
+
 }  // namespace test
 }  // namespace cvc5::internal
 #endif  // CVC5_USE_COCOA
