@@ -28,7 +28,7 @@
 #include "expr/node_traversal.h"
 #include "options/ff_options.h"
 #include "smt/env_obj.h"
-#include "theory/ff/cocoa.h"
+#include "theory/ff/cocoa_encoder.h"
 #include "theory/ff/core.h"
 #include "theory/ff/multi_roots.h"
 #include "theory/ff/split_gb.h"
@@ -43,42 +43,12 @@ SubTheory::SubTheory(Env& env, FfStatistics* stats, Integer modulus)
     : EnvObj(env),
       d_facts(context()),
       d_stats(stats),
-      d_baseRing(CoCoA::NewZZmod(CoCoA::BigIntFromString(modulus.toString()))),
+      d_baseRing(CoCoA::NewZZmod(intToCocoa(modulus))),
       d_modulus(modulus)
 {
   AlwaysAssert(modulus.isProbablePrime()) << "non-prime fields are unsupported";
   // must be initialized before using CoCoA.
   initCocoaGlobalManager();
-}
-
-// CoCoA symbols must start with a letter and contain only letters and
-// underscores.
-//
-// Thus, our encoding is: v_ESCAPED where any underscore or invalid character
-// in NAME is replace in ESCAPED with an underscore followed by a base-16
-// encoding of its ASCII code using alphabet abcde fghij klmno p, followed by
-// another _.
-//
-// Sorry. It sucks, but we don't have much to work with here...
-std::string varNameToSymName(const std::string& varName)
-{
-  std::ostringstream o;
-  o << "v_";
-  for (const auto c : varName)
-  {
-    if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'))
-    {
-      o << c;
-    }
-    else
-    {
-      uint8_t code = c;
-      o << "_"
-        << "abcdefghijklmnop"[code & 0x0f]
-        << "abcdefghijklmnop"[(code >> 4) & 0x0f] << "_";
-    }
-  }
-  return o.str();
 }
 
 void SubTheory::notifyFact(TNode fact) { d_facts.emplace_back(fact); }

@@ -10,12 +10,12 @@
  * directory for licensing information.
  * ****************************************************************************
  *
- * cocoa utilities
+ * encoding Nodes as cocoa ring elements.
  */
 
 #ifdef CVC5_USE_COCOA
 
-#include "theory/ff/cocoa.h"
+#include "theory/ff/cocoa_encoder.h"
 
 // external includes
 #include <CoCoA/BigInt.H>
@@ -29,6 +29,7 @@
 
 // internal includes
 #include "expr/node_traversal.h"
+#include "theory/ff/cocoa_util.h"
 #include "theory/theory.h"
 
 namespace cvc5::internal {
@@ -36,14 +37,6 @@ namespace theory {
 namespace ff {
 
 #define LETTER(c) (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'))
-
-template <typename O>
-std::string extractStr(const O& sym)
-{
-  std::ostringstream o;
-  o << sym;
-  return o.str();
-}
 
 // CoCoA symbols must start with a letter and contain only letters, numbers, and
 // underscores.
@@ -55,26 +48,26 @@ CoCoA::symbol cocoaSym(const std::string& varName, std::optional<size_t> index)
   // o << "v_";
   for (const auto c : varName)
   {
+    // letters and numbers as themselves
     uint8_t code = c;
     if (LETTER(c) || ('0' <= c && c <= '9'))
     {
-      // letters and numbers as themselves
       o << c;
     }
+    // _ as __
     else if ('_' == c)
     {
-      // _ as __
       o << "__";
     }
+    // other as _xXX (XX is hex)
     else
     {
-      // other as _xXX
       o << "_x"
         << "0123456789abcdef"[code & 0x0f]
         << "0123456789abcdef"[(code >> 4) & 0x0f];
     }
   }
-  // if we're starting with something bad, prepend p__; note that the above
+  // if we're starting with something bad, prepend u__; note that the above
   // never produces __.
   std::string s = o.str();
   if (!LETTER(s[0]))
@@ -85,9 +78,7 @@ CoCoA::symbol cocoaSym(const std::string& varName, std::optional<size_t> index)
 }
 
 CocoaEncoder::CocoaEncoder(const FfSize& size)
-    : FieldObj(size),
-      d_coeffField(
-          CoCoA::NewZZmod(CoCoA::BigIntFromString(size.d_val.toString())))
+    : FieldObj(size), d_coeffField(CoCoA::NewZZmod(intToCocoa(size)))
 {
 }
 
@@ -223,10 +214,7 @@ std::vector<std::pair<size_t, Node>> CocoaEncoder::nodeIndets() const
 FiniteFieldValue CocoaEncoder::cocoaFfToFfVal(const CoCoA::RingElem& elem)
 {
   Assert(CoCoA::owner(elem) == d_coeffField);
-  std::ostringstream valStr;
-  valStr << elem;
-  Integer integer(valStr.str(), 10);
-  return {integer, size()};
+  return {Integer(extractStr(elem), 10), size()};
 }
 
 const CoCoA::RingElem& CocoaEncoder::symPoly(CoCoA::symbol s) const
@@ -251,52 +239,47 @@ void CocoaEncoder::encodeTerm(const Node& t)
       {
         elem = symPoly(d_varSyms.at(node));
       }
+      else if (node.getKind() == Kind::FINITE_FIELD_ADD)
+      {
+        elem = CoCoA::zero(*d_polyRing);
+        for (const auto& c : node)
+        {
+          elem += d_cache[c];
+        }
+        break;
+      }
+      else if (node.getKind() == Kind::FINITE_FIELD_MULT)
+      {
+        elem = CoCoA::one(*d_polyRing);
+        for (const auto& c : node)
+        {
+          elem *= d_cache[c];
+        }
+        break;
+      }
+      else if (node.getKind() == Kind::FINITE_FIELD_BITSUM)
+      {
+        CoCoA::RingElem sum = CoCoA::zero(*d_polyRing);
+        CoCoA::RingElem two = CoCoA::one(*d_polyRing) * 2;
+        CoCoA::RingElem twoPow = CoCoA::one(*d_polyRing);
+        for (const auto& c : node)
+        {
+          sum += twoPow * d_cache[c];
+          twoPow *= two;
+        }
+        elem = symPoly(d_bitsumSyms.at(node));
+        d_bitsumPolys.push_back(sum - elem);
+        break;
+      }
+      else if (node.getKind() == Kind::CONST_FINITE_FIELD)
+      {
+        elem = CoCoA::one(*d_polyRing)
+               * intToCocoa(node.getConst<FiniteFieldValue>().getValue());
+        break;
+      }
       else
       {
-        switch (node.getKind())
-        {
-          case Kind::FINITE_FIELD_ADD:
-          {
-            elem = CoCoA::zero(*d_polyRing);
-            for (const auto& c : node)
-            {
-              elem += d_cache[c];
-            }
-            break;
-          }
-          case Kind::FINITE_FIELD_MULT:
-          {
-            elem = CoCoA::one(*d_polyRing);
-            for (const auto& c : node)
-            {
-              elem *= d_cache[c];
-            }
-            break;
-          }
-          case Kind::FINITE_FIELD_BITSUM:
-          {
-            CoCoA::RingElem sum = CoCoA::zero(*d_polyRing);
-            CoCoA::RingElem two = CoCoA::one(*d_polyRing) * 2;
-            CoCoA::RingElem twoPow = CoCoA::one(*d_polyRing);
-            for (const auto& c : node)
-            {
-              sum += twoPow * d_cache[c];
-              twoPow *= two;
-            }
-            elem = symPoly(d_bitsumSyms.at(node));
-            sum -= elem;
-            d_bitsumPolys.push_back(sum);
-            break;
-          }
-          case Kind::CONST_FINITE_FIELD:
-          {
-            elem = CoCoA::one(*d_polyRing)
-                   * CoCoA::BigIntFromString(
-                       node.getConst<FiniteFieldValue>().getValue().toString());
-            break;
-          }
-          default: Unimplemented() << node;
-        }
+        Unimplemented() << node;
       }
     }
     d_cache.insert({node, elem});
@@ -307,16 +290,16 @@ void CocoaEncoder::encodeFact(const Node& f)
 {
   Assert(d_stage == Stage::Encode);
   Assert(isFfFact(f));
+  // ==
   if (f.getKind() == Kind::EQUAL)
   {
-    // ==
     encodeTerm(f[0]);
     encodeTerm(f[1]);
     d_cache.insert({f, d_cache.at(f[0]) - d_cache.at(f[1])});
   }
+  // !=
   else
   {
-    // !=
     encodeTerm(f[0][0]);
     encodeTerm(f[0][1]);
     CoCoA::RingElem diff = d_cache.at(f[0][0]) - d_cache.at(f[0][1]);

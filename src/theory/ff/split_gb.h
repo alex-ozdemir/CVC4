@@ -33,7 +33,7 @@
 #include <vector>
 
 // internal includes
-#include "theory/ff/cocoa.h"
+#include "theory/ff/cocoa_encoder.h"
 #include "theory/ff/cocoa_util.h"
 
 namespace cvc5::internal {

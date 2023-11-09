@@ -21,13 +21,17 @@
 #define CVC5__THEORY__FF__COCOA_UTIL_H
 
 // external includes
+#include <CoCoA/BigInt.H>
 #include <CoCoA/ring.H>
 
 // std includes
 #include <optional>
+#include <sstream>
 #include <vector>
 
 // internal includes
+#include "util/finite_field_value.h"
+#include "util/integer.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -45,9 +49,24 @@ std::optional<CoCoA::RingElem> cocoaEval(
 CoCoA::RingElem cocoaEval(CoCoA::RingElem poly,
                           const std::vector<CoCoA::RingElem>& values);
 
+/** convert cocoa integer mod p to a FiniteFieldValue. */
+FiniteFieldValue cocoaFfToFfVal(const CoCoA::RingElem& elem,
+                                const FfSize& size);
 
-}  // namespace theory
+/** convert an Integer to CoCoA::BitInt. */
+CoCoA::BigInt intToCocoa(const Integer& i);
+
+/** get the string representation of a type that implements operator<<. */
+template <typename T>
+std::string extractStr(const T& t)
+{
+  std::ostringstream o;
+  o << t;
+  return o.str();
+}
+
 }  // namespace ff
+}  // namespace theory
 }  // namespace cvc5::internal
 
 #endif /* CVC5__THEORY__FF__COCOA_UTIL_H */

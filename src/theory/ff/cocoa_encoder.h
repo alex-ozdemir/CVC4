@@ -10,7 +10,7 @@
  * directory for licensing information.
  * ****************************************************************************
  *
- * cocoa utilities
+ * encoding Nodes as cocoa ring elements.
  */
 
 #include "cvc5_private.h"
@@ -38,12 +38,89 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-/** Create cocoa symbol, sanitizing varName. */
+/**
+ *  Create cocoa symbol, sanitizing varName.
+ *  If index is given, subscript the symbol by it.
+ */
 CoCoA::symbol cocoaSym(const std::string& varName,
                        std::optional<size_t> index = {});
 
+/**
+ * Class for encoding a Node as a CoCoA::RingElem.
+ *
+ * Requires two passes over the nodes. On the first pass it collects variables,
+ * !=s, and bitsums. On the second, it encodes.
+ */
 class CocoaEncoder : public FieldObj
 {
+ public:
+  /** Create a new encoder, for this field. */
+  CocoaEncoder(const FfSize& size);
+  /** Add a fact (one must call this twice per fact, once per stage). */
+  void addFact(const Node& fact);
+  /** Start Stage::Encode. */
+  void endScan();
+  /**
+   * Get the polys who's common zero we are finding (excluding bitsums).
+   * Available in Stage::Encode.
+   */
+  const std::vector<CoCoA::RingElem>& polys() const { return d_polys; }
+  /**
+   * Get the bitsum polys.
+   * These have form: x - b0 - 2*b1 - 4b2 ... - 2^n*b_n.
+   * Available in Stage::Encode.
+   */
+  const std::vector<CoCoA::RingElem>& bitsumPolys() const
+  {
+    return d_bitsumPolys;
+  }
+  /**
+   * Get the poly for this term
+   * Available in Stage::Encode.
+   */
+  const CoCoA::RingElem& getTermEncoding(const Node& t) const
+  {
+    return d_cache.at(t);
+  }
+  /**
+   * Get the bitsum terms (for the bitsumPolys).
+   * Available in Stage::Encode.
+   */
+  std::vector<Node> bitsums() const;
+  /**
+   * The poly ring we've encoded into.
+   * Available in Stage::Encode.
+   */
+  const CoCoA::ring& polyRing() const { return d_polyRing.value(); }
+  /**
+   * The poly ring we've encoded into.
+   * Available in Stage::Encode.
+   */
+  std::vector<std::pair<size_t, Node>> nodeIndets() const;
+  /**
+   * Convert a (coefficient) CoCoA::RingElem to a FiniteFieldValue.
+   */
+  FiniteFieldValue cocoaFfToFfVal(const CoCoA::RingElem& elem);
+
+ private:
+  /**
+   * Get a fresh symbol that starts with varName.
+   * If index is given, subscript the symbol by it.
+   */
+  CoCoA::symbol freshSym(const std::string& varName,
+                         std::optional<size_t> index = {});
+  /** a bitsum or a var */
+  const Node& symNode(CoCoA::symbol s) const;
+  /** have we assigned this symbol to some Node? */
+  bool hasNode(CoCoA::symbol s) const;
+  /** get the poly for this symbol */
+  const CoCoA::RingElem& symPoly(CoCoA::symbol s) const;
+  /** encode this term as a poly (caching) */
+  void encodeTerm(const Node& t);
+  /** encode this fact as a poly that must be zero (caching) */
+  void encodeFact(const Node& f);
+
+  /** Which pass we're in. */
   enum class Stage
   {
     /** collecting: variable, !=, bitsum */
@@ -52,54 +129,44 @@ class CocoaEncoder : public FieldObj
     Encode,
   };
 
- public:
-  CocoaEncoder(const FfSize& size);
-  CoCoA::symbol freshSym(const std::string& varName,
-                         std::optional<size_t> index = {});
-  void endScan();
-  void addFact(const Node& fact);
-  const std::vector<CoCoA::RingElem>& polys() const { return d_polys; }
-  const std::vector<CoCoA::RingElem>& bitsumPolys() const
-  {
-    return d_bitsumPolys;
-  }
-  const CoCoA::RingElem& getTermEncoding(const Node& t) const
-  {
-    return d_cache.at(t);
-  }
-  std::vector<Node> bitsums() const;
-  const CoCoA::ring& polyRing() const { return d_polyRing.value(); }
-  std::vector<std::pair<size_t, Node>> nodeIndets() const;
-  FiniteFieldValue cocoaFfToFfVal(const CoCoA::RingElem& elem);
-
- private:
-  /** a bitsum or a var */
-  const Node& symNode(CoCoA::symbol s) const;
-  bool hasNode(CoCoA::symbol s) const;
-  const CoCoA::RingElem& symPoly(CoCoA::symbol s) const;
-  void encodeTerm(const Node& t);
-  void encodeFact(const Node& f);
-
   // configuration
+
+  /** the coefficient field */
   CoCoA::ring d_coeffField;
+  /** the stage that we're in; initially scanning */
+  Stage d_stage{Stage::Scan};
 
   // populated during Stage::Scan
 
-  Stage d_stage{Stage::Scan};
+  /** all nodes scanned */
   std::unordered_set<Node> d_scanned{};
+  /** all variables seen */
   std::unordered_set<std::string> d_vars{};
+  /** map: bitsum term to its symbol */
   std::unordered_map<Node, CoCoA::symbol> d_bitsumSyms{};
+  /** map: variable term to its symbol */
   std::unordered_map<Node, CoCoA::symbol> d_varSyms{};
+  /** map: term (a != b) to the symbol for the inverse of (a - b) */
   std::unordered_map<Node, CoCoA::symbol> d_diseqSyms{};
-  std::unordered_map<std::string, Node> d_symNodes{};
-  std::unordered_map<std::string, CoCoA::RingElem> d_symPolys{};
+  /** all symbols */
   std::vector<CoCoA::symbol> d_syms{};
+  /** map: symbol name to polynomial */
+  std::unordered_map<std::string, CoCoA::RingElem> d_symPolys{};
+  /** map: symbol name to term */
+  std::unordered_map<std::string, Node> d_symNodes{};
 
+  // populated at the end of Stage::Scan
+
+  /** the polynomial ring */
   std::optional<CoCoA::ring> d_polyRing{};
+
+  // populated during Stage::Encode
 
   /** encoding cache */
   std::unordered_map<Node, CoCoA::RingElem> d_cache{};
+  /** polynomials that must be zero (except bitsums) */
   std::vector<CoCoA::RingElem> d_polys{};
+  /** bitsum polynomials that must be zero */
   std::vector<CoCoA::RingElem> d_bitsumPolys{};
 };
 

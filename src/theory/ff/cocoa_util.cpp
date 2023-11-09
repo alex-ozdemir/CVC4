@@ -77,6 +77,16 @@ CoCoA::RingElem cocoaEval(CoCoA::RingElem poly, const Root& inputs)
   return out;
 }
 
+FiniteFieldValue cocoaFfToFfVal(const CoCoA::RingElem& elem, const FfSize& size)
+{
+  return {Integer(extractStr(elem), 10), size};
+}
+
+CoCoA::BigInt intToCocoa(const Integer& i)
+{
+  return CoCoA::BigIntFromString(i.toString());
+}
+
 }  // namespace theory
 }  // namespace ff
 }  // namespace cvc5::internal
