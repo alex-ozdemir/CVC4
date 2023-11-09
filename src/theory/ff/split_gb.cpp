@@ -41,7 +41,7 @@ namespace {
 
 std::unique_ptr<AssignmentEnumerator> applyRule(const Gb& gb,
                                                 const CoCoA::ring& polyRing,
-                                                const PartialRoot& r)
+                                                const PartialPoint& r)
 {
   Assert(static_cast<long>(r.size()) == CoCoA::NumIndets(polyRing));
   Assert(std::any_of(
@@ -65,8 +65,7 @@ std::unique_ptr<AssignmentEnumerator> applyRule(const Gb& gb,
     {
       if (!r[i].has_value())
       {
-        CoCoA::RingElem minPoly =
-            gb.minimalPolynomial(CoCoA::indet(polyRing, i));
+        Poly minPoly = gb.minimalPolynomial(CoCoA::indet(polyRing, i));
         return factorEnumerator(minPoly);
       }
     }
@@ -78,7 +77,7 @@ std::unique_ptr<AssignmentEnumerator> applyRule(const Gb& gb,
     // round-robin guess.
     //
     // TODO(aozdemir): better model construction (cvc5-wishues/issues/138)
-    std::vector<CoCoA::RingElem> toGuess{};
+    Polys toGuess{};
     for (size_t i = 0; i < r.size(); ++i)
     {
       if (!r[i].has_value())
@@ -95,13 +94,11 @@ std::unique_ptr<AssignmentEnumerator> applyRule(const Gb& gb,
 
 }  // namespace
 
-
-SplitGb2 splitGb(const std::vector<std::vector<CoCoA::RingElem>>& generatorSets,
-                 BitProp& bitProp)
+SplitGb splitGb(const std::vector<Polys>& generatorSets, BitProp& bitProp)
 {
   size_t k = generatorSets.size();
-  std::vector<std::vector<CoCoA::RingElem>> newPolys(generatorSets);
-  SplitGb2 splitBasis(k);
+  std::vector<Polys> newPolys(generatorSets);
+  SplitGb splitBasis(k);
   do
   {
     // add newPolts to each basis
@@ -109,7 +106,7 @@ SplitGb2 splitGb(const std::vector<std::vector<CoCoA::RingElem>>& generatorSets,
     {
       if (newPolys[i].size())
       {
-        std::vector<CoCoA::RingElem> newGens{};
+        Polys newGens{};
 
         const auto& basis = splitBasis[i].basis();
         std::copy(basis.begin(), basis.end(), std::back_inserter(newGens));
@@ -122,7 +119,7 @@ SplitGb2 splitGb(const std::vector<std::vector<CoCoA::RingElem>>& generatorSets,
     }
 
     // compute polys that can be shared
-    std::vector<CoCoA::RingElem> toPropagate{};
+    Polys toPropagate{};
     for (size_t i = 0; i < k; ++i)
     {
       const auto& basis = splitBasis[i].basis();
@@ -149,16 +146,15 @@ SplitGb2 splitGb(const std::vector<std::vector<CoCoA::RingElem>>& generatorSets,
   return splitBasis;
 }
 
-std::variant<std::vector<CoCoA::RingElem>, CoCoA::RingElem, bool>
-splitZeroExtend(const std::vector<CoCoA::RingElem>& origPolys,
-                const SplitGb2&& curBases,
-                const PartialRoot&& curR,
-                const BitProp& bitProp)
+std::variant<Point, Poly, bool> splitZeroExtend(const Polys& origPolys,
+                                                const SplitGb&& curBases,
+                                                const PartialPoint&& curR,
+                                                const BitProp& bitProp)
 {
   Assert(origPolys.size());
   CoCoA::ring polyRing = CoCoA::owner(origPolys[0]);
-  SplitGb2 bases(std::move(curBases));
-  PartialRoot r(std::move(curR));
+  SplitGb bases(std::move(curBases));
+  PartialPoint r(std::move(curR));
   long nAssigned = std::count_if(
       r.begin(), r.end(), [](const auto& v) { return v.has_value(); });
   if (std::any_of(bases.begin(), bases.end(), [](const Gb& i) {
@@ -178,7 +174,7 @@ splitZeroExtend(const std::vector<CoCoA::RingElem>& origPolys,
 
   if (nAssigned == CoCoA::NumIndets(CoCoA::owner(origPolys[0])))
   {
-    std::vector<CoCoA::RingElem> out;
+    Point out;
     for (const auto& v : r)
     {
       out.push_back(*v);
@@ -190,14 +186,14 @@ splitZeroExtend(const std::vector<CoCoA::RingElem>& origPolys,
   {
     long var = CoCoA::UnivariateIndetIndex(*next);
     Assert(var >= 0);
-    CoCoA::RingElem val = -CoCoA::ConstantCoeff(*next);
+    Scalar val = -CoCoA::ConstantCoeff(*next);
     Assert(!r[var].has_value());
-    PartialRoot newR = r;
+    PartialPoint newR = r;
     newR[var] = {val};
     Trace("ff::split::mc::debug")
         << std::string(1 + nAssigned, ' ') << CoCoA::indet(polyRing, var)
         << " = " << val << std::endl;
-    std::vector<std::vector<CoCoA::RingElem>> newSplitGens{};
+    std::vector<Polys> newSplitGens{};
     for (const auto& b : bases)
     {
       newSplitGens.push_back({});
@@ -207,7 +203,7 @@ splitZeroExtend(const std::vector<CoCoA::RingElem>& origPolys,
       newSplitGens.back().push_back(*next);
     }
     BitProp bitPropCopy = bitProp;
-    SplitGb2 newBases = splitGb(newSplitGens, bitPropCopy);
+    SplitGb newBases = splitGb(newSplitGens, bitPropCopy);
     auto result = splitZeroExtend(
         origPolys, std::move(newBases), std::move(newR), bitPropCopy);
     if (!std::holds_alternative<bool>(result))
@@ -218,25 +214,26 @@ splitZeroExtend(const std::vector<CoCoA::RingElem>& origPolys,
   return false;
 }
 
-std::optional<std::vector<CoCoA::RingElem>> splitFindZero(
-    SplitGb2&& splitBasisIn, CoCoA::ring polyRing, BitProp& bitProp)
+std::optional<Point> splitFindZero(SplitGb&& splitBasisIn,
+                                   CoCoA::ring polyRing,
+                                   BitProp& bitProp)
 {
-  SplitGb2 splitBasis = std::move(splitBasisIn);
+  SplitGb splitBasis = std::move(splitBasisIn);
   while (true)
   {
-    std::vector<CoCoA::RingElem> allGens{};
+    Polys allGens{};
     for (const auto& b : splitBasis)
     {
       std::copy(
           b.basis().begin(), b.basis().end(), std::back_inserter(allGens));
     }
-    PartialRoot nullPartialRoot(CoCoA::NumIndets(polyRing));
+    PartialPoint nullPartialRoot(CoCoA::NumIndets(polyRing));
     auto result = splitZeroExtend(
-        allGens, SplitGb2(splitBasis), std::move(nullPartialRoot), bitProp);
-    if (std::holds_alternative<CoCoA::RingElem>(result))
+        allGens, SplitGb(splitBasis), std::move(nullPartialRoot), bitProp);
+    if (std::holds_alternative<Poly>(result))
     {
-      auto conflict = std::get<CoCoA::RingElem>(result);
-      std::vector<std::vector<CoCoA::RingElem>> gens{};
+      auto conflict = std::get<Poly>(result);
+      std::vector<Polys> gens{};
       for (auto& b : splitBasis)
       {
         gens.push_back({});
@@ -253,14 +250,13 @@ std::optional<std::vector<CoCoA::RingElem>> splitFindZero(
     }
     else
     {
-      return {std::get<std::vector<CoCoA::RingElem>>(result)};
+      return {std::get<Point>(result)};
     }
   }
 }
 
 Gb::Gb() : d_ideal(), d_basis(){};
-Gb::Gb(const std::vector<CoCoA::RingElem>& generators)
-    : d_ideal(), d_basis()
+Gb::Gb(const Polys& generators) : d_ideal(), d_basis()
 {
   if (generators.size())
   {
@@ -269,7 +265,7 @@ Gb::Gb(const std::vector<CoCoA::RingElem>& generators)
   }
 }
 
-bool Gb::contains(const CoCoA::RingElem& p) const
+bool Gb::contains(const Poly& p) const
 {
   return d_ideal.has_value() && CoCoA::IsElem(p, d_ideal.value());
 }
@@ -277,7 +273,7 @@ bool Gb::isWholeRing() const
 {
   return d_ideal.has_value() && CoCoA::IsOne(d_ideal.value());
 }
-CoCoA::RingElem Gb::reduce(const CoCoA::RingElem& p) const
+Poly Gb::reduce(const Poly& p) const
 {
   return d_ideal.has_value() ? CoCoA::NF(p, d_ideal.value()) : p;
 }
@@ -285,14 +281,14 @@ bool Gb::zeroDimensional() const
 {
   return d_ideal.has_value() && CoCoA::IsZeroDim(d_ideal.value());
 }
-CoCoA::RingElem Gb::minimalPolynomial(const CoCoA::RingElem& var) const
+Poly Gb::minimalPolynomial(const Poly& var) const
 {
   Assert(zeroDimensional());
   Assert(CoCoA::UnivariateIndetIndex(var) != -1);
-  CoCoA::RingElem minPoly = CoCoA::MinPolyQuot(var, *d_ideal, var);
+  Poly minPoly = CoCoA::MinPolyQuot(var, *d_ideal, var);
   return minPoly;
 }
-const std::vector<CoCoA::RingElem>& Gb::basis() const { return d_basis; }
+const Polys& Gb::basis() const { return d_basis; }
 
 BitProp::BitProp(const std::vector<Node>& facts, CocoaEncoder& encoder)
     : d_bits(), d_bitsums(encoder.bitsums()), d_enc(&encoder)
@@ -309,10 +305,9 @@ BitProp::BitProp(const std::vector<Node>& facts, CocoaEncoder& encoder)
 
 BitProp::BitProp() : d_bits(), d_bitsums(), d_enc(nullptr) {}
 
-std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
-    const std::vector<Gb>& splitBasis)
+Polys BitProp::getBitEqualities(const SplitGb& splitBasis)
 {
-  std::vector<CoCoA::RingElem> output{};
+  Polys output{};
 
   std::vector<Node> nonConstantBitsums{};
   for (const auto& bitsum : d_bitsums)
@@ -320,7 +315,7 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
     bool isConst = false;
     for (const auto& b : splitBasis)
     {
-      CoCoA::RingElem normal = b.reduce(d_enc->getTermEncoding(bitsum));
+      Poly normal = b.reduce(d_enc->getTermEncoding(bitsum));
       if (CoCoA::IsConstant(normal))
       {
         Integer val =
@@ -353,8 +348,7 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
     {
       Node a = nonConstantBitsums[i];
       Node b = nonConstantBitsums[j];
-      CoCoA::RingElem bsDiff =
-          d_enc->getTermEncoding(a) - d_enc->getTermEncoding(b);
+      Poly bsDiff = d_enc->getTermEncoding(a) - d_enc->getTermEncoding(b);
       if (std::any_of(
               splitBasis.begin(), splitBasis.end(), [&bsDiff](const auto& ii) {
                 return ii.contains(bsDiff);
@@ -376,8 +370,8 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
           {
             if (!d_bits.count(c))
             {
-              CoCoA::RingElem p = d_enc->getTermEncoding(c);
-              CoCoA::RingElem bitConstraint = p * p - p;
+              Poly p = d_enc->getTermEncoding(c);
+              Poly bitConstraint = p * p - p;
               if (std::any_of(splitBasis.begin(),
                               splitBasis.end(),
                               [&bitConstraint](const auto& ii) {
@@ -400,7 +394,7 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
 
         for (size_t k = 0; k < min; ++k)
         {
-          CoCoA::RingElem diff =
+          Poly diff =
               d_enc->getTermEncoding(a[k]) - d_enc->getTermEncoding(b[k]);
           output.push_back(diff);
         }
@@ -410,7 +404,7 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
           Node n = b.getNumChildren() > min ? b : a;
           for (size_t k = min; k < max; ++k)
           {
-            CoCoA::RingElem isZero = d_enc->getTermEncoding(n[k]);
+            Poly isZero = d_enc->getTermEncoding(n[k]);
             output.push_back(isZero);
           }
         }
@@ -420,7 +414,7 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
   return output;
 }
 
-bool admit(size_t i, const CoCoA::RingElem& p)
+bool admit(size_t i, const Poly& p)
 {
   Assert(i < 2);
   return CoCoA::deg(p) <= 1 && (i == 0 || CoCoA::NumTerms(p) <= 2);
@@ -441,8 +435,8 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> splitFindZero(
     enc.addFact(fact);
   }
 
-  std::vector<CoCoA::RingElem> nlGens = enc.polys();
-  std::vector<CoCoA::RingElem> lGens = enc.bitsumPolys();
+  Polys nlGens = enc.polys();
+  Polys lGens = enc.bitsumPolys();
   for (const auto& p : enc.polys())
   {
     if (CoCoA::deg(p) <= 1)
@@ -453,8 +447,8 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> splitFindZero(
 
   BitProp bitProp(facts, enc);
 
-  std::vector<std::vector<CoCoA::RingElem>> splitGens = {lGens, nlGens};
-  SplitGb2 splitBasis = splitGb(splitGens, bitProp);
+  std::vector<Polys> splitGens = {lGens, nlGens};
+  SplitGb splitBasis = splitGb(splitGens, bitProp);
   if (std::any_of(splitBasis.begin(), splitBasis.end(), [](const auto& b) {
         return b.isWholeRing();
       }))
@@ -462,7 +456,7 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> splitFindZero(
     return {};
   }
 
-  std::optional<std::vector<CoCoA::RingElem>> root =
+  std::optional<Point> root =
       splitFindZero(std::move(splitBasis), enc.polyRing(), bitProp);
   if (root.has_value())
   {
@@ -482,8 +476,7 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> splitFindZero(
   }
 }
 
-void checkModel(const SplitGb2& origBases,
-                const std::vector<CoCoA::RingElem>& model)
+void checkModel(const SplitGb& origBases, const Point& model)
 {
 #ifdef CVC5_ASSERTIONS
   for (const auto& b : origBases)

@@ -28,15 +28,14 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-std::optional<CoCoA::RingElem> cocoaEval(CoCoA::RingElem poly,
-                                         const PartialRoot& inputs)
+std::optional<Scalar> cocoaEval(Poly poly, const PartialPoint& inputs)
 {
   CoCoA::ring coeffs = CoCoA::CoeffRing(CoCoA::owner(poly));
-  CoCoA::RingElem out = CoCoA::zero(coeffs);
+  Scalar out = CoCoA::zero(coeffs);
   for (auto it = CoCoA::BeginIter(poly), end = CoCoA::EndIter(poly); it != end;
        ++it)
   {
-    CoCoA::RingElem term = CoCoA::coeff(it);
+    Scalar term = CoCoA::coeff(it);
     std::vector<CoCoA::BigInt> exponents;
     CoCoA::BigExponents(exponents, CoCoA::PP(it));
     for (size_t i = 0; i < exponents.size(); ++i)
@@ -55,14 +54,14 @@ std::optional<CoCoA::RingElem> cocoaEval(CoCoA::RingElem poly,
   return {out};
 }
 
-CoCoA::RingElem cocoaEval(CoCoA::RingElem poly, const Root& inputs)
+Scalar cocoaEval(Poly poly, const Point& inputs)
 {
   CoCoA::ring coeffs = CoCoA::CoeffRing(CoCoA::owner(poly));
-  CoCoA::RingElem out = CoCoA::zero(coeffs);
+  Scalar out = CoCoA::zero(coeffs);
   for (auto it = CoCoA::BeginIter(poly), end = CoCoA::EndIter(poly); it != end;
        ++it)
   {
-    CoCoA::RingElem term = CoCoA::coeff(it);
+    Scalar term = CoCoA::coeff(it);
     std::vector<CoCoA::BigInt> exponents;
     CoCoA::BigExponents(exponents, CoCoA::PP(it));
     for (size_t i = 0; i < exponents.size(); ++i)
@@ -77,7 +76,7 @@ CoCoA::RingElem cocoaEval(CoCoA::RingElem poly, const Root& inputs)
   return out;
 }
 
-FiniteFieldValue cocoaFfToFfVal(const CoCoA::RingElem& elem, const FfSize& size)
+FiniteFieldValue cocoaFfToFfVal(const Scalar& elem, const FfSize& size)
 {
   return {Integer(extractStr(elem), 10), size};
 }
@@ -87,6 +86,6 @@ CoCoA::BigInt intToCocoa(const Integer& i)
   return CoCoA::BigIntFromString(i.toString());
 }
 
-}  // namespace theory
 }  // namespace ff
+}  // namespace theory
 }  // namespace cvc5::internal

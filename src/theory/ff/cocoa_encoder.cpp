@@ -211,13 +211,13 @@ std::vector<std::pair<size_t, Node>> CocoaEncoder::nodeIndets() const
   return out;
 }
 
-FiniteFieldValue CocoaEncoder::cocoaFfToFfVal(const CoCoA::RingElem& elem)
+FiniteFieldValue CocoaEncoder::cocoaFfToFfVal(const Scalar& elem)
 {
   Assert(CoCoA::owner(elem) == d_coeffField);
-  return {Integer(extractStr(elem), 10), size()};
+  return ff::cocoaFfToFfVal(elem, size());
 }
 
-const CoCoA::RingElem& CocoaEncoder::symPoly(CoCoA::symbol s) const
+const Poly& CocoaEncoder::symPoly(CoCoA::symbol s) const
 {
   Assert(d_symPolys.count(extractStr(s)));
   return d_symPolys.at(extractStr(s));
@@ -232,7 +232,7 @@ void CocoaEncoder::encodeTerm(const Node& t)
          return d_cache.count(nn);
        }))
   {
-    CoCoA::RingElem elem;
+    Poly elem;
     if (isFfFact(node) || isFfTerm(node))
     {
       if (isFfLeaf(node) && !node.isConst())
@@ -259,9 +259,9 @@ void CocoaEncoder::encodeTerm(const Node& t)
       }
       else if (node.getKind() == Kind::FINITE_FIELD_BITSUM)
       {
-        CoCoA::RingElem sum = CoCoA::zero(*d_polyRing);
-        CoCoA::RingElem two = CoCoA::one(*d_polyRing) * 2;
-        CoCoA::RingElem twoPow = CoCoA::one(*d_polyRing);
+        Poly sum = CoCoA::zero(*d_polyRing);
+        Poly two = CoCoA::one(*d_polyRing) * 2;
+        Poly twoPow = CoCoA::one(*d_polyRing);
         for (const auto& c : node)
         {
           sum += twoPow * d_cache[c];
@@ -302,7 +302,7 @@ void CocoaEncoder::encodeFact(const Node& f)
   {
     encodeTerm(f[0][0]);
     encodeTerm(f[0][1]);
-    CoCoA::RingElem diff = d_cache.at(f[0][0]) - d_cache.at(f[0][1]);
+    Poly diff = d_cache.at(f[0][0]) - d_cache.at(f[0][1]);
     d_cache.insert({f, diff * symPoly(d_diseqSyms.at(f)) - 1});
   }
 }

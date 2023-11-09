@@ -32,6 +32,7 @@
 
 // internal includes
 #include "expr/node.h"
+#include "theory/ff/cocoa_util.h"
 #include "theory/ff/util.h"
 
 namespace cvc5::internal {
@@ -46,7 +47,7 @@ CoCoA::symbol cocoaSym(const std::string& varName,
                        std::optional<size_t> index = {});
 
 /**
- * Class for encoding a Node as a CoCoA::RingElem.
+ * Class for encoding a Node as a Poly.
  *
  * Requires two passes over the nodes. On the first pass it collects variables,
  * !=s, and bitsums. On the second, it encodes.
@@ -64,24 +65,18 @@ class CocoaEncoder : public FieldObj
    * Get the polys who's common zero we are finding (excluding bitsums).
    * Available in Stage::Encode.
    */
-  const std::vector<CoCoA::RingElem>& polys() const { return d_polys; }
+  const std::vector<Poly>& polys() const { return d_polys; }
   /**
    * Get the bitsum polys.
    * These have form: x - b0 - 2*b1 - 4b2 ... - 2^n*b_n.
    * Available in Stage::Encode.
    */
-  const std::vector<CoCoA::RingElem>& bitsumPolys() const
-  {
-    return d_bitsumPolys;
-  }
+  const std::vector<Poly>& bitsumPolys() const { return d_bitsumPolys; }
   /**
    * Get the poly for this term
    * Available in Stage::Encode.
    */
-  const CoCoA::RingElem& getTermEncoding(const Node& t) const
-  {
-    return d_cache.at(t);
-  }
+  const Poly& getTermEncoding(const Node& t) const { return d_cache.at(t); }
   /**
    * Get the bitsum terms (for the bitsumPolys).
    * Available in Stage::Encode.
@@ -98,9 +93,9 @@ class CocoaEncoder : public FieldObj
    */
   std::vector<std::pair<size_t, Node>> nodeIndets() const;
   /**
-   * Convert a (coefficient) CoCoA::RingElem to a FiniteFieldValue.
+   * Convert a (coefficient) Scalar to a FiniteFieldValue.
    */
-  FiniteFieldValue cocoaFfToFfVal(const CoCoA::RingElem& elem);
+  FiniteFieldValue cocoaFfToFfVal(const Scalar& elem);
 
  private:
   /**
@@ -114,7 +109,7 @@ class CocoaEncoder : public FieldObj
   /** have we assigned this symbol to some Node? */
   bool hasNode(CoCoA::symbol s) const;
   /** get the poly for this symbol */
-  const CoCoA::RingElem& symPoly(CoCoA::symbol s) const;
+  const Poly& symPoly(CoCoA::symbol s) const;
   /** encode this term as a poly (caching) */
   void encodeTerm(const Node& t);
   /** encode this fact as a poly that must be zero (caching) */
@@ -151,7 +146,7 @@ class CocoaEncoder : public FieldObj
   /** all symbols */
   std::vector<CoCoA::symbol> d_syms{};
   /** map: symbol name to polynomial */
-  std::unordered_map<std::string, CoCoA::RingElem> d_symPolys{};
+  std::unordered_map<std::string, Poly> d_symPolys{};
   /** map: symbol name to term */
   std::unordered_map<std::string, Node> d_symNodes{};
 
@@ -163,11 +158,11 @@ class CocoaEncoder : public FieldObj
   // populated during Stage::Encode
 
   /** encoding cache */
-  std::unordered_map<Node, CoCoA::RingElem> d_cache{};
+  std::unordered_map<Node, Poly> d_cache{};
   /** polynomials that must be zero (except bitsums) */
-  std::vector<CoCoA::RingElem> d_polys{};
+  std::vector<Poly> d_polys{};
   /** bitsum polynomials that must be zero */
-  std::vector<CoCoA::RingElem> d_bitsumPolys{};
+  std::vector<Poly> d_bitsumPolys{};
 };
 
 }  // namespace ff

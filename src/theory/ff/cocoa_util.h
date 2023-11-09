@@ -37,21 +37,27 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-using PartialRoot = std::vector<std::optional<CoCoA::RingElem>>;
-using Root = std::vector<CoCoA::RingElem>;
+/** Type definitions. */
+
+/** A polynomial. (note: C++/Cocoa doesn't distinguish this from Coeff) */
+using Poly = CoCoA::RingElem;
+/** A coefficient. (note: C++/Cocoa doesn't distinguish this from Poly) */
+using Scalar = CoCoA::RingElem;
+/** A list of polynomials. */
+using Polys = std::vector<Poly>;
+/** A partial input (point/vector with optional entries) to a polynomial */
+using PartialPoint = std::vector<std::optional<Scalar>>;
+/** An input (point/vector) to a polynomial */
+using Point = std::vector<Scalar>;
 
 /** partial evaluation of polynomials */
-std::optional<CoCoA::RingElem> cocoaEval(
-    CoCoA::RingElem poly,
-    const std::vector<std::optional<CoCoA::RingElem>>& values);
+std::optional<Scalar> cocoaEval(Poly poly, const PartialPoint& values);
 
 /** total evaluation of polynomials */
-CoCoA::RingElem cocoaEval(CoCoA::RingElem poly,
-                          const std::vector<CoCoA::RingElem>& values);
+Scalar cocoaEval(Poly poly, const Point& values);
 
 /** convert cocoa integer mod p to a FiniteFieldValue. */
-FiniteFieldValue cocoaFfToFfVal(const CoCoA::RingElem& elem,
-                                const FfSize& size);
+FiniteFieldValue cocoaFfToFfVal(const Scalar& elem, const FfSize& size);
 
 /** convert an Integer to CoCoA::BitInt. */
 CoCoA::BigInt intToCocoa(const Integer& i);

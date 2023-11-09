@@ -40,69 +40,66 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
-/** partial evaluation of polynomials */
-std::optional<CoCoA::RingElem> cocoaEval(
-    CoCoA::RingElem poly,
-    const std::vector<std::optional<CoCoA::RingElem>>& values);
-
-/** total evaluation of polynomials */
-CoCoA::RingElem cocoaEval(CoCoA::RingElem poly,
-                          const std::vector<CoCoA::RingElem>& values);
-
 /** Wraps a CoCoA GBasis, but supports an empty basis. */
 class Gb
 {
  public:
   Gb();
-  Gb(const std::vector<CoCoA::RingElem>& generators);
-  bool contains(const CoCoA::RingElem& p) const;
+  Gb(const std::vector<Poly>& generators);
+  bool contains(const Poly& p) const;
   bool isWholeRing() const;
-  CoCoA::RingElem reduce(const CoCoA::RingElem& p) const;
+  Poly reduce(const Poly& p) const;
   bool zeroDimensional() const;
-  CoCoA::RingElem minimalPolynomial(const CoCoA::RingElem& p) const;
-  const std::vector<CoCoA::RingElem>& basis() const;
+  Poly minimalPolynomial(const Poly& p) const;
+  const std::vector<Poly>& basis() const;
 
  private:
   std::optional<CoCoA::ideal> d_ideal;
-  std::vector<CoCoA::RingElem> d_basis;
+  std::vector<Poly> d_basis;
 };
 
+/** A split GB. */
+using SplitGb = std::vector<Gb>;
+
+/** Propagator for bit equalities from bitsum equalities. */
 class BitProp
 {
  public:
   BitProp(const std::vector<Node>& facts, CocoaEncoder& encoder);
   BitProp();
-  std::vector<CoCoA::RingElem> getBitEqualities(
-      const std::vector<Gb>& splitBasis);
+  /** get all known bit equalities from thes split basis */
+  std::vector<Poly> getBitEqualities(const SplitGb& sgb);
 
  private:
+  /** terms that are known to be 0 or 1 */
   std::unordered_set<Node> d_bits;
+  /** known bitsums */
   std::vector<Node> d_bitsums;
+  /** the ambiant encoding of terms into Cocoa */
   CocoaEncoder* d_enc;
 };
 
-bool admit(size_t i, const CoCoA::RingElem& p);
+/** Whether to admit p into ideal i. */
+bool admit(size_t i, const Poly& p);
 
-std::vector<Gb> splitGb(
-    const std::vector<std::vector<CoCoA::RingElem>>& generatorSets,
-    BitProp& bitProp);
+/** Compute a split Gb. */
+std::vector<Gb> splitGb(const std::vector<std::vector<Poly>>& generatorSets,
+                        BitProp& bitProp);
 
-using SplitGb2 = std::vector<Gb>;
+std::variant<Point, Poly, bool> splitZeroExtend(
+    const std::vector<Poly>& origPolys,
+    const SplitGb&& curBases,
+    const PartialPoint&& curR,
+    const BitProp& bitProp);
 
-std::variant<std::vector<CoCoA::RingElem>, CoCoA::RingElem, bool>
-splitZeroExtend(const std::vector<CoCoA::RingElem>& origPolys,
-                const SplitGb2&& curBases,
-                const PartialRoot&& curR,
-                const BitProp& bitProp);
+std::optional<Point> splitFindZero(SplitGb&& splitBasis,
+                                       CoCoA::ring polyRing,
+                                       BitProp& bitProp);
 
-std::optional<std::vector<CoCoA::RingElem>> splitFindZero(
-    SplitGb2&& splitBasis, CoCoA::ring polyRing, BitProp& bitProp);
+std::optional<FfModel> splitFindZero(const std::vector<Node>& facts,
+                                     const FfSize& size);
 
-std::optional<std::unordered_map<Node, FiniteFieldValue>> splitFindZero(
-    const std::vector<Node>& facts, const FfSize& size);
-
-void checkModel(const SplitGb2& origBases,
-                const std::vector<CoCoA::RingElem>& model);
+void checkModel(const SplitGb& origBases, const std::vector<Scalar>& model);
 
 }  // namespace ff
 }  // namespace theory

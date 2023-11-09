@@ -21,6 +21,7 @@
 // external includes
 
 // std includes
+#include <unordered_map>
 
 // internal includes
 #include "expr/node.h"
@@ -30,6 +31,10 @@ namespace cvc5::internal {
 namespace theory {
 namespace ff {
 
+/** A finite field model */
+using FfModel = std::unordered_map<Node, FiniteFieldValue>;
+
+/** The result of a subsolver. */
 enum class Result
 {
   SAT,
@@ -37,6 +42,7 @@ enum class Result
   UNKNOWN,
 };
 
+/** A class associated with a specific field (for inheritting). */
 class FieldObj
 {
  public:
@@ -62,8 +68,6 @@ bool isFfLeaf(const Node& n);
 bool isFfTerm(const Node& n);
 /** Is this a field fact (equality of disequality)? */
 bool isFfFact(const Node& n);
-/** Is this zero? */
-bool isFfZero(const Node& n);
 
 }  // namespace ff
 }  // namespace theory
