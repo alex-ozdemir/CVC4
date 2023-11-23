@@ -16,7 +16,7 @@
 #include "theory/ff/util.h"
 
 // external includes
-#ifdef CVC5_USE_POLY
+#ifdef CVC5_USE_COCOA
 #include <CoCoA/QuotientRing.H>
 #endif /* CVC5_USE_COCOA */
 
@@ -42,7 +42,8 @@ FieldObj::FieldObj(const FfSize& size)
 {
 }
 
-Node FieldObj::mkAdd(std::vector<Node>&& summands)
+template <bool ref_count>
+Node FieldObj::mkAdd(const std::vector<NodeTemplate<ref_count>>& summands)
 {
   if (summands.empty())
   {
@@ -58,7 +59,8 @@ Node FieldObj::mkAdd(std::vector<Node>&& summands)
   }
 }
 
-Node FieldObj::mkMul(std::vector<Node>&& factors)
+template <bool ref_count>
+Node FieldObj::mkMul(const std::vector<NodeTemplate<ref_count>>& factors)
 {
   if (factors.empty())
   {

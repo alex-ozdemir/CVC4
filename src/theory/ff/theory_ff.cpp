@@ -27,6 +27,7 @@
 #include "theory/ff/util.h"
 #include "theory/theory_model.h"
 #include "theory/trust_substitutions.h"
+#include "util/result.h"
 #include "util/statistics_registry.h"
 #include "util/utility.h"
 
@@ -88,11 +89,11 @@ void TheoryFiniteFields::postCheck(Effort level)
   for (auto& subTheory : d_subTheories)
   {
     Result r = subTheory.second.postCheck(level);
-    if (r == Result::UNKNOWN && level >= EFFORT_FULL)
+    if (r.getStatus() == Result::UNKNOWN && level >= EFFORT_FULL)
     {
       d_im.setModelUnsound(IncompleteId::UNKNOWN);
     }
-    else if (r == Result::UNSAT)
+    else if (r.getStatus() == Result::UNSAT)
     {
       Assert(subTheory.second.inConflict());
       const Node conflict = nm->mkAnd(subTheory.second.conflict());
