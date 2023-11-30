@@ -63,7 +63,8 @@ Node preRewriteFfNeg(TNode t)
 {
   Assert(t.getKind() == Kind::FINITE_FIELD_NEG);
   NodeManager* const nm = NodeManager::currentNM();
-  const Node negOne = nm->mkConst(FiniteFieldValue(Integer(-1), t.getType().getFfSize()));
+  const Node negOne =
+      nm->mkConst(FiniteFieldValue(Integer(-1), t.getType().getFfSize()));
   return nm->mkNode(Kind::FINITE_FIELD_MULT, negOne, t[0]);
 }
 
@@ -72,6 +73,22 @@ Node preRewriteFfAdd(TNode t)
 {
   Assert(t.getKind() == Kind::FINITE_FIELD_ADD);
   return expr::algorithm::flatten(t);
+}
+
+/** preRewrite ge */
+Node preRewriteFfGe(TNode t)
+{
+  Assert(t.getKind() == Kind::FINITE_FIELD_GE);
+  NodeManager* const nm = NodeManager::currentNM();
+  return nm->mkNode(Kind::FINITE_FIELD_LT, t[0], t[1]).notNode();
+}
+
+/** preRewrite gt */
+Node preRewriteFfGt(TNode t)
+{
+  Assert(t.getKind() == Kind::FINITE_FIELD_GT);
+  NodeManager* const nm = NodeManager::currentNM();
+  return nm->mkNode(Kind::FINITE_FIELD_LE, t[0], t[1]).notNode();
 }
 
 /** postRewrite addition */
@@ -212,6 +229,30 @@ Node postRewriteFfEq(TNode t)
   }
 }
 
+Node postRewriteFfLt(TNode t)
+{
+  Assert(t.getKind() == Kind::FINITE_FIELD_LT);
+  if (t[0].isConst() && t[1].isConst())
+  {
+    FiniteFieldValue l = t[0].getConst<FiniteFieldValue>();
+    FiniteFieldValue r = t[1].getConst<FiniteFieldValue>();
+    return NodeManager::currentNM()->mkConst<bool>(l < r);
+  }
+  return t;
+}
+
+Node postRewriteFfLe(TNode t)
+{
+  Assert(t.getKind() == Kind::FINITE_FIELD_LE);
+  if (t[0].isConst() && t[1].isConst())
+  {
+    FiniteFieldValue l = t[0].getConst<FiniteFieldValue>();
+    FiniteFieldValue r = t[1].getConst<FiniteFieldValue>();
+    return NodeManager::currentNM()->mkConst<bool>(l <= r);
+  }
+  return t;
+}
+
 }  // namespace
 
 RewriteResponse TheoryFiniteFieldsRewriter::postRewrite(TNode t)
@@ -220,12 +261,17 @@ RewriteResponse TheoryFiniteFieldsRewriter::postRewrite(TNode t)
   switch (t.getKind())
   {
     case Kind::FINITE_FIELD_NEG: return RewriteResponse(REWRITE_DONE, t);
+    case Kind::FINITE_FIELD_LT:
+      return RewriteResponse(REWRITE_DONE, postRewriteFfLt(t));
+    case Kind::FINITE_FIELD_LE:
+      return RewriteResponse(REWRITE_DONE, postRewriteFfLe(t));
+    case Kind::FINITE_FIELD_GT: return RewriteResponse(REWRITE_DONE, t);
+    case Kind::FINITE_FIELD_GE: return RewriteResponse(REWRITE_DONE, t);
     case Kind::FINITE_FIELD_ADD:
       return RewriteResponse(REWRITE_DONE, postRewriteFfAdd(t));
     case Kind::FINITE_FIELD_MULT:
       return RewriteResponse(REWRITE_DONE, postRewriteFfMult(t));
-    case Kind::FINITE_FIELD_BITSUM:
-      return RewriteResponse(REWRITE_DONE, t);
+    case Kind::FINITE_FIELD_BITSUM: return RewriteResponse(REWRITE_DONE, t);
     case Kind::EQUAL: return RewriteResponse(REWRITE_DONE, postRewriteFfEq(t));
     default: return RewriteResponse(REWRITE_DONE, t);
   }
@@ -238,12 +284,17 @@ RewriteResponse TheoryFiniteFieldsRewriter::preRewrite(TNode t)
   {
     case Kind::FINITE_FIELD_NEG:
       return RewriteResponse(REWRITE_DONE, preRewriteFfNeg(t));
+    case Kind::FINITE_FIELD_LT: return RewriteResponse(REWRITE_DONE, t);
+    case Kind::FINITE_FIELD_LE: return RewriteResponse(REWRITE_DONE, t);
+    case Kind::FINITE_FIELD_GT:
+      return RewriteResponse(REWRITE_DONE, preRewriteFfGt(t));
+    case Kind::FINITE_FIELD_GE:
+      return RewriteResponse(REWRITE_DONE, preRewriteFfGe(t));
     case Kind::FINITE_FIELD_ADD:
       return RewriteResponse(REWRITE_DONE, preRewriteFfAdd(t));
     case Kind::FINITE_FIELD_MULT:
       return RewriteResponse(REWRITE_DONE, preRewriteFfMult(t));
-    case Kind::FINITE_FIELD_BITSUM:
-      return RewriteResponse(REWRITE_DONE, t);
+    case Kind::FINITE_FIELD_BITSUM: return RewriteResponse(REWRITE_DONE, t);
     case Kind::EQUAL: return RewriteResponse(REWRITE_DONE, t);
     default: return RewriteResponse(REWRITE_DONE, t);
   }

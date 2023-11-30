@@ -74,6 +74,32 @@ TypeNode FiniteFieldFixedFieldTypeRule::computeType(NodeManager* nodeManager,
   return t;
 }
 
+TypeNode FiniteFieldOrderTypeRule::preComputeType(NodeManager* nm, TNode n)
+{
+  return nm->booleanType();
+}
+TypeNode FiniteFieldOrderTypeRule::computeType(NodeManager* nodeManager,
+                                               TNode n,
+                                               bool check,
+                                               std::ostream* errOut)
+{
+  if (check)
+  {
+    TypeNode lhsType = n[0].getType(check);
+    if (!lhsType.isFiniteField())
+    {
+      throw TypeCheckingExceptionPrivate(n, "expecting finite field terms");
+    }
+    TypeNode rhsType = n[1].getType(check);
+    if (lhsType != rhsType)
+    {
+      throw TypeCheckingExceptionPrivate(
+          n, "expecting finite field terms of the same field");
+    }
+  }
+  return nodeManager->booleanType();
+}
+
 }  // namespace ff
 }  // namespace theory
 }  // namespace cvc5::internal

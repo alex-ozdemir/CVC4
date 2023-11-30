@@ -141,7 +141,7 @@ void CocoaEncoder::addFact(const Node& fact)
   if (d_stage == Stage::Scan)
   {
     Trace("ff::cocoa") << "CoCoA fact " << fact << std::endl;
-    Assert(isFfFact(fact));
+    Assert(isFfFactNonOrder(fact));
     for (const auto& node :
          NodeDfsIterable(fact, VisitOrder::POSTORDER, [this](TNode nn) {
            return d_scanned.count(nn);

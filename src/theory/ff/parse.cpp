@@ -36,7 +36,8 @@ namespace parse {
 bool add_overflows(uint8_t x, uint8_t y) { return x + y < x; }
 
 /**
- * Given spectra for f and g, compute an (optional) spectrum for f @ g, where @ is point-wise operation
+ * Given spectra for f and g, compute an (optional) spectrum for f @ g, where @
+ * is point-wise operation
  * @param a spectrum for f
  * @param b spectrum for g
  * @param fOp the binary point-wise operator @
@@ -109,7 +110,8 @@ SpectrumOpt helperResultMul(SpectrumOpt&& a, SpectrumOpt&& b)
 
 SpectrumOpt spectrum(const Node& t, uint8_t depth)
 {
-  if (t.getKind() == Kind::NOT)
+  if (t.getKind() == Kind::NOT || t.getKind() == Kind::FINITE_FIELD_LT
+      || t.getKind() == Kind::FINITE_FIELD_LE)
   {
     return {};
   }

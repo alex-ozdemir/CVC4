@@ -117,13 +117,9 @@ bool isFf(TNode n)
     }
     return true;
   }
-  else if (n.getKind() == Kind::EQUAL)
+  else if (isFfFact(n))
   {
-    return n[0].getType().isFiniteField();
-  }
-  else if (n.getKind() == Kind::NOT)
-  {
-    return n[0].getKind() == Kind::EQUAL && n[0][0].getType().isFiniteField();
+    return true;
   }
   return false;
 }
@@ -535,7 +531,11 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       }
       else if (current.getKind() == Kind::EQUAL
                || current.getKind() == Kind::NOT
-               || current.getKind() == Kind::OR)
+               || current.getKind() == Kind::OR
+               || current.getKind() == Kind::FINITE_FIELD_LT
+               || current.getKind() == Kind::FINITE_FIELD_LE
+               || current.getKind() == Kind::FINITE_FIELD_GT
+               || current.getKind() == Kind::FINITE_FIELD_GE)
       {
         // pass
       }
@@ -599,6 +599,54 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         return {Result::UNKNOWN, {}};
       }
     }
+    else if (f.getKind() == Kind::FINITE_FIELD_LT
+             || f.getKind() == Kind::FINITE_FIELD_LE
+             || (f.getKind() == Kind::NOT
+                 && (f[0].getKind() == Kind::FINITE_FIELD_LT
+                     || f[0].getKind() == Kind::FINITE_FIELD_LE)))
+    {
+      bool neg = f.getKind() == Kind::NOT;
+      TNode cmp = neg ? f[0] : f;
+      bool strict = cmp.getKind() == Kind::FINITE_FIELD_LT;
+      // encode with norm: diff - __n = __q * p
+      //                   0 < __n < p
+      //
+      z3::expr q0 =
+          ctx.int_const((std::string("__q") + std::to_string(fI)).c_str());
+      z3::expr n0 =
+          ctx.int_const((std::string("__n") + std::to_string(fI)).c_str());
+      fI++;
+      z3::expr q1 =
+          ctx.int_const((std::string("__q") + std::to_string(fI)).c_str());
+      z3::expr n1 =
+          ctx.int_const((std::string("__n") + std::to_string(fI)).c_str());
+      fI++;
+      assertions.push_back(ints.at(cmp[0]) - n0 == q0 * p);
+      assertions.push_back((zero <= n0) && (n0 < p));
+      assertions.push_back(ints.at(cmp[1]) - n1 == q1 * p);
+      assertions.push_back((zero <= n1) && (n1 < p));
+      if (options().ff.ffrBoundQuotient)
+      {
+        // use range analysis to bound q tightly.
+        auto q0range = getRange(cmp[0]).floorDivideQuotient(size());
+        auto q1range = getRange(cmp[1]).floorDivideQuotient(size());
+        Trace("ffr") << "for cmp " << f << std::endl;
+        Trace("ffr") << "left  q range " << q0range.d_lo << " to "
+                     << q0range.d_hi << std::endl;
+        Trace("ffr") << "right q range " << q1range.d_lo << " to "
+                     << q0range.d_hi << std::endl;
+        assertions.push_back(z3Range(q0, q0range));
+        assertions.push_back(z3Range(q1, q1range));
+      }
+      if (neg)
+      {
+        assertions.push_back(strict ? (n0 >= n1) : (n0 > n1));
+      }
+      else
+      {
+        assertions.push_back(strict ? (n0 < n1) : (n0 <= n1));
+      }
+    }
     else
     {
       Assert(f.getKind() == Kind::NOT && f[0].getKind() == Kind::EQUAL) << f;
@@ -631,7 +679,6 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
           {
             // use range analysis to bound q tightly.
             auto diffRange = getRange(e[0]) - getRange(e[1]);
-            Range nRange(1, size());
             auto qRange = diffRange.floorDivideQuotient(size());
             Trace("ffr") << "for diseq " << f << std::endl;
             Trace("ffr") << "q range " << qRange.d_lo << " to " << qRange.d_hi

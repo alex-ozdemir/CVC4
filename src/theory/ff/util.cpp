@@ -77,11 +77,24 @@ bool isFfLeaf(const Node& n)
 
 bool isFfTerm(const Node& n) { return n.getType().isFiniteField(); }
 
+bool isFfFactNonOrder(const Node& n)
+{
+  return (n.getKind() == Kind::EQUAL && n[0].getType().isFiniteField())
+         || (n.getKind() == Kind::NOT
+             && (n[0].getKind() == Kind::EQUAL
+                 && n[0][0].getType().isFiniteField()));
+}
+
 bool isFfFact(const Node& n)
 {
   return (n.getKind() == Kind::EQUAL && n[0].getType().isFiniteField())
-         || (n.getKind() == Kind::NOT && n[0].getKind() == Kind::EQUAL
-             && n[0][0].getType().isFiniteField());
+         || n.getKind() == Kind::FINITE_FIELD_LE
+         || n.getKind() == Kind::FINITE_FIELD_LT
+         || (n.getKind() == Kind::NOT
+             && ((n[0].getKind() == Kind::EQUAL
+                  && n[0][0].getType().isFiniteField())
+                 || n[0].getKind() == Kind::FINITE_FIELD_LT
+                 || n[0].getKind() == Kind::FINITE_FIELD_LE));
 }
 
 bool isFfZero(const Node& n)

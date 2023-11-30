@@ -56,6 +56,18 @@ class FiniteFieldFixedFieldTypeRule
                               std::ostream* errOut);
 };
 
+/* -------------------------------------------------------------------------- */
+
+class FiniteFieldOrderTypeRule
+{
+ public:
+  static TypeNode preComputeType(NodeManager* nm, TNode n);
+  static TypeNode computeType(NodeManager* nodeManager,
+                              TNode n,
+                              bool check,
+                              std::ostream* errOut);
+};
+
 }  // namespace ff
 }  // namespace theory
 }  // namespace cvc5::internal

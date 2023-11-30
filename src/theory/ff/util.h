@@ -60,7 +60,9 @@ class FieldObj
 bool isFfLeaf(const Node& n);
 /** Is this a field term? */
 bool isFfTerm(const Node& n);
-/** Is this a field fact (equality of disequality)? */
+/** Is this a field fact, excluding order comparisons (only equality of disequality)? */
+bool isFfFactNonOrder(const Node& n);
+/** Is this a field fact? */
 bool isFfFact(const Node& n);
 /** Is this zero? */
 bool isFfZero(const Node& n);

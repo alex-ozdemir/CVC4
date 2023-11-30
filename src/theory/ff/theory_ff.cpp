@@ -165,7 +165,9 @@ void TheoryFiniteFields::preRegisterTerm(TNode node)
   TypeNode fieldTy = ty;
   if (!ty.isFiniteField())
   {
-    Assert(node.getKind() == Kind::EQUAL);
+    Assert(node.getKind() == Kind::EQUAL
+           || node.getKind() == Kind::FINITE_FIELD_LT
+           || node.getKind() == Kind::FINITE_FIELD_LE) << node;
     fieldTy = node[0].getType();
   }
   if (d_subTheories.count(fieldTy) == 0)

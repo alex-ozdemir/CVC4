@@ -2028,6 +2028,74 @@ enum ENUM(Kind) : int32_t
    */
   EVALUE(FINITE_FIELD_MULT),
   /**
+   * Comparison (less than) of two prime field elements' integer representatives.
+   *
+   * - Arity: ``2``
+   *
+   *   - ``1..2:`` Terms of finite field Sort (sorts must match)
+   *
+   * - Create Term of this Kind with:
+   *
+   *   - Solver::mkTerm(Kind, const std::vector<Term>&) const
+   *   - Solver::mkTerm(const Op&, const std::vector<Term>&) const
+   *
+   * - Create Op of this kind with:
+   *
+   *   - Solver::mkOp(Kind, const std::vector<uint32_t>&) const
+   */
+  EVALUE(FINITE_FIELD_LT),
+  /**
+   * Comparison (less than or equal to) of two prime field elements' integer representatives.
+   *
+   * - Arity: ``2``
+   *
+   *   - ``1..2:`` Terms of finite field Sort (sorts must match)
+   *
+   * - Create Term of this Kind with:
+   *
+   *   - Solver::mkTerm(Kind, const std::vector<Term>&) const
+   *   - Solver::mkTerm(const Op&, const std::vector<Term>&) const
+   *
+   * - Create Op of this kind with:
+   *
+   *   - Solver::mkOp(Kind, const std::vector<uint32_t>&) const
+   */
+  EVALUE(FINITE_FIELD_LE),
+  /**
+   * Comparison (greater than) of two prime field elements' integer representatives.
+   *
+   * - Arity: ``2``
+   *
+   *   - ``1..2:`` Terms of finite field Sort (sorts must match)
+   *
+   * - Create Term of this Kind with:
+   *
+   *   - Solver::mkTerm(Kind, const std::vector<Term>&) const
+   *   - Solver::mkTerm(const Op&, const std::vector<Term>&) const
+   *
+   * - Create Op of this kind with:
+   *
+   *   - Solver::mkOp(Kind, const std::vector<uint32_t>&) const
+   */
+  EVALUE(FINITE_FIELD_GT),
+  /**
+   * Comparison (greater than or equal to) of two prime field elements' integer representatives.
+   *
+   * - Arity: ``2``
+   *
+   *   - ``1..2:`` Terms of finite field Sort (sorts must match)
+   *
+   * - Create Term of this Kind with:
+   *
+   *   - Solver::mkTerm(Kind, const std::vector<Term>&) const
+   *   - Solver::mkTerm(const Op&, const std::vector<Term>&) const
+   *
+   * - Create Op of this kind with:
+   *
+   *   - Solver::mkOp(Kind, const std::vector<uint32_t>&) const
+   */
+  EVALUE(FINITE_FIELD_GE),
+  /**
    * Conversion from Int to finite-field element.
    *
    * - Arity: ``1``

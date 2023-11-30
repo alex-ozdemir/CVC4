@@ -131,6 +131,10 @@ void Smt2State::addFiniteFieldOperators()
   addOperator(cvc5::Kind::FINITE_FIELD_ADD, "ff.add");
   addOperator(cvc5::Kind::FINITE_FIELD_MULT, "ff.mul");
   addOperator(cvc5::Kind::FINITE_FIELD_NEG, "ff.neg");
+  addOperator(cvc5::Kind::FINITE_FIELD_LT, "ff.lt");
+  addOperator(cvc5::Kind::FINITE_FIELD_LE, "ff.le");
+  addOperator(cvc5::Kind::FINITE_FIELD_GT, "ff.gt");
+  addOperator(cvc5::Kind::FINITE_FIELD_GE, "ff.ge");
   addOperator(cvc5::Kind::FINITE_FIELD_BITSUM, "ff.bitsum");
   addOperator(cvc5::Kind::FINITEFIELD_TO_NAT, "ff2nat");
   addIndexedOperator(cvc5::Kind::INT_TO_FINITEFIELD, "int2ff");
