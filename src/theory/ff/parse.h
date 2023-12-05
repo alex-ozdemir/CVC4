@@ -10,7 +10,10 @@
  * directory for licensing information.
  * ****************************************************************************
  *
- * parsing structured field terms
+ * parsing structured field terms.
+ *
+ * NB: many functions in this file return an empty std::optional if parsing
+ * fails.
  */
 
 #include "cvc5_private.h"
@@ -38,51 +41,35 @@ namespace ff {
 namespace parse {
 
 /**
- * Characterization of a univariate, degree <= 2 polynomial.
- * The members uniquely determine such a polynomial, up to its leading coefficient.
- *
- * This is a helper class for parsing terms that constrain a variable to be: 0, 1, or both.
- */
-struct Spectrum
-{
-  /** the variable; ignore if degree is 0 */
-  Node var;
-  /** the degree in {0, 1, 2} */
-  uint8_t degree;
-  /** value at 0 */
-  FiniteFieldValue val0;
-  /** value at 1 */
-  FiniteFieldValue val1;
-};
-
-using SpectrumOpt = std::optional<Spectrum>;
-
-/**
- * Attempt to compute a Spectrum for the polynomial defined by t.
- *
- * @param t a field term
- * @param depth how deep to search in term before giving up
- * @return none if t is too deep or mulitvariate or has degreee > 2; otherwise, a Spectrum.
- */
-SpectrumOpt spectrum(const Node& t, uint8_t depth = 5);
-
-/**
  * Detect whether this node constrains a variable to 0.
+ *
  * @param fact a node asserted to FF
  */
 bool zeroConstraint(const Node& fact);
 
 /**
  * Detect whether this node constrains a variable to 1.
+ *
  * @param fact a node asserted to FF
  */
 bool oneConstraint(const Node& fact);
 
 /**
- * Detect whether this node is a bit-constraint.
+ * Detect whether this node is a bit-constraint (sets a variable to 0 or 1).
+ *
+ * Examples of such nodes include:
+ *
+ *    * `x * x = x`
+ *    * `x * x - x = 0`
+ *    * `x * (x - 1) = 0`
+ *
+ * But note that this function will parse any field node of depth <= 5 that is
+ * semantically equivalent to the polynomial x^2-x.
+ *
  * @param fact a node asserted to FF
  * @return a variable that is bit-constrained by this fact, if this fact is a
- *         bit constraint.
+ *         bit constraint;
+ *         returns an empty optional if this is not detectably a bit constraint
  */
 std::optional<Node> bitConstraint(const Node& fact);
 
@@ -95,158 +82,16 @@ std::optional<Node> bitConstraint(const Node& fact);
  *    * -X
  *
  * @param t a potential linear monomial
- * @return the variable and scalar
+ * @return the variable and scalar;
+ *         returns an empty optional if this is not a (syntatic) linear monomial
  */
 std::optional<std::pair<Node, FiniteFieldValue>> linearMonomial(const Node& t);
 
 /**
- * Detect whether this node is an affine sum of terms that do not have other
- * uses.
+ * Extract linear monomials. That is, given a sum S = x + 4y + 6 + x*x + x*y,
+ * it would return [(x, 1), (y, 4)] and [6, x*x, x*y].
  *
- * @param t a potential affine sum
- * @param hasOtherUses node predicate for whether there are other uses
- * @return the linear monomials
- *         everything else in the sum
- */
-template <class HasOtherUses>
-std::optional<
-    std::pair<std::unordered_map<Node, FiniteFieldValue>, std::vector<Node>>>
-affineSum(const Node& t, HasOtherUses hasOtherUses)
-{
-  TypeNode ty = t.getType();
-  if (!ty.isFiniteField())
-  {
-    return {};
-  }
-  if (t.getKind() != Kind::FINITE_FIELD_ADD)
-  {
-    return {};
-  }
-  std::unordered_map<Node, FiniteFieldValue> monomials{};
-  std::vector<Node> otherSummands{};
-
-  for (const Node& summand : t)
-  {
-    if (!hasOtherUses(summand))
-    {
-      auto monomial = linearMonomial(summand);
-      if (monomial.has_value())
-      {
-        monomials.insert(std::move(monomial.value()));
-        continue;
-      }
-    }
-
-    otherSummands.push_back(summand);
-  }
-
-  return {{std::move(monomials), std::move(otherSummands)}};
-}
-
-/**
- * Given a sum s1 + ... + sN, extract sub-sums of form k * (x0 + 2*x1 + 4*x2 +
- * ... 2^I*xI), where each xJ passes the predicate isBit.
- *
- * @param t a potential bitsum
- * @param isBit node predicate that indicates whether a variable is
- * bitConstrained
- * @param hasOtherUses node predicate for whether there are other uses
- * @return the bitsums (k, {xJ})
- *         everything else in the sum
- */
-template <class IsBit, class HasOtherUses>
-std::optional<
-    std::pair<std::vector<std::pair<FiniteFieldValue, std::vector<Node>>>,
-              std::vector<Node>>>
-bitSums(const Node& t, IsBit isBit, HasOtherUses hasOtherUses)
-{
-  auto nm = NodeManager::currentNM();
-  auto res = affineSum(t, hasOtherUses);
-  if (!res.has_value())
-  {
-    return {};
-  }
-  TypeNode ty = t.getType();
-  const Integer& size = ty.getFfSize();
-  auto& [monomials, rest] = res.value();
-  Trace("ff::parse::debug") << "bitSums start" << std::endl;
-
-  std::unordered_map<FiniteFieldValue, Node, FiniteFieldValueHashFunction>
-      bitMonomials{};
-  std::unordered_set<FiniteFieldValue, FiniteFieldValueHashFunction>
-      monomialCoeffs{};
-  std::priority_queue<std::pair<Integer, FiniteFieldValue>> q{};
-  for (const auto& [var, coeff] : monomials)
-  {
-    monomialCoeffs.insert(coeff);
-    bool inBitMonomialMap = false;
-    if (isBit(var))
-    {
-      inBitMonomialMap = bitMonomials.insert({coeff, var}).second;
-    }
-    if (!inBitMonomialMap)
-    {
-      rest.push_back(
-          nm->mkNode(Kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
-    }
-    else
-    {
-      q.emplace(-coeff.toSignedInteger().abs(), coeff);
-      Trace("ff::parse::debug")
-          << "bitMonomial " << coeff << " " << var << std::endl;
-    }
-  }
-
-  std::vector<std::pair<FiniteFieldValue, std::vector<Node>>> bitSums{};
-  // TODO: consider other starting constants. Especially to handle gaps...
-  FiniteFieldValue two(2, size);
-  // look for runs k*x, 2k*y, 4k*z, ...
-  while (!q.empty())
-  {
-    FiniteFieldValue k = q.top().second;
-    q.pop();
-    FiniteFieldValue acc = k;
-    std::vector<Node> bits{};
-    std::vector<Node> erasedSummands{};
-    while (bitMonomials.count(acc))
-    {
-      auto var = bitMonomials.at(acc);
-      bits.push_back(var);
-      erasedSummands.push_back(
-          nm->mkNode(Kind::FINITE_FIELD_MULT, nm->mkConst(acc), var));
-      bitMonomials.erase(acc);
-      acc *= two;
-    }
-    if (monomialCoeffs.count(acc))
-    {
-      monomialCoeffs.erase(acc);
-    }
-    if (bits.size() > 1)
-    {
-      bitSums.emplace_back(k, std::move(bits));
-    }
-    else
-    {
-      for (auto& summand : erasedSummands)
-      {
-        rest.push_back(std::move(summand));
-      }
-    }
-  }
-
-  for (const auto& [coeff, var] : bitMonomials)
-  {
-    rest.push_back(
-        nm->mkNode(Kind::FINITE_FIELD_MULT, nm->mkConst(coeff), var));
-  }
-  return {{std::move(bitSums), std::move(rest)}};
-}
-
-/**
- * Extract linear monomials.
- *
- * @param t a potential affine sum
- * @param hasOtherUses node predicate for whether there are other uses
+ * @param t a sum with (potential) linear monomials
  * @return the linear monomials
  *         everything else in the sum
  */
@@ -256,18 +101,21 @@ extractLinearMonomials(const Node& t);
 
 /**
  * Given a sum s1 + ... + sN, extract sub-sums of form k * (x0 + 2*x1 + 4*x2 +
- * ... 2^I*xI), where each xJ passes the predicate isBit.
+ * ... 2^I*xI), preferring xJ that are in the given set `bits`.
+ *
+ * A caller might pass a set `bits` that contains nodes that are already known
+ * to be bit-constrained (i.e., have a value in {0, 1}).
  *
  * @param t a potential bitsum
- * @param isBit node set containing bit-constrained vars; these are prefered in
- *              bitsum extraction.
- * @return the bitsums (k, {xJ})
- *         everything else in the sum
+ * @param bits node set containing bit-constrained vars; these are prefered in
+ *             bitsum extraction.
+ * @return (the bitsums {(k, {xJ})}, everything else in the sum)
+ *         or none if parsing fails
  */
 std::optional<
     std::pair<std::vector<std::pair<FiniteFieldValue, std::vector<Node>>>,
               std::vector<Node>>>
-bitSums(const Node& t, std::unordered_set<Node> isBit);
+bitSums(const Node& t, std::unordered_set<Node> bits);
 
 /**
  * Is this a disjunctive bit constraint (or (= x 0) (= x 1))?

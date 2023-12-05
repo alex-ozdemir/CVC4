@@ -29,7 +29,7 @@ namespace cvc5::internal {
 namespace test {
 
 /**
- * For writing tests that accesss and SMT-LIB parser.
+ * For writing tests that accesss an SMT-LIB parser.
  *
  * The parser is set to logic ALL.
  */
@@ -62,7 +62,6 @@ class TestWithSmtParser : public TestInternal
   void doCommand(const std::string& s)
   {
     d_ip->setIncrementalStringInput(modes::InputLanguage::SMT_LIB_2_6, "temp");
-    //d_ip->setLogic("ALL");
     d_ip->appendIncrementalStringInput(s);
     auto command = d_ip->nextCommand();
     command.invoke(&d_solver, d_symman.get(), std::cout);
@@ -74,7 +73,6 @@ class TestWithSmtParser : public TestInternal
   Node parseNode(const std::string& s)
   {
     d_ip->setIncrementalStringInput(modes::InputLanguage::SMT_LIB_2_6, "temp");
-    //d_ip->setLogic("ALL");
     d_ip->appendIncrementalStringInput(s);
     return *d_ip->nextTerm().d_node;
   }
