@@ -10,7 +10,11 @@
  * directory for licensing information.
  * ****************************************************************************
  *
- * A field-specific theory
+ * A field-specific theory.
+ * That is, the sub-theory for GF(p) for some fixed p.
+ * Implements Figure 2, "DecisionProcedure" from [OKTB23].
+ *
+ * [OKTB23]: https://doi.org/10.1007/978-3-031-37703-7_8
  */
 
 #ifdef CVC5_USE_COCOA
@@ -144,7 +148,7 @@ Result SubTheory::postCheck(Theory::Effort e)
         Trace("ff::gb") << "Non-trivial GB" << std::endl;
 
         // common root (vec of CoCoA base ring elements)
-        std::vector<CoCoA::RingElem> root = commonRoot(ideal);
+        std::vector<CoCoA::RingElem> root = findZero(ideal);
 
         if (root.empty())
         {
