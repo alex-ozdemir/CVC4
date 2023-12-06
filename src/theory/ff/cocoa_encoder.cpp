@@ -118,7 +118,7 @@ void CocoaEncoder::endScan()
   Assert(d_stage == Stage::Scan);
   d_stage = Stage::Encode;
   d_polyRing = CoCoA::NewPolyRing(coeffRing(), d_syms);
-  for (size_t i = 0; i < d_syms.size(); ++i)
+  for (size_t i = 0, n = d_syms.size(); i < n; ++i)
   {
     d_symPolys.insert({extractStr(d_syms[i]), CoCoA::indet(*d_polyRing, i)});
   }
@@ -194,7 +194,7 @@ bool CocoaEncoder::hasNode(CoCoA::symbol s) const
 std::vector<std::pair<size_t, Node>> CocoaEncoder::nodeIndets() const
 {
   std::vector<std::pair<size_t, Node>> out;
-  for (size_t i = 0; i < d_syms.size(); ++i)
+  for (size_t i = 0, end = d_syms.size(); i < end; ++i)
   {
     if (hasNode(d_syms[i]))
     {
