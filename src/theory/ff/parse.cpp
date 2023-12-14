@@ -163,18 +163,6 @@ SpectrumOpt spectrum(const Node& t, uint8_t depth)
   return {};
 }
 
-bool zeroConstraint(const Node& fact)
-{
-  SpectrumOpt r = spectrum(fact);
-  return r.has_value() && r->degree == 1 && r->val0.getValue() == 0;
-}
-
-bool oneConstraint(const Node& fact)
-{
-  SpectrumOpt r = spectrum(fact);
-  return r.has_value() && r->degree == 1 && r->val1.getValue() == 0;
-}
-
 std::optional<Node> bitConstraint(const Node& fact)
 {
   SpectrumOpt r = spectrum(fact);
@@ -671,18 +659,26 @@ bitSums(const Node& t, std::unordered_set<Node> isBit)
 
 std::optional<Node> disjunctiveBitConstraint(const Node& t)
 {
-  if (t.getKind() == Kind::OR && t.getNumChildren() == 2
-      && t[0].getKind() == Kind::EQUAL && t[1].getKind() == Kind::EQUAL
-      && t[0][1].getType().isFiniteField() && t[1][0].getType().isFiniteField())
+  if (t.getKind() != Kind::OR || t.getNumChildren() != 2
+      || t[0].getKind() != Kind::EQUAL || t[1].getKind() != Kind::EQUAL
+      || !t[0][1].getType().isFiniteField() || !t[1][0].getType().isFiniteField())
   {
-    using theory::ff::parse::oneConstraint;
-    using theory::ff::parse::zeroConstraint;
-    if ((oneConstraint(t[0]) && zeroConstraint(t[1]))
-        || (oneConstraint(t[1]) && zeroConstraint(t[0])))
-    {
-      using theory::ff::parse::spectrum;
-      return {spectrum(t[0])->var};
-    }
+    return {};
+  }
+  SpectrumOpt s0 = spectrum(t[0]);
+  SpectrumOpt s1 = spectrum(t[1]);
+  if (!s0.has_value() || !s1.has_value())
+  {
+    return {};
+  }
+  if (s0->var != s1->var || s0->degree != 1 || s1->degree != 1)
+  {
+    return {};
+  }
+  if ((s0->val0.isZero() && s1->val1.isZero())
+      || (s0->val1.isZero() && s1->val0.isZero()))
+  {
+    return {s0->var};
   }
   return {};
 }

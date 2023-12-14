@@ -718,14 +718,36 @@ TEST_F(TestFfNodeParser, zeroProduct)
     doCommand("(define-sort F () (_ FiniteField 103))");
     doCommand("(declare-const x F)");
     doCommand("(declare-const y F)");
-    Node x = parseNode("b0");
-    Node y = parseNode("b1");
     EXPECT_TRUE(parse::zeroProduct(parseNode("(= (as ff0 F) (ff.mul x y))")));
     EXPECT_TRUE(parse::zeroProduct(parseNode("(= (as ff0 F) (ff.mul x x y))")));
     EXPECT_TRUE(parse::zeroProduct(parseNode("(= (ff.mul x x y) (as ff0 F))")));
     EXPECT_TRUE(parse::zeroProduct(parseNode("(= (ff.mul x y) (as ff0 F))")));
     EXPECT_FALSE(parse::zeroProduct(parseNode("(= (ff.add x y) (as ff0 F))")));
     EXPECT_FALSE(parse::zeroProduct(parseNode("(= x (as ff0 F))")));
+  }
+}
+
+TEST_F(TestFfNodeParser, disjunctiveBitConstraint)
+{
+  {
+    doCommand("(define-sort F () (_ FiniteField 103))");
+    doCommand("(declare-const x F)");
+    doCommand("(declare-const y F)");
+    EXPECT_TRUE(parse::disjunctiveBitConstraint(parseNode("(or (= (as ff0 F) x) (= (as ff1 F) x))")).has_value());
+    EXPECT_TRUE(parse::disjunctiveBitConstraint(parseNode("(or (= (as ff1 F) x) (= (as ff0 F) x))")).has_value());
+    EXPECT_TRUE(parse::disjunctiveBitConstraint(parseNode("(or (= x (as ff0 F)) (= (as ff1 F) x))")).has_value());
+    EXPECT_TRUE(parse::disjunctiveBitConstraint(parseNode("(or (= x (as ff1 F)) (= (as ff0 F) x))")).has_value());
+    EXPECT_TRUE(parse::disjunctiveBitConstraint(parseNode("(or (= (as ff0 F) x) (= x (as ff1 F)))")).has_value());
+    EXPECT_TRUE(parse::disjunctiveBitConstraint(parseNode("(or (= (as ff1 F) x) (= x (as ff0 F)))")).has_value());
+    EXPECT_TRUE(parse::disjunctiveBitConstraint(parseNode("(or (= x (as ff0 F)) (= x (as ff1 F)))")).has_value());
+    EXPECT_TRUE(parse::disjunctiveBitConstraint(parseNode("(or (= x (as ff1 F)) (= x (as ff0 F)))")).has_value());
+    EXPECT_FALSE(parse::disjunctiveBitConstraint(parseNode("(or (= (as ff1 F) x) (= (as ff1 F) x))")).has_value());
+    EXPECT_FALSE(parse::disjunctiveBitConstraint(parseNode("(or (= (as ff2 F) x) (= (as ff0 F) x))")).has_value());
+    EXPECT_FALSE(parse::disjunctiveBitConstraint(parseNode("(or (= y (as ff0 F)) (= (as ff1 F) x))")).has_value());
+    EXPECT_FALSE(parse::disjunctiveBitConstraint(parseNode("(or (= x (as ff0 F)) (= (as ff0 F) x))")).has_value());
+    EXPECT_FALSE(parse::disjunctiveBitConstraint(parseNode("(or (= (as ff1 F) x) (= y (as ff0 F)))")).has_value());
+    EXPECT_FALSE(parse::disjunctiveBitConstraint(parseNode("(or (= x (as ff0 F)) (= y (as ff1 F)))")).has_value());
+    EXPECT_FALSE(parse::disjunctiveBitConstraint(parseNode("(or (= y (as ff1 F)) (= x (as ff0 F)))")).has_value());
   }
 }
 
