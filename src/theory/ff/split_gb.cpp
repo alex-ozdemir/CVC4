@@ -95,7 +95,6 @@ std::unique_ptr<AssignmentEnumerator> applyRule(const Gb& gb,
 
 }  // namespace
 
-
 SplitGb2 splitGb(const std::vector<std::vector<CoCoA::RingElem>>& generatorSets,
                  BitProp& bitProp)
 {
@@ -259,8 +258,7 @@ std::optional<std::vector<CoCoA::RingElem>> splitFindZero(
 }
 
 Gb::Gb() : d_ideal(), d_basis(){};
-Gb::Gb(const std::vector<CoCoA::RingElem>& generators)
-    : d_ideal(), d_basis()
+Gb::Gb(const std::vector<CoCoA::RingElem>& generators) : d_ideal(), d_basis()
 {
   if (generators.size())
   {
@@ -423,7 +421,8 @@ std::vector<CoCoA::RingElem> BitProp::getBitEqualities(
 bool admit(size_t i, const CoCoA::RingElem& p)
 {
   Assert(i < 2);
-  return CoCoA::deg(p) <= 1 && (i == 0 || CoCoA::NumTerms(p) <= 2);
+  return (CoCoA::IsZero(p) || CoCoA::deg(p) <= 1)
+         && (i == 0 || CoCoA::NumTerms(p) <= 2);
 }
 
 std::optional<std::unordered_map<Node, FiniteFieldValue>> splitFindZero(
