@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 
 // internal includes
 #include "base/output.h"
