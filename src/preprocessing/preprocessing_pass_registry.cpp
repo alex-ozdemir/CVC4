@@ -83,6 +83,7 @@ void PreprocessingPassRegistry::registerPassInfo(
 PreprocessingPass* PreprocessingPassRegistry::createPass(
     PreprocessingPassContext* ppCtx, const std::string& name)
 {
+  Assert(d_ppInfo.count(name));
   return d_ppInfo[name](ppCtx);
 }
 
