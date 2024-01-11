@@ -11,6 +11,8 @@
  * ****************************************************************************
  *
  * replace disjunctive bit constraints with polynomial bit constraints
+ *
+ * example: x = 0 OR x = 1 becomes x * x = x
  */
 
 #include "preprocessing/passes/ff_disjunctive_bit.h"
