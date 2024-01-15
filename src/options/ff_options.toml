@@ -22,7 +22,7 @@ name   = "Finite Field Theory"
   category   = "expert"
   long       = "ff-disjunctive-bit"
   type       = "bool"
-  default    = "false"
+  default    = "true"
   help       = "leave disjunctive bit constraints (or (= x 1) (= x 0)) alone; otherwise, preprocess to (= (* x x) x)"
 
 [[option]]
@@ -50,12 +50,14 @@ name   = "Finite Field Theory"
   help = "use multiple groebner bases for partitions of the system"
 
 [[option]]
-  name       = "ffSplitSparseFirst"
-  long       = "ff-split-sparse-first"
+  name       = "ffSplitDriverBasis"
+  long       = "ff-split-driver-basis=I"
   category   = "expert"
-  type       = "bool"
-  default    = "false"
-  help       = "In Split solver: sparse basis first"
+  type       = "uint64_t"
+  minimum    = "0"
+  maximum    = "1"
+  default    = "0"
+  help       = "In Split solver: which basis drives model construction"
 [[option]]
   name       = "ffSplitFullIntProp"
   long       = "ff-split-full-int-prop"

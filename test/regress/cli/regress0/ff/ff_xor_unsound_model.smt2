@@ -1,7 +1,14 @@
 ; REQUIRES: cocoa
 ; EXPECT: sat
-; COMMAND-LINE: --ff-solver split --no-debug-check-models
-; COMMAND-LINE: --ff-solver gb --no-debug-check-models
+; COMMAND-LINE: --no-debug-check-models --ff-solver split
+; COMMAND-LINE: --no-debug-check-models --ff-solver split --ff-split-driver-basis=1
+; COMMAND-LINE: --no-debug-check-models --ff-solver split --ff-split-no-ext-prop
+; COMMAND-LINE: --no-debug-check-models --ff-solver split --ff-split-no-int-prop
+; COMMAND-LINE: --no-debug-check-models --ff-solver split --ff-split-quad-prop
+; COMMAND-LINE: --no-debug-check-models --ff-solver split --ff-split-denser-prop
+; COMMAND-LINE: --no-debug-check-models --ff-solver split --ff-split-any-coeff-prop
+; COMMAND-LINE: --no-debug-check-models --ff-solver split --ff-split-full-int-prop
+; COMMAND-LINE: --no-debug-check-models --ff-solver gb
 ; XOR compilation strategy (unsound because even though the XOR sum can not
 ; overflow, the bit decomposition sum can.
 (set-info :smt-lib-version 2.6)

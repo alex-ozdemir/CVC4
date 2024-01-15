@@ -1,6 +1,13 @@
 ; REQUIRES: cocoa
 ; EXPECT: unsat
 ; COMMAND-LINE: --ff-solver split
+; COMMAND-LINE: --ff-solver split --ff-split-driver-basis=1
+; COMMAND-LINE: --ff-solver split --ff-split-no-ext-prop
+; COMMAND-LINE: --ff-solver split --ff-split-no-int-prop
+; COMMAND-LINE: --ff-solver split --ff-split-any-coeff-prop
+; COMMAND-LINE: --ff-solver split --ff-split-denser-prop
+; COMMAND-LINE: --ff-solver split --ff-split-quad-prop
+; COMMAND-LINE: --ff-solver split --ff-split-full-int-prop
 ; COMMAND-LINE: --ff-solver gb
 ; XOR compilation strategy (sound case)
 (set-info :smt-lib-version 2.6)
