@@ -64,7 +64,7 @@ Result SubTheory::postCheck(Theory::Effort e)
     {
       std::vector<Node> facts{};
       std::copy(d_facts.begin(), d_facts.end(), std::back_inserter(facts));
-      auto result = split(facts, size());
+      auto result = split(facts, size(), d_env);
       if (result.has_value())
       {
         const auto nm = NodeManager::currentNM();
