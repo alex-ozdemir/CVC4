@@ -44,6 +44,7 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> split(
   CocoaEncoder enc(size);
   for (const auto& fact : facts)
   {
+    Trace("ff::fact") << "fact " << fact << std::endl;
     enc.addFact(fact);
   }
   enc.endScan();
@@ -118,14 +119,14 @@ SplitGb splitGb(const std::vector<Polys>& generatorSets,
       }
     }
 
-    if (TraceIsOn("ff::splitGb"))
+    if (TraceIsOn("ff::splitGb::debug"))
     {
       for (size_t i = 0; i < k; ++i)
       {
-        Trace("ff::splitGb") << "basis[" << i << "]:" << std::endl;
+        Trace("ff::splitGb::debug") << "splitGb IP basis[" << i << "]:" << std::endl;
         for (const auto& p : splitBasis[i].basis())
         {
-          Trace("ff::splitGb") << " " << p << std::endl;
+          Trace("ff::splitGb::debug") << " " << p << std::endl;
         }
       }
     }
@@ -192,12 +193,23 @@ SplitGb splitGb(const std::vector<Polys>& generatorSets,
   } while (std::any_of(newPolys.begin(), newPolys.end(), [](const auto& s) {
     return s.size();
   }));
-  Trace("ff::splitGb") << "splitGb done" << std::endl;
+  if (TraceIsOn("ff::splitGb"))
+  {
+    for (size_t i = 0; i < k; ++i)
+    {
+      Trace("ff::splitGb") << "splitGb basis[" << i << "]:" << std::endl;
+      for (const auto& p : splitBasis[i].basis())
+      {
+        Trace("ff::splitGb") << " " << p << std::endl;
+      }
+    }
+  }
   return splitBasis;
 }
 
 bool admit(size_t i, const Poly& p, const Env& env)
 {
+  if (CoCoA::IsZero(p)) return false;
   long deg = CoCoA::deg(p);
   long n_vars = CoCoA::deg(CoCoA::IndetsProd(p));
   const auto& opts = env.getOptions().ff;
@@ -266,6 +278,7 @@ std::optional<Point> splitFindZero(SplitGb&& splitBasisIn,
                   b.basis().end(),
                   std::back_inserter(gens.back()));
       }
+      Trace("ff") << "conflict " << conflict << std::endl;
       gens[env.getOptions().ff.ffSplitDriverBasis].push_back(conflict);
       splitBasis = splitGb(gens, bitProp, polyRing, env);
     }
@@ -328,6 +341,7 @@ std::variant<Point, Poly, bool> splitZeroExtend(const Polys& origPolys,
     PartialPoint newR = r;
     newR[var] = {val};
     Trace("ff::split::mc::debug")
+        << "mc"
         << std::string(1 + nAssigned, ' ') << CoCoA::indet(polyRing, var)
         << " = " << val << std::endl;
     std::vector<Polys> newSplitGens{};
@@ -366,6 +380,7 @@ std::unique_ptr<AssignmentEnumerator> applyRule(const Gb& gb,
     int varNumber = CoCoA::UnivariateIndetIndex(p);
     if (varNumber >= 0 && !r[varNumber].has_value())
     {
+      Trace("ff::mc") << "br unvariate" << p << std::endl;
       return factorEnumerator(p);
     }
   }
@@ -379,6 +394,7 @@ std::unique_ptr<AssignmentEnumerator> applyRule(const Gb& gb,
       if (!r[i].has_value())
       {
         Poly minPoly = gb.minimalPolynomial(CoCoA::indet(polyRing, i));
+        Trace("ff::mc") << "br minimal" << minPoly << std::endl;
         return factorEnumerator(minPoly);
       }
     }
@@ -391,13 +407,16 @@ std::unique_ptr<AssignmentEnumerator> applyRule(const Gb& gb,
     //
     // TODO(aozdemir): better model construction (cvc5-wishues/issues/138)
     Polys toGuess{};
+    Trace("ff::mc") << "br guess";
     for (size_t i = 0, n = r.size(); i < n; ++i)
     {
       if (!r[i].has_value())
       {
         toGuess.push_back(CoCoA::indet(polyRing, i));
+        Trace("ff::mc") << " " << toGuess.back();
       }
     }
+    Trace("ff::mc") << std::endl;
     return std::make_unique<RoundRobinEnumerator>(toGuess,
                                                   polyRing->myBaseRing());
   }
