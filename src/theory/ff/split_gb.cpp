@@ -70,6 +70,7 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> split(
         return b.isWholeRing();
       }))
   {
+    Trace("ff") << "split early UNSAT" << std::endl;
     return {};
   }
 
@@ -117,6 +118,18 @@ SplitGb splitGb(const std::vector<Polys>& generatorSets,
       }
     }
 
+    if (TraceIsOn("ff::splitGb"))
+    {
+      for (size_t i = 0; i < k; ++i)
+      {
+        Trace("ff::splitGb") << "basis[" << i << "]:" << std::endl;
+        for (const auto& p : splitBasis[i].basis())
+        {
+          Trace("ff::splitGb") << " " << p << std::endl;
+        }
+      }
+    }
+
     // compute polys that can be shared
     Polys toPropagate = bitProp.getBitEqualities(splitBasis);
     if (env.getOptions().ff.ffSplitNoExtProp)
@@ -131,7 +144,7 @@ SplitGb splitGb(const std::vector<Polys>& generatorSets,
         std::copy(basis.begin(), basis.end(), std::back_inserter(toPropagate));
       }
     }
-    if (!env.getOptions().ff.ffSplitFullIntProp)
+    if (env.getOptions().ff.ffSplitFullIntProp)
     {
       std::vector<Poly> vars = CoCoA::indets(polyRing);
       for (size_t i = 0; i < vars.size(); ++i)
@@ -171,6 +184,7 @@ SplitGb splitGb(const std::vector<Polys>& generatorSets,
       {
         if (admit(j, p, env) && !splitBasis[j].contains(p))
         {
+          Trace("ff::splitGb") << "basis[" << j << "] += " << p << std::endl;
           newPolys[j].push_back(p);
         }
       }
@@ -178,6 +192,7 @@ SplitGb splitGb(const std::vector<Polys>& generatorSets,
   } while (std::any_of(newPolys.begin(), newPolys.end(), [](const auto& s) {
     return s.size();
   }));
+  Trace("ff::splitGb") << "splitGb done" << std::endl;
   return splitBasis;
 }
 
@@ -460,6 +475,8 @@ BitProp::BitProp(Env& env,
     auto bs = parse::bitConstraint(fact);
     if (bs)
     {
+      Trace("ffl::bitprop")
+          << " bit through bit constraint " << *bs << std::endl;
       d_bits.insert(*bs);
     }
   }
@@ -527,14 +544,22 @@ Polys BitProp::getBitEqualities(const SplitGb& splitBasis)
       Node a = nonConstantBitsums[i];
       Node b = nonConstantBitsums[j];
       Poly bsDiff = d_enc->getTermEncoding(a) - d_enc->getTermEncoding(b);
-      if (std::any_of(
-              splitBasis.begin(), splitBasis.end(), [&bsDiff](const auto& ii) {
-                return ii.contains(bsDiff);
-              }))
+      bool eq = false;
+      for (size_t ii = 0, nn = splitBasis.size(); ii < nn; ++ii)
       {
-        // this basis knows a = b
-        Trace("ffl::bitprop")
-            << " (= " << a << "\n    " << b << ")" << std::endl;
+        if (splitBasis[ii].contains(bsDiff))
+        {
+          eq = true;
+          // this basis knows a = b
+          Trace("ffl::bitprop")
+              << " (= " << a << "\n    " << b << ")" << std::endl;
+          Trace("ffl::bitprop") << " as " << bsDiff << std::endl;
+          Trace("ffl::bitprop") << " from basis " << ii << std::endl;
+          break;
+        }
+      }
+      if (eq)
+      {
         size_t min = std::min(a.getNumChildren(), b.getNumChildren());
         size_t max = std::max(a.getNumChildren(), b.getNumChildren());
         if (max > d_enc->size().d_val.length())
