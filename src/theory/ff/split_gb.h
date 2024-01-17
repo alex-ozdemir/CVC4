@@ -172,11 +172,11 @@ class Gb
 };
 
 /** Propagator for bit equalities from bitsum equalities. */
-class BitProp : EnvObj
+class BitProp : EnvObj, FieldObj
 {
  public:
-  BitProp(Env& env, const std::vector<Node>& facts, CocoaEncoder& encoder);
-  BitProp(Env& env);
+  BitProp(Env& env, const FfSize& size, const std::vector<Node>& facts, CocoaEncoder& encoder);
+  BitProp(Env& env, const FfSize& size);
   /** get all known bit equalities from thes split basis */
   std::vector<Poly> getBitEqualities(const SplitGb& sgb);
 

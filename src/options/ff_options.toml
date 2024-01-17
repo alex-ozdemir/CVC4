@@ -80,13 +80,6 @@ name   = "Finite Field Theory"
   default    = "false"
   help       = "In Split solver: no inter-basis propagation"
 [[option]]
-  name       = "ffSplitAnyCoeffProp"
-  long       = "ff-split-any-coeff-prop"
-  category   = "expert"
-  type       = "bool"
-  default    = "false"
-  help       = "In Split solver: sparse basis accepts all p with deg(p) <= 1 and vars(p) <= 2"
-[[option]]
   name       = "ffSplitDenserProp"
   long       = "ff-split-denser-prop"
   category   = "expert"

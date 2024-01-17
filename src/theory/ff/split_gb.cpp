@@ -63,7 +63,7 @@ std::optional<std::unordered_map<Node, FiniteFieldValue>> split(
     }
   }
 
-  BitProp bitProp(env, facts, enc);
+  BitProp bitProp(env, size, facts, enc);
 
   std::vector<Polys> splitGens = {lGens, nlGens};
   SplitGb splitBasis = splitGb(splitGens, bitProp, enc.polyRing(), env);
@@ -123,7 +123,8 @@ SplitGb splitGb(const std::vector<Polys>& generatorSets,
     {
       for (size_t i = 0; i < k; ++i)
       {
-        Trace("ff::splitGb::debug") << "splitGb IP basis[" << i << "]:" << std::endl;
+        Trace("ff::splitGb::debug")
+            << "splitGb IP basis[" << i << "]:" << std::endl;
         for (const auto& p : splitBasis[i].basis())
         {
           Trace("ff::splitGb::debug") << " " << p << std::endl;
@@ -226,15 +227,8 @@ bool admit(size_t i, const Poly& p, const Env& env)
   {
     Assert(i == 1);
     // sparse basis
-    if (opts.ffSplitAnyCoeffProp)
+    if (opts.ffSplitDenserProp)
     {
-      Assert(!opts.ffSplitDenserProp);
-      Assert(!opts.ffSplitFullIntProp);
-      return deg <= 1 && n_vars <= 2;
-    }
-    else if (opts.ffSplitDenserProp)
-    {
-      Assert(!opts.ffSplitAnyCoeffProp);
       Assert(!opts.ffSplitFullIntProp);
       return deg <= 1 && n_vars <= 16;
     }
@@ -341,9 +335,8 @@ std::variant<Point, Poly, bool> splitZeroExtend(const Polys& origPolys,
     PartialPoint newR = r;
     newR[var] = {val};
     Trace("ff::split::mc::debug")
-        << "mc"
-        << std::string(1 + nAssigned, ' ') << CoCoA::indet(polyRing, var)
-        << " = " << val << std::endl;
+        << "mc" << std::string(1 + nAssigned, ' ')
+        << CoCoA::indet(polyRing, var) << " = " << val << std::endl;
     std::vector<Polys> newSplitGens{};
     for (const auto& b : bases)
     {
@@ -485,9 +478,14 @@ Poly Gb::minimalPolynomial(const Poly& var) const
 const Polys& Gb::basis() const { return d_basis; }
 
 BitProp::BitProp(Env& env,
+                 const FfSize& size,
                  const std::vector<Node>& facts,
                  CocoaEncoder& encoder)
-    : EnvObj(env), d_bits(), d_bitsums(encoder.bitsums()), d_enc(&encoder)
+    : EnvObj(env),
+      FieldObj(size),
+      d_bits(),
+      d_bitsums(encoder.bitsums()),
+      d_enc(&encoder)
 {
   for (const auto& fact : facts)
   {
@@ -501,7 +499,8 @@ BitProp::BitProp(Env& env,
   }
 }
 
-BitProp::BitProp(Env& env) : EnvObj(env), d_bits(), d_bitsums(), d_enc(nullptr)
+BitProp::BitProp(Env& env, const FfSize& size)
+    : EnvObj(env), FieldObj(size), d_bits(), d_bitsums(), d_enc(nullptr)
 {
 }
 
@@ -514,6 +513,14 @@ Polys BitProp::getBitEqualities(const SplitGb& splitBasis)
   std::vector<Node> nonConstantBitsums{};
   for (const auto& bitsum : d_bitsums)
   {
+    if (bitsum.getNumChildren() >= size().d_val.length())
+    {
+      Trace("ff::bitprop") << "skipping " << bitsum << std::endl
+                           << " because its length " << bitsum.getNumChildren()
+                           << " is as long as the field bits "
+                           << size().d_val.length() << std::endl;
+      continue;
+    }
     // does any basis know `bitsum = k`?
     bool isConst = false;
     for (const auto& b : splitBasis)
