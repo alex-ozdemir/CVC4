@@ -736,9 +736,11 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       {
         if (it.first.isVar() && !varsToBits.count(it.first))
         {
+          auto z3maybeVal = z3model.eval(ints.at(it.first));
           // Not sure what to do with the argument to get_decimal_string.
           auto val = FiniteFieldValue(
-              Integer(z3model.eval(ints.at(it.first)).get_decimal_string(0)),
+              z3maybeVal.is_numeral() ? Integer(z3maybeVal.get_decimal_string(0))
+                                    : Integer(),
               size());
           Trace("ffr::model") << "model " << it.first << ": "
                               << val.toSignedInteger() << std::endl;
