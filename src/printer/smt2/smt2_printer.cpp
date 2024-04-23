@@ -1049,6 +1049,10 @@ std::string Smt2Printer::smtKindString(Kind k)
     case Kind::EQ_RANGE: return "eqrange";
 
     // ff theory
+    case Kind::FINITE_FIELD_LT: return "ff.lt";
+    case Kind::FINITE_FIELD_LE: return "ff.le";
+    case Kind::FINITE_FIELD_GT: return "ff.gt";
+    case Kind::FINITE_FIELD_GE: return "ff.ge";
     case Kind::FINITE_FIELD_ADD: return "ff.add";
     case Kind::FINITE_FIELD_BITSUM: return "ff.bitsum";
     case Kind::FINITE_FIELD_MULT: return "ff.mul";

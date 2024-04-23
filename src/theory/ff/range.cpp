@@ -35,6 +35,7 @@
 #include "theory/ff/parse.h"
 #include "util/cse.h"
 #include "util/finite_field_value.h"
+#include "util/resource_manager.h"
 
 namespace cvc5::internal {
 namespace theory {
@@ -143,7 +144,7 @@ RangeSolver::check()
 }
 
 std::pair<Result, std::unordered_map<Node, FiniteFieldValue>>
-RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
+RangeSolver::checkHelper(bool unsound, uint64_t timeoutMs)
 {
   Range bitRange = Range(0, 1);
 
@@ -702,13 +703,6 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
     }
   }
 
-  Trace("ffr::z3") << "z3 version: " << Z3_get_full_version() << std::endl;
-  // specify tactic manually.
-  z3::solver s = z3::tactic(ctx, "qfnia").mk_solver();
-  if (timeoutMs != 0)
-  {
-    s.set(":timeout", static_cast<uint32_t>(timeoutMs));
-  }
   if (TraceIsOn("ffr::z3"))
   {
     for (const auto& a : assertions)
@@ -716,7 +710,34 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
       Trace("ffr::z3") << "to z3: " << a << std::endl;
     }
   }
+
+  Trace("ffr::z3") << "z3 version: " << Z3_get_full_version() << std::endl;
+  // specify tactic manually.
+  z3::solver s = z3::tactic(ctx, "qfnia").mk_solver();
+  if (d_env.getResourceManager()->outOfTime())
+  {
+    timeoutMs = 1;
+  }
+  else if (d_env.getResourceManager()->getRemainingTime() != 0)
+  {
+    if (timeoutMs == 0)
+    {
+      timeoutMs = d_env.getResourceManager()->getRemainingTime();
+    }
+    else
+    {
+      timeoutMs =
+          std::min(timeoutMs, d_env.getResourceManager()->getRemainingTime());
+    }
+  }
+
+  if (timeoutMs != 0)
+  {
+    Trace("ffr::z3") << "z3 timeout: " << timeoutMs << std::endl;
+    s.set(":timeout", static_cast<uint32_t>(timeoutMs));
+  }
   z3::check_result r = s.check(assertions.size(), &assertions[0]);
+  Trace("ffr::z3") << "from z3: " << r << std::endl;
   switch (r)
   {
     case z3::check_result::sat:
@@ -738,10 +759,11 @@ RangeSolver::checkHelper(bool unsound, size_t timeoutMs)
         {
           auto z3maybeVal = z3model.eval(ints.at(it.first));
           // Not sure what to do with the argument to get_decimal_string.
-          auto val = FiniteFieldValue(
-              z3maybeVal.is_numeral() ? Integer(z3maybeVal.get_decimal_string(0))
-                                    : Integer(),
-              size());
+          auto val =
+              FiniteFieldValue(z3maybeVal.is_numeral()
+                                   ? Integer(z3maybeVal.get_decimal_string(0))
+                                   : Integer(),
+                               size());
           Trace("ffr::model") << "model " << it.first << ": "
                               << val.toSignedInteger() << std::endl;
           model.insert({it.first, val});

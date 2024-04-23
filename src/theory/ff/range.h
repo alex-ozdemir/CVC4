@@ -64,7 +64,7 @@ class RangeSolver : EnvObj, FieldObj
   void assertFact(TNode fact);
   // TODO: SAT might have an empty model.
   std::pair<Result, std::unordered_map<Node, FiniteFieldValue>> check();
-  std::pair<Result, std::unordered_map<Node, FiniteFieldValue>> checkHelper(bool unsound, size_t timeoutMs);
+  std::pair<Result, std::unordered_map<Node, FiniteFieldValue>> checkHelper(bool unsound, uint64_t timeoutMs);
   Range getRange(TNode term);
   void clear();
 

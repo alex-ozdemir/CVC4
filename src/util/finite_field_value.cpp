@@ -194,12 +194,12 @@ std::ostream& operator<<(std::ostream& os, const IntToFiniteField& bv)
  * Static helpers.
  * ----------------------------------------------------------------------- */
 
-FiniteFieldValue FiniteFieldValue::mkZero(const Integer& size)
+FiniteFieldValue FiniteFieldValue::mkZero(const FfSize& size)
 {
   return {0, size};
 }
 
-FiniteFieldValue FiniteFieldValue::mkOne(const Integer& size)
+FiniteFieldValue FiniteFieldValue::mkOne(const FfSize& size)
 {
   return {1, size};
 }

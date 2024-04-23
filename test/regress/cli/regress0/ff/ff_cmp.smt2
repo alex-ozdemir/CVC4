@@ -1,3 +1,12 @@
+; COMMAND-LINE: --ff-solver int
+; REQUIRE: cocoa
+; EXPECT: unsat
+; EXPECT: unsat
+; EXPECT: sat
+; EXPECT: sat
+; EXPECT: unsat
+; EXPECT: unsat
+; EXPECT: sat
 (set-info :smt-lib-version 2.6)
 (set-info :category "crafted")
 (set-option :incremental true)
@@ -28,7 +37,7 @@
 (pop)
 
 (push)
-(assert (and (ff.lt x y) (ff.lt y z) (ff.lt y x)))
+(assert (and (ff.lt x y) (ff.lt y z) (ff.lt y x))) ; UNSAT
 (check-sat)
 (pop)
 

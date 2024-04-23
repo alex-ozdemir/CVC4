@@ -141,10 +141,10 @@ class FiniteFieldValue
    * ----------------------------------------------------------------------- */
 
   /* Create zero bit-vector of given size. */
-  static FiniteFieldValue mkZero(const Integer& modulus);
+  static FiniteFieldValue mkZero(const FfSize& modulus);
 
   /* Create bit-vector representing value 1 of given size. */
-  static FiniteFieldValue mkOne(const Integer& modulus);
+  static FiniteFieldValue mkOne(const FfSize& modulus);
 
  private:
   /** bring d_value back into the range below */
