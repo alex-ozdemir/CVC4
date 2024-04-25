@@ -653,11 +653,7 @@ RangeSolver::checkHelper(bool unsound, uint64_t timeoutMs)
       Assert(f.getKind() == Kind::NOT && f[0].getKind() == Kind::EQUAL) << f;
       Node e = f[0];
       z3::expr diff = ints.at(e[0]) - ints.at(e[1]);
-      if (unsound)
-      {
-        assertions.push_back(diff != 0);
-      }
-      else if (options().ff.ffrMod)
+      if (options().ff.ffrMod)
       {
         assertions.push_back(diff % p != 0);
       }
