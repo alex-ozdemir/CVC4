@@ -1,6 +1,7 @@
 (set-logic QF_FF)
+; COMMAND-LINE: --ff-solver int
 (set-option :ff-solver int)
-(set-option :status unsat)
+(set-info :status unsat)
 (set-option :produce-models true)
 (define-sort F () (_ FiniteField 28948022309329048855892746252171976963363056481941560715954676764349967630337))
 ;; ### BEGIN
@@ -35,5 +36,4 @@
 (assert (and e19 e22))
 (assert (not (=> (and e14 (not (= (as ff0 F) c7))) (and e2 (not (= (as ff0 F) c7))))))
 (check-sat)
-(get-model)
 
