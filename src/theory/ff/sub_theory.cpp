@@ -201,7 +201,6 @@ Result SubTheory::postCheck(Theory::Effort e)
           generators.end(), enc.polys().begin(), enc.polys().end());
       generators.insert(
           generators.end(), enc.bitsumPolys().begin(), enc.bitsumPolys().end());
-      size_t nNonFieldPolyGens = generators.size();
       if (options().ff.ffFieldPolys)
       {
         for (const auto& var : CoCoA::indets(enc.polyRing()))
@@ -229,11 +228,12 @@ Result SubTheory::postCheck(Theory::Effort e)
           Assert(d_conflict.empty());
           for (size_t i : coreIndices)
           {
-            // omit field polys from core
-            if (i < nNonFieldPolyGens)
+            // omit (field polys, bitsumPolys) from core
+            if (enc.polyHasFact(generators[i]))
             {
-              Trace("ff::core") << "Core: " << d_facts[i] << std::endl;
-              d_conflict.push_back(d_facts[i]);
+              Trace("ff::core")
+                    << "Core: " << i << " : " << d_facts[i] << std::endl;
+              d_conflict.push_back(enc.polyFact(generators[i]));
             }
           }
         }

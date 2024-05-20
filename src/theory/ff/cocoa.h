@@ -71,6 +71,8 @@ class CocoaEncoder : public FieldObj
   const CoCoA::ring& polyRing() const { return d_polyRing.value(); }
   std::vector<std::pair<size_t, Node>> nodeIndets() const;
   FiniteFieldValue cocoaFfToFfVal(const CoCoA::RingElem& elem);
+  bool polyHasFact(const CoCoA::RingElem& poly) const;
+  const Node& polyFact(const CoCoA::RingElem& poly) const;
 
  private:
   /** a bitsum or a var */
@@ -101,6 +103,7 @@ class CocoaEncoder : public FieldObj
   std::unordered_map<Node, CoCoA::RingElem> d_cache{};
   std::vector<CoCoA::RingElem> d_polys{};
   std::vector<CoCoA::RingElem> d_bitsumPolys{};
+  std::unordered_map<std::string, Node> d_polyFacts{};
 };
 
 }  // namespace ff

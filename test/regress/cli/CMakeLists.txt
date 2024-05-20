@@ -692,6 +692,7 @@ set(regress_0_tests
   regress0/ff/sorawee_bug_2024_04_24.smt2
   regress0/ff/simple.smt2
   regress0/ff/tlimit_per.smt2
+  regress0/ff/tlimit_per_easy.smt2
   regress0/ff/univar_conjunction_sat.smt2
   regress0/ff/univar_conjunction_unsat.smt2
   regress0/ff/with_uf.smt2

@@ -229,6 +229,16 @@ FiniteFieldValue CocoaEncoder::cocoaFfToFfVal(const CoCoA::RingElem& elem)
   return {integer, size()};
 }
 
+const Node& CocoaEncoder::polyFact(const CoCoA::RingElem& poly) const
+{
+  return d_polyFacts.at(extractStr(poly));
+}
+
+bool CocoaEncoder::polyHasFact(const CoCoA::RingElem& poly) const
+{
+  return d_polyFacts.count(extractStr(poly));
+}
+
 const CoCoA::RingElem& CocoaEncoder::symPoly(CoCoA::symbol s) const
 {
   Assert(d_symPolys.count(extractStr(s)));
@@ -307,12 +317,13 @@ void CocoaEncoder::encodeFact(const Node& f)
 {
   Assert(d_stage == Stage::Encode);
   Assert(isFfFact(f));
+  CoCoA::RingElem p;
   if (f.getKind() == Kind::EQUAL)
   {
     // ==
     encodeTerm(f[0]);
     encodeTerm(f[1]);
-    d_cache.insert({f, d_cache.at(f[0]) - d_cache.at(f[1])});
+    p = d_cache.at(f[0]) - d_cache.at(f[1]);
   }
   else
   {
@@ -320,8 +331,10 @@ void CocoaEncoder::encodeFact(const Node& f)
     encodeTerm(f[0][0]);
     encodeTerm(f[0][1]);
     CoCoA::RingElem diff = d_cache.at(f[0][0]) - d_cache.at(f[0][1]);
-    d_cache.insert({f, diff * symPoly(d_diseqSyms.at(f)) - 1});
+    p = diff * symPoly(d_diseqSyms.at(f)) - 1;
   }
+  d_cache.insert({f, p});
+  d_polyFacts.insert({extractStr(p), f});
 }
 
 }  // namespace ff
